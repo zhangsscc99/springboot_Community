@@ -1,7 +1,14 @@
 <template>
   <div class="app-container">
     <header class="app-header">
-      <h1>社区论坛</h1>
+      <div class="logo">
+        <div class="main-title">锦书情感社区</div>
+        <div class="subtitle">
+          <span class="subtitle-text">锦书</span>
+          <span class="logo-ai">AI</span>
+          <span class="subtitle-text">的旗下论坛</span>
+        </div>
+      </div>
       
       <div class="search-box">
         <i class="fas fa-search search-icon"></i>
@@ -10,8 +17,8 @@
       
       <div class="user-controls">
         <div class="auth-buttons" v-if="!isLoggedIn">
-          <button class="btn">登录</button>
-          <button class="btn btn-primary">注册</button>
+          <button class="btn" @click="goToLogin">登录</button>
+          <button class="btn btn-primary" @click="goToRegister">注册</button>
         </div>
         <div v-else class="user-info">
           <span class="username">{{ username }}</span>
@@ -20,17 +27,22 @@
       </div>
     </header>
     
-    <router-view />
+    <div class="main-content">
+      <router-view />
+    </div>
     
-    <button class="create-post-btn" @click="openCreatePost">
-      <i class="fas fa-plus"></i>
-    </button>
+    <BottomTabBar />
   </div>
 </template>
 
 <script>
+import BottomTabBar from '@/components/BottomTabBar.vue';
+
 export default {
   name: 'App',
+  components: {
+    BottomTabBar
+  },
   data() {
     return {
       isLoggedIn: false,
@@ -42,14 +54,50 @@ export default {
       this.isLoggedIn = false;
       // Add real logout logic here
     },
-    openCreatePost() {
-      // Navigate to create post page
-      this.$router.push('/create-post');
+    goToLogin() {
+      this.$router.push('/login');
+    },
+    goToRegister() {
+      this.$router.push('/register');
     }
   }
 }
 </script>
 
-<style>
-/* Global styles are imported in main.js */
+<style scoped>
+.logo {
+  display: flex;
+  flex-direction: column;
+  font-weight: bold;
+}
+
+.main-title {
+  font-size: 22px;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--light-text-color);
+  margin-top: 2px;
+}
+
+.subtitle-text {
+  color: var(--light-text-color);
+}
+
+.logo-ai {
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  margin: 0 2px;
+}
 </style> 

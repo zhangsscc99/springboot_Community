@@ -160,15 +160,27 @@ export default {
 }
 
 .back-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 8px 16px;
-  background: none;
-  border: 1px solid var(--border-color);
+  justify-content: center;
+  min-width: 80px;
+  height: 36px;
+  padding: 0 16px;
+  gap: 4px;
+  border: 1px solid var(--primary-color);
   border-radius: 20px;
-  color: var(--text-color);
   font-size: 14px;
   cursor: pointer;
+  background-color: white;
+  margin-bottom: 20px;
+  color: var(--primary-color);
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  border-color: transparent;
+  color: white;
 }
 
 .back-button i {
