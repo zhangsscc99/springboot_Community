@@ -5,7 +5,7 @@
       <div class="nav-tab">推荐</div>
       <div class="nav-tab">热榜</div>
       <div class="nav-tab">故事</div>
-      <div class="nav-tab">AI学习</div>
+      <div class="nav-tab">情感知识</div>
     </div>
     
     <div v-if="loading" class="loading-indicator">

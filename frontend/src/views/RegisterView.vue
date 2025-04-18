@@ -325,11 +325,11 @@ export default {
 }
 
 .strength-level.medium {
-  background-color: #ff9500;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle));
 }
 
 .strength-level.strong {
-  background-color: #28cd41;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
 }
 
 .password-error {
@@ -432,6 +432,10 @@ export default {
   color: var(--primary-color);
   text-decoration: none;
   font-weight: 500;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .login-link a:hover {

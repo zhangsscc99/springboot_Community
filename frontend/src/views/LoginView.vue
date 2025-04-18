@@ -333,6 +333,9 @@ export default {
 .social-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border-color: transparent;
 }
 
 .social-btn i {
@@ -360,6 +363,10 @@ export default {
   color: var(--primary-color);
   text-decoration: none;
   font-weight: 500;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .register-link a:hover {

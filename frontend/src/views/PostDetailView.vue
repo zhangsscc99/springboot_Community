@@ -245,10 +245,10 @@ export default {
 
 .follow-button {
   padding: 6px 12px;
-  background-color: var(--secondary-color);
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
   border: none;
   border-radius: 20px;
-  color: var(--text-color);
+  color: white;
   font-size: 12px;
   cursor: pointer;
 }

@@ -377,11 +377,11 @@ export default {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 50%;
-  width: 30px;
+  left: 0;
+  width: 100%;
   height: 3px;
-  background-color: var(--primary-color);
-  transform: translateX(-50%);
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  transform: translateY(1px);
 }
 
 .profile-content {
