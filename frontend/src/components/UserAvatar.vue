@@ -50,17 +50,17 @@ export default {
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .avatar-username {
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: 11px;
+  margin-top: 3px;
   color: var(--text-color);
-  max-width: 80px;
+  max-width: 75px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

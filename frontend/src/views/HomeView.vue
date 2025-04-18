@@ -1,11 +1,15 @@
 <template>
   <div class="home-view">
     <div class="nav-tabs">
-      <div class="nav-tab active">关注</div>
-      <div class="nav-tab">推荐</div>
-      <div class="nav-tab">热榜</div>
-      <div class="nav-tab">故事</div>
-      <div class="nav-tab">情感知识</div>
+      <div 
+        v-for="tab in tabs" 
+        :key="tab" 
+        class="nav-tab" 
+        :class="{ active: activeTab === tab }"
+        @click="switchTab(tab)"
+      >
+        {{ tab }}
+      </div>
     </div>
     
     <div v-if="loading" class="loading-indicator">
@@ -17,7 +21,8 @@
     </div>
     
     <div v-else class="post-list">
-      <div v-for="post in posts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
+      <div v-for="post in currentTabPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
+        <h3 class="post-title">{{ post.title }}</h3>
         <div class="post-header">
           <UserAvatar 
             :src="post.author.avatar" 
@@ -28,22 +33,26 @@
             <span class="post-time">{{ formatDate(post.created_at) }}</span>
           </div>
         </div>
-        <h3 class="post-title">{{ post.title }}</h3>
         <p class="post-content">{{ post.content }}</p>
+        <div class="post-tags" v-if="post.tags">
+          <span v-for="(tag, index) in post.tags" :key="index" class="post-tag">
+            #{{ tag }}
+          </span>
+        </div>
         <div class="post-footer">
           <div class="post-actions">
             <div class="post-action">
-              <i class="far fa-heart"></i> {{ post.likes }}
+              <i class="fas fa-heart"></i> {{ post.likes }}
             </div>
             <div class="post-action">
-              <i class="far fa-comment"></i> {{ post.comments }}
+              <i class="fas fa-comment-dots"></i> {{ post.comments }}
             </div>
             <div class="post-action">
-              <i class="far fa-bookmark"></i>
+              <i class="fas fa-star"></i> {{ Math.floor(Math.random() * 100) }}
             </div>
           </div>
           <div class="post-action">
-            <i class="fas fa-share-alt"></i>
+            <i class="fas fa-share-alt"></i> {{ Math.floor(Math.random() * 50) }}
           </div>
         </div>
       </div>
@@ -60,14 +69,24 @@ export default {
   components: {
     UserAvatar
   },
+  data() {
+    return {
+      tabs: ['关注', '推荐', '热榜', '故事', '情感知识']
+    };
+  },
   computed: {
     ...mapGetters({
       posts: 'allPosts',
       loading: 'isLoading',
-      error: 'error'
+      error: 'error',
+      activeTab: 'activeTab',
+      currentTabPosts: 'currentTabPosts'
     })
   },
   methods: {
+    switchTab(tab) {
+      this.$store.dispatch('setActiveTab', tab);
+    },
     formatDate(dateString) {
       const date = new Date(dateString);
       const now = new Date();
@@ -100,6 +119,130 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.nav-tabs {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  background-color: white;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 60px;
+  z-index: 90;
+  padding: 0 10px;
+}
+
+.nav-tab {
+  padding: 12px 16px;
+  font-size: 16px;
+  color: var(--text-color);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.nav-tab.active {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 30px;
+  height: 2px;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  opacity: 0.6;
+  transform: translateX(-50%);
+  border-radius: 1px;
+}
+
+.post-title {
+  padding: 16px 16px 12px;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.post-header {
+  padding: 0 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-user-info {
+  flex: 1;
+}
+
+.post-username {
+  font-weight: 500;
+  font-size: 13px;
+  margin: 0;
+}
+
+.post-time {
+  font-size: 11px;
+  color: var(--light-text-color);
+}
+
+.post-content {
+  padding: 0 16px 12px;
+  font-size: 14px;
+  color: var(--light-text-color);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+}
+
+.post-tags {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.post-tag {
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.post-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  color: var(--light-text-color);
+  font-size: 14px;
+}
+
+.post-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.post-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.post-action i {
+  font-size: 16px;
+}
+
+.post-action:hover {
+  color: var(--primary-color);
 }
 
 .loading-indicator,

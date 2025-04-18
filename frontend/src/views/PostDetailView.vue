@@ -15,6 +15,8 @@
     </div>
     
     <div v-else-if="post" class="post-detail">
+      <h1 class="post-title">{{ post.title }}</h1>
+      
       <div class="post-header">
         <UserAvatar 
           :src="post.author.avatar" 
@@ -29,24 +31,28 @@
         </button>
       </div>
       
-      <h1 class="post-title">{{ post.title }}</h1>
-      
       <div class="post-content-full">
         <p v-for="(paragraph, index) in contentParagraphs" :key="index">{{ paragraph }}</p>
       </div>
       
+      <div class="post-tags" v-if="post.tags">
+        <span v-for="(tag, index) in post.tags" :key="index" class="post-tag">
+          #{{ tag }}
+        </span>
+      </div>
+      
       <div class="post-actions-bar">
         <div class="post-action">
-          <i class="far fa-heart"></i> {{ post.likes }}
+          <i class="fas fa-heart"></i> {{ post.likes }}
         </div>
         <div class="post-action">
-          <i class="far fa-comment"></i> {{ post.comments }}
+          <i class="fas fa-comment-dots"></i> {{ post.comments }}
         </div>
         <div class="post-action">
-          <i class="far fa-bookmark"></i>
+          <i class="fas fa-star"></i> {{ Math.floor(Math.random() * 100) }}
         </div>
         <div class="post-action">
-          <i class="fas fa-share-alt"></i>
+          <i class="fas fa-share-alt"></i> {{ Math.floor(Math.random() * 50) }}
         </div>
       </div>
       
@@ -72,8 +78,8 @@
             </div>
             <div class="comment-content">{{ comment.content }}</div>
             <div class="comment-actions">
-              <div class="comment-action"><i class="far fa-heart"></i> 点赞</div>
-              <div class="comment-action"><i class="far fa-comment"></i> 回复</div>
+              <div class="comment-action"><i class="fas fa-heart"></i> 点赞</div>
+              <div class="comment-action"><i class="fas fa-reply"></i> 回复</div>
             </div>
           </div>
         </div>
@@ -222,24 +228,24 @@ export default {
 }
 
 .post-header {
-  padding: 16px;
+  padding: 0 16px 16px;
   display: flex;
   align-items: center;
 }
 
 .post-user-info {
   flex: 1;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
 .post-username {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   margin: 0;
 }
 
 .post-time {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--light-text-color);
 }
 
@@ -258,10 +264,11 @@ export default {
 }
 
 .post-title {
-  padding: 0 16px 16px;
-  font-size: 22px;
+  margin-bottom: 16px;
+  padding: 16px 16px 0;
+  font-size: 24px;
   font-weight: 600;
-  margin: 0;
+  letter-spacing: -0.3px;
 }
 
 .post-content-full {
@@ -269,10 +276,25 @@ export default {
   font-size: 16px;
   color: var(--text-color);
   line-height: 1.6;
+  letter-spacing: -0.2px;
 }
 
 .post-content-full p {
   margin-bottom: 16px;
+}
+
+.post-tags {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.post-tag {
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .post-actions-bar {
@@ -290,6 +312,11 @@ export default {
   gap: 6px;
   color: var(--light-text-color);
   cursor: pointer;
+  font-size: 15px;
+}
+
+.post-action i {
+  font-size: 18px;
 }
 
 .post-action:hover {
@@ -389,6 +416,13 @@ export default {
   font-size: 12px;
   color: var(--light-text-color);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comment-action i {
+  font-size: 14px;
 }
 
 .comment-action:hover {
