@@ -1,0 +1,29 @@
+{
+  "name": "community-forum",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "serve:no-lint": "vue-cli-service serve --skip-plugins @vue/cli-plugin-eslint",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "postinstall": "npm install --no-save @babel/core @babel/eslint-parser @vue/cli-plugin-babel @vue/cli-plugin-eslint"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "core-js": "^3.26.1",
+    "vue": "^3.2.45",
+    "vue-router": "^4.1.6",
+    "vuex": "^4.1.0"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-eslint": "~5.0.8",
+    "@vue/cli-plugin-router": "~5.0.8",
+    "@vue/cli-plugin-vuex": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
+    "@vue/compiler-sfc": "^3.2.45",
+    "eslint": "^8.29.0",
+    "eslint-plugin-vue": "^9.8.0"
+  }
+} 
