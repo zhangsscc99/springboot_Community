@@ -52,8 +52,11 @@
           <button class="edit-profile-btn" v-else>
             <i class="fas fa-pencil-alt"></i> 编辑资料
           </button>
-          <button class="message-btn">
+          <button class="message-btn" v-if="!isCurrentUser">
             <i class="fas fa-comment"></i> 私信
+          </button>
+          <button class="logout-btn" v-if="isCurrentUser" @click="logout">
+            <i class="fas fa-sign-out-alt"></i> 退出登录
           </button>
         </div>
       </div>
@@ -127,6 +130,7 @@
 
 <script>
 import UserAvatar from '@/components/UserAvatar.vue';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'ProfileView',
@@ -159,6 +163,10 @@ export default {
     };
   },
   computed: {
+    ...mapGetters({
+      isAuthenticated: 'isAuthenticated',
+      currentUser: 'currentUser'
+    }),
     profileName() {
       return this.profileId === '123' ? '咫尺燃灯' : 'User Not Found';
     },
@@ -167,12 +175,16 @@ export default {
     },
     isCurrentUser() {
       // In a real app, compare to logged-in user ID
-      return this.profileId === '123';
+      return this.profileId === '123' && this.isAuthenticated;
     }
   },
   methods: {
     goBack() {
       this.$router.go(-1);
+    },
+    logout() {
+      this.$store.dispatch('logout');
+      this.$router.push('/');
     },
     formatDate(dateString) {
       const date = new Date(dateString);
@@ -448,6 +460,26 @@ export default {
 
 .posts-list .post-time {
   font-size: 12px;
+}
+
+.logout-btn {
+  background-color: #f5f5f5;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.logout-btn:hover {
+  background-color: #f0f0f0;
+  border-color: #d0d0d0;
 }
 
 @media (max-width: 576px) {

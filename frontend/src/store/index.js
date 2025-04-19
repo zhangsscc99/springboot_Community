@@ -63,11 +63,18 @@ export default createStore({
       commit('SET_LOADING', true);
       try {
         // Here would be an API call to authenticate
-        const user = { id: 1, username: credentials.email };
+        // 模拟登录成功，返回用户信息
+        const user = { 
+          id: 123, 
+          username: credentials.email,
+          avatar: "https://via.placeholder.com/40"
+        };
         commit('SET_USER', user);
         commit('SET_ERROR', null);
+        return user;
       } catch (error) {
         commit('SET_ERROR', error.message);
+        throw error;
       } finally {
         commit('SET_LOADING', false);
       }

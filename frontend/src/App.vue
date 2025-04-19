@@ -16,12 +16,12 @@
       </div>
       
       <div class="user-controls">
-        <div class="auth-buttons" v-if="!isLoggedIn">
+        <div class="auth-buttons" v-if="!isAuthenticated">
           <button class="btn" @click="goToLogin">登录</button>
           <button class="btn btn-primary" @click="goToRegister">注册</button>
         </div>
         <div v-else class="user-info">
-          <span class="username">{{ username }}</span>
+          <span class="username">{{ currentUser?.username || 'User' }}</span>
           <button class="btn" @click="logout">退出</button>
         </div>
       </div>
@@ -37,22 +37,25 @@
 
 <script>
 import BottomTabBar from '@/components/BottomTabBar.vue';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'App',
   components: {
     BottomTabBar
   },
-  data() {
-    return {
-      isLoggedIn: false,
-      username: 'User123'
-    }
+  computed: {
+    ...mapGetters({
+      isAuthenticated: 'isAuthenticated',
+      currentUser: 'currentUser'
+    })
   },
   methods: {
     logout() {
-      this.isLoggedIn = false;
-      // Add real logout logic here
+      this.$store.dispatch('logout');
+      if (this.$route.path.includes('/profile') || this.$route.path.includes('/create-post')) {
+        this.$router.push('/');
+      }
     },
     goToLogin() {
       this.$router.push('/login');
