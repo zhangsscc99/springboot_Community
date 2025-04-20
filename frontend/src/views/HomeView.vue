@@ -71,6 +71,7 @@
 <script>
 import { mapGetters, mapState } from 'vuex';
 import UserAvatar from '@/components/UserAvatar.vue';
+import axios from 'axios';
 
 export default {
   name: 'HomeView',
@@ -89,7 +90,8 @@ export default {
         '热榜': false,
         '故事': false,
         '情感知识': false
-      }
+      },
+      requestingTab: null
     };
   },
   computed: {
@@ -113,15 +115,35 @@ export default {
   },
   methods: {
     async switchTab(tab) {
+      // 取消所有进行中的加载和预加载
       this.cancelPreloading();
       
-      this.$store.dispatch('setActiveTab', tab);
-    
-      if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
-        await this.$store.dispatch('fetchPostsByTab', tab);
-      }
+      // 标记当前正在请求的标签
+      this.requestingTab = tab;
       
-      this.preloadOtherTabs(tab);
+      try {
+        // 设置激活标签（这不会触发数据加载）
+        this.$store.commit('SET_ACTIVE_TAB', tab);
+        
+        // 如果缓存过期或没有数据，则加载数据
+        if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
+          await this.$store.dispatch('fetchPostsByTab', tab, { cancelToken: tab });
+        }
+        
+        // 仅当当前标签仍是请求开始时的标签时，才开始预加载
+        if (this.requestingTab === tab && this.activeTab === tab) {
+          this.preloadOtherTabs(tab);
+        }
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          console.error(`加载标签 ${tab} 失败:`, error);
+        }
+      } finally {
+        // 请求结束后清除标记
+        if (this.requestingTab === tab) {
+          this.requestingTab = null;
+        }
+      }
     },
     cancelPreloading() {
       if (this.preloadTimeout) {
@@ -208,6 +230,10 @@ export default {
   },
   beforeUnmount() {
     this.cancelPreloading();
+    // 取消所有进行中的请求
+    this.tabs.forEach(tab => {
+      this.$store.commit('CANCEL_TAB_REQUEST', tab);
+    });
   },
   async created() {
     const currentTab = this.activeTab;

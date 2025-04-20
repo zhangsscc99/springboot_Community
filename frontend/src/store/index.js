@@ -26,7 +26,8 @@ export default createStore({
     lastCacheUpdate: {}, // 记录每个帖子最后更新时间
     tabCacheUpdate: {}, // 记录每个标签页最后更新时间
     cachedPages: {}, // 用于存储各页面数据
-    cachedScrollPositions: {} // 用于存储各页面滚动位置
+    cachedScrollPositions: {}, // 用于存储各页面滚动位置
+    requestCancelTokens: {} // 用于存储取消标记
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -128,6 +129,13 @@ export default createStore({
     // 保存滚动位置
     SAVE_SCROLL_POSITION(state, { routePath, position }) {
       state.cachedScrollPositions[routePath] = position;
+    },
+    // 取消特定标签的请求
+    CANCEL_TAB_REQUEST(state, tab) {
+      if (state.requestCancelTokens && state.requestCancelTokens[tab]) {
+        state.requestCancelTokens[tab].cancel(`切换到新标签，取消 ${tab} 请求`);
+        delete state.requestCancelTokens[tab];
+      }
     }
   },
   actions: {
@@ -354,19 +362,38 @@ export default createStore({
     },
     
     // 获取特定栏目的帖子
-    async fetchPostsByTab({ commit, state, getters }, tab) {
-      // 如果标签缓存未过期，直接使用缓存数据
+    async fetchPostsByTab({ commit, state, getters }, tab, options = {}) {
+      // 如果标签缓存未过期且有数据，直接使用缓存数据
       if (!getters.isTabCacheExpired(tab) && state.tabPosts[tab] && state.tabPosts[tab].length > 0) {
         console.log(`使用缓存中的${tab}栏目帖子`);
-        commit('SET_ACTIVE_TAB', tab);
         return state.tabPosts[tab];
       }
       
-        commit('SET_LOADING', true);
+      // 存储当前正在处理的标签请求
+      const currentTabRequest = tab;
+      
+      commit('SET_LOADING', true);
       try {
         console.log(`从API获取${tab}栏目的帖子`);
-        const response = await apiService.posts.getByTab(tab);
+        
+        // 创建一个可取消的请求
+        const CancelToken = apiService.getCancelToken();
+        const source = CancelToken.source();
+        
+        // 存储取消标记，以便在用户切换标签时可以取消此请求
+        if (options.cancelToken) {
+          state.requestCancelTokens = state.requestCancelTokens || {};
+          state.requestCancelTokens[options.cancelToken] = source;
+        }
+        
+        const response = await apiService.posts.getByTab(tab, { cancelToken: source.token });
         const posts = response.data.content || response.data;
+        
+        // 检查当前激活标签是否仍然是发起请求时的标签
+        if (state.activeTab !== tab) {
+          console.log(`标签已切换，丢弃 ${tab} 的响应数据`);
+          return [];
+        }
         
         // 更新标签帖子并写入缓存
         posts.forEach(post => {
@@ -374,10 +401,14 @@ export default createStore({
         });
         
         commit('SET_TAB_POSTS', { tab, posts });
-        commit('SET_ACTIVE_TAB', tab);
         commit('SET_ERROR', null);
         return posts;
       } catch (error) {
+        if (apiService.isCancel(error)) {
+          console.log(`请求 ${tab} 被取消`);
+          return [];
+        }
+        
         console.error(`获取${tab}栏目帖子失败:`, error);
         commit('SET_ERROR', error.message || `获取${tab}栏目帖子失败`);
         
@@ -385,7 +416,15 @@ export default createStore({
         commit('SET_TAB_POSTS', { tab, posts: [] });
         return [];
       } finally {
-        commit('SET_LOADING', false);
+        // 只有当当前激活标签仍然是请求发起时的标签时，才将加载状态设为false
+        if (state.activeTab === currentTabRequest) {
+          commit('SET_LOADING', false);
+        }
+        
+        // 清除取消标记
+        if (options.cancelToken && state.requestCancelTokens && state.requestCancelTokens[options.cancelToken]) {
+          delete state.requestCancelTokens[options.cancelToken];
+        }
       }
     },
     

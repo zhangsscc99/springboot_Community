@@ -154,10 +154,8 @@ const apiService = {
       });
     },
     // 根据标签获取帖子
-    getByTab(tab, page = 0, size = 10) {
-      return apiClient.get(`/api/posts/tab/${tab}`, {
-        params: { page, size }
-      });
+    getByTab: (tab, config = {}) => {
+      return apiClient.get(`/api/posts/tab/${tab}`, config);
     },
     // 获取单个帖子详情
     getById(id) {
@@ -204,7 +202,11 @@ const apiService = {
     delete(commentId) {
       return apiClient.delete(`/api/comments/${commentId}`);
     }
-  }
+  },
+  
+  // 添加这些方法
+  getCancelToken: () => axios.CancelToken,
+  isCancel: (error) => axios.isCancel(error)
 };
 
 export default apiService; 
