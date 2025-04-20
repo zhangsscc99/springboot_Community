@@ -23,10 +23,15 @@ import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
 public class PostServiceImpl implements PostService {
+    // 使用并发HashMap存储每个帖子的操作锁
+    private final ConcurrentHashMap<String, Lock> postLocks = new ConcurrentHashMap<>();
     
     @Autowired
     private PostRepository postRepository;
@@ -39,6 +44,12 @@ public class PostServiceImpl implements PostService {
     
     @Autowired
     private PostFavoriteRepository postFavoriteRepository;
+    
+    // 获取指定帖子和用户的操作锁
+    private Lock getPostUserLock(Long postId, String username) {
+        String key = postId + "-" + username; // 为每个帖子-用户组合创建唯一键
+        return postLocks.computeIfAbsent(key, k -> new ReentrantLock());
+    }
     
     @Override
     public PostResponse createPost(PostRequest postRequest, String username) {
@@ -149,28 +160,35 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void likePost(Long id, String username) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+        Lock lock = getPostUserLock(id, username);
+        lock.lock();
         
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
-        
-        // 检查用户是否已经点赞
-        Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
-        
-        if (existingLike.isPresent()) {
-            // 用户已经点赞，不做处理
-            return;
-        }
-        
-        // 创建点赞记录
-        PostLike like = new PostLike(user, post);
-        postLikeRepository.save(like);
-        
-        // 更新统计数据
-        if (post.getStats() != null) {
-            post.getStats().incrementLikeCount();
-            postRepository.save(post);
+        try {
+            Post post = postRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+            
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+            
+            // 检查用户是否已经点赞
+            Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
+            
+            if (existingLike.isPresent()) {
+                // 用户已经点赞，不做处理
+                return;
+            }
+            
+            // 创建点赞记录
+            PostLike like = new PostLike(user, post);
+            postLikeRepository.save(like);
+            
+            // 更新统计数据
+            if (post.getStats() != null) {
+                post.getStats().incrementLikeCount();
+                postRepository.save(post);
+            }
+        } finally {
+            lock.unlock();
         }
     }
     
@@ -178,24 +196,31 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void unlikePost(Long id, String username) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+        Lock lock = getPostUserLock(id, username);
+        lock.lock();
         
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
-        
-        // 检查用户是否已经点赞
-        Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
-        
-        if (existingLike.isPresent()) {
-            // 删除点赞记录
-            postLikeRepository.deleteByUserAndPost(user, post);
+        try {
+            Post post = postRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
             
-            // 更新统计数据
-            if (post.getStats() != null) {
-                post.getStats().decrementLikeCount();
-                postRepository.save(post);
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+            
+            // 检查用户是否已经点赞
+            Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
+            
+            if (existingLike.isPresent()) {
+                // 删除点赞记录
+                postLikeRepository.deleteByUserAndPost(user, post);
+                
+                // 更新统计数据
+                if (post.getStats() != null) {
+                    post.getStats().decrementLikeCount();
+                    postRepository.save(post);
+                }
             }
+        } finally {
+            lock.unlock();
         }
     }
     
@@ -203,28 +228,35 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void favoritePost(Long id, String username) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+        Lock lock = getPostUserLock(id, username);
+        lock.lock();
         
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
-        
-        // 检查用户是否已经收藏
-        Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
-        
-        if (existingFavorite.isPresent()) {
-            // 用户已经收藏，不做处理
-            return;
-        }
-        
-        // 创建收藏记录
-        PostFavorite favorite = new PostFavorite(user, post);
-        postFavoriteRepository.save(favorite);
-        
-        // 更新统计数据
-        if (post.getStats() != null) {
-            post.getStats().incrementFavoriteCount();
-            postRepository.save(post);
+        try {
+            Post post = postRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+            
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+            
+            // 检查用户是否已经收藏
+            Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
+            
+            if (existingFavorite.isPresent()) {
+                // 用户已经收藏，不做处理
+                return;
+            }
+            
+            // 创建收藏记录
+            PostFavorite favorite = new PostFavorite(user, post);
+            postFavoriteRepository.save(favorite);
+            
+            // 更新统计数据
+            if (post.getStats() != null) {
+                post.getStats().incrementFavoriteCount();
+                postRepository.save(post);
+            }
+        } finally {
+            lock.unlock();
         }
     }
     
@@ -232,24 +264,31 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void unfavoritePost(Long id, String username) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
+        Lock lock = getPostUserLock(id, username);
+        lock.lock();
         
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
-        
-        // 检查用户是否已经收藏
-        Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
-        
-        if (existingFavorite.isPresent()) {
-            // 删除收藏记录
-            postFavoriteRepository.deleteByUserAndPost(user, post);
+        try {
+            Post post = postRepository.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
             
-            // 更新统计数据
-            if (post.getStats() != null) {
-                post.getStats().decrementFavoriteCount();
-                postRepository.save(post);
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+            
+            // 检查用户是否已经收藏
+            Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
+            
+            if (existingFavorite.isPresent()) {
+                // 删除收藏记录
+                postFavoriteRepository.deleteByUserAndPost(user, post);
+                
+                // 更新统计数据
+                if (post.getStats() != null) {
+                    post.getStats().decrementFavoriteCount();
+                    postRepository.save(post);
+                }
             }
+        } finally {
+            lock.unlock();
         }
     }
     

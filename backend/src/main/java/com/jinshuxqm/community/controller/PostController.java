@@ -102,7 +102,7 @@ public class PostController {
     // 点赞帖子
     @PostMapping("/{id}/like")
     @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public ResponseEntity<Void> likePost(
+    public synchronized ResponseEntity<Void> likePost(
             @PathVariable Long id,
             Authentication authentication) {
         
@@ -115,7 +115,7 @@ public class PostController {
     // 取消点赞
     @DeleteMapping("/{id}/like")
     @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public ResponseEntity<Void> unlikePost(
+    public synchronized ResponseEntity<Void> unlikePost(
             @PathVariable Long id,
             Authentication authentication) {
         
@@ -128,7 +128,7 @@ public class PostController {
     // 收藏帖子
     @PostMapping("/{id}/favorite")
     @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public ResponseEntity<Void> favoritePost(
+    public synchronized ResponseEntity<Void> favoritePost(
             @PathVariable Long id,
             Authentication authentication) {
         
@@ -141,7 +141,7 @@ public class PostController {
     // 取消收藏
     @DeleteMapping("/{id}/favorite")
     @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public ResponseEntity<Void> unfavoritePost(
+    public synchronized ResponseEntity<Void> unfavoritePost(
             @PathVariable Long id,
             Authentication authentication) {
         

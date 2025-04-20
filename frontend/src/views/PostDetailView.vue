@@ -42,16 +42,26 @@
       </div>
       
       <div class="post-actions-bar">
-        <div class="post-action" :class="{ active: isLiked }" @click="handleLike">
-          <i class="fas fa-heart"></i>
+        <div class="post-action" 
+          :class="{ 
+            'active': isLiked, 
+            'processing': isProcessingLike 
+          }" 
+          @click="handleLike">
+          <i class="fas" :class="isProcessingLike ? 'fa-spinner fa-spin' : 'fa-heart'"></i>
           <span>{{ post.likes || 0 }}</span>
         </div>
         <div class="post-action" @click="scrollToComments">
           <i class="fas fa-comment"></i>
           <span>{{ post.comments || 0 }}</span>
         </div>
-        <div class="post-action" :class="{ active: isFavorited }" @click="handleFavorite">
-          <i class="fas fa-star"></i>
+        <div class="post-action" 
+          :class="{ 
+            'active': isFavorited, 
+            'processing': isProcessingFavorite 
+          }" 
+          @click="handleFavorite">
+          <i class="fas" :class="isProcessingFavorite ? 'fa-spinner fa-spin' : 'fa-star'"></i>
           <span>{{ post.favorites || 0 }}</span>
         </div>
         <div class="post-action">
@@ -124,7 +134,10 @@ export default {
       newComment: '',
       isLiked: false,
       isFavorited: false,
-      comments: []
+      comments: [],
+      isProcessingLike: false,  // 点赞操作进行中标志
+      isProcessingFavorite: false,  // 收藏操作进行中标志
+      debounceTimer: null  // 防抖定时器
     };
   },
   computed: {
@@ -179,58 +192,120 @@ export default {
     },
     // 处理点赞
     async handleLike() {
+      // 检查用户登录状态
       if (!this.isAuthenticated) {
         this.$router.push('/login?redirect=' + this.$route.fullPath);
         return;
       }
       
-      try {
-        if (this.isLiked) {
-          // 取消点赞
-          await this.unlikePost(this.postId);
-          this.isLiked = false;
-          // 直接更新帖子点赞数
-          this.post.likes = Math.max(0, (this.post.likes || 0) - 1);
-        } else {
-          // 点赞
-          await this.likePost(this.postId);
-          this.isLiked = true;
-          // 直接更新帖子点赞数
-          this.post.likes = (this.post.likes || 0) + 1;
-        }
-        // 重新获取帖子详情以更新状态
-        await this.fetchPost();
-      } catch (error) {
-        console.error('点赞操作失败:', error);
+      // 防重复操作 - 如果正在处理点赞请求，则忽略此次点击
+      if (this.isProcessingLike) {
+        console.log('正在处理点赞操作，请稍后再试');
+        return;
       }
+      
+      // 清除之前的防抖定时器
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+      
+      // 保存初始状态，以便操作失败时恢复
+      const originalLikeStatus = this.isLiked;
+      const originalLikeCount = this.post.likes || 0;
+      
+      // 设置防抖定时器
+      this.debounceTimer = setTimeout(async () => {
+        try {
+          // 设置处理中状态，防止重复点击
+          this.isProcessingLike = true;
+          
+          // 立即乐观更新界面状态（不等待API响应）
+          this.isLiked = !originalLikeStatus;
+          this.post.likes = this.isLiked 
+            ? (originalLikeCount + 1) 
+            : Math.max(0, originalLikeCount - 1);
+          
+          // 异步发送API请求
+          if (this.isLiked) {
+            // 点赞
+            await this.likePost(this.postId);
+          } else {
+            // 取消点赞
+            await this.unlikePost(this.postId);
+          }
+          
+          // 成功操作后，不再重新获取整个帖子详情
+          // 注意：我们移除了fetchPost()调用，避免重新加载整个页面
+          
+        } catch (error) {
+          console.error('点赞操作失败:', error);
+          // 操作失败时，恢复原始状态
+          this.isLiked = originalLikeStatus;
+          this.post.likes = originalLikeCount;
+        } finally {
+          // 无论成功失败，都要重置处理中状态
+          this.isProcessingLike = false;
+        }
+      }, 300); // 300毫秒的防抖延迟
     },
     
     // 处理收藏
     async handleFavorite() {
+      // 检查用户登录状态
       if (!this.isAuthenticated) {
         this.$router.push('/login?redirect=' + this.$route.fullPath);
         return;
       }
       
-      try {
-        if (this.isFavorited) {
-          // 取消收藏
-          await this.unfavoritePost(this.postId);
-          this.isFavorited = false;
-          // 直接更新帖子收藏数
-          this.post.favorites = Math.max(0, (this.post.favorites || 0) - 1);
-        } else {
-          // 收藏
-          await this.favoritePost(this.postId);
-          this.isFavorited = true;
-          // 直接更新帖子收藏数
-          this.post.favorites = (this.post.favorites || 0) + 1;
-        }
-        // 重新获取帖子详情以更新状态
-        await this.fetchPost();
-      } catch (error) {
-        console.error('收藏操作失败:', error);
+      // 防重复操作 - 如果正在处理收藏请求，则忽略此次点击
+      if (this.isProcessingFavorite) {
+        console.log('正在处理收藏操作，请稍后再试');
+        return;
       }
+      
+      // 清除之前的防抖定时器
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+      
+      // 保存初始状态，以便操作失败时恢复
+      const originalFavoriteStatus = this.isFavorited;
+      const originalFavoriteCount = this.post.favorites || 0;
+      
+      // 设置防抖定时器
+      this.debounceTimer = setTimeout(async () => {
+        try {
+          // 设置处理中状态，防止重复点击
+          this.isProcessingFavorite = true;
+          
+          // 立即乐观更新界面状态（不等待API响应）
+          this.isFavorited = !originalFavoriteStatus;
+          this.post.favorites = this.isFavorited 
+            ? (originalFavoriteCount + 1) 
+            : Math.max(0, originalFavoriteCount - 1);
+          
+          // 异步发送API请求
+          if (this.isFavorited) {
+            // 收藏
+            await this.favoritePost(this.postId);
+          } else {
+            // 取消收藏
+            await this.unfavoritePost(this.postId);
+          }
+          
+          // 成功操作后，不再重新获取整个帖子详情
+          // 注意：我们移除了fetchPost()调用，避免重新加载整个页面
+          
+        } catch (error) {
+          console.error('收藏操作失败:', error);
+          // 操作失败时，恢复原始状态
+          this.isFavorited = originalFavoriteStatus;
+          this.post.favorites = originalFavoriteCount;
+        } finally {
+          // 无论成功失败，都要重置处理中状态
+          this.isProcessingFavorite = false;
+        }
+      }, 300); // 300毫秒的防抖延迟
     },
     
     // 滚动到评论区
@@ -454,6 +529,11 @@ export default {
 
 .post-action:hover {
   color: var(--primary-color);
+}
+
+.post-action.processing {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .post-action.active {
