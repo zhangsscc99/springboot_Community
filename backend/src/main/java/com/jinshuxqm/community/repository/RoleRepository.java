@@ -16,7 +16,7 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
     // 修复重复角色问题
     @Query("SELECT r FROM Role r WHERE r.name = ?1")
     List<Role> findAllByName(ERole name);
-    
+
     // 通过名称查找第一个角色 - 使用方法命名约定
     Optional<Role> findTopByNameOrderByIdAsc(ERole name);
 } 
