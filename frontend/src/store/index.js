@@ -2,6 +2,9 @@
 import { createStore } from 'vuex'
 import apiService from '@/services/apiService'
 
+// 缓存有效期（毫秒）- 2分钟
+const CACHE_EXPIRATION = 2 * 60 * 1000;
+
 export default createStore({
   state: {
     user: null,
@@ -17,7 +20,11 @@ export default createStore({
       '热榜': [],
       '故事': [],
       '情感知识': []
-    }
+    },
+    // 新增帖子缓存
+    postCache: {}, // 以帖子ID为键存储帖子数据
+    lastCacheUpdate: {}, // 记录每个帖子最后更新时间
+    tabCacheUpdate: {} // 记录每个标签页最后更新时间
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -27,7 +34,21 @@ export default createStore({
     isLoading: state => state.loading,
     error: state => state.error,
     activeTab: state => state.activeTab,
-    currentTabPosts: state => state.tabPosts[state.activeTab] || []
+    currentTabPosts: state => state.tabPosts[state.activeTab] || [],
+    // 获取缓存中的帖子
+    getCachedPost: state => id => state.postCache[id],
+    // 检查缓存是否过期
+    isCacheExpired: state => id => {
+      const lastUpdate = state.lastCacheUpdate[id];
+      if (!lastUpdate) return true;
+      return Date.now() - lastUpdate > CACHE_EXPIRATION;
+    },
+    // 检查标签缓存是否过期
+    isTabCacheExpired: state => tab => {
+      const lastUpdate = state.tabCacheUpdate[tab];
+      if (!lastUpdate) return true;
+      return Date.now() - lastUpdate > CACHE_EXPIRATION;
+    }
   },
   mutations: {
     SET_USER(state, user) {
@@ -39,6 +60,8 @@ export default createStore({
     },
     SET_TAB_POSTS(state, { tab, posts }) {
       state.tabPosts[tab] = posts;
+      // 更新标签缓存时间
+      state.tabCacheUpdate[tab] = Date.now();
     },
     SET_ACTIVE_TAB(state, tab) {
       state.activeTab = tab;
@@ -49,15 +72,52 @@ export default createStore({
       if (state.tabPosts[state.activeTab]) {
         state.tabPosts[state.activeTab].unshift(post);
       }
+      // 添加到缓存
+      state.postCache[post.id] = post;
+      state.lastCacheUpdate[post.id] = Date.now();
     },
     SET_CURRENT_POST(state, post) {
       state.currentPost = post;
+      // 更新缓存
+      if (post && post.id) {
+        state.postCache[post.id] = post;
+        state.lastCacheUpdate[post.id] = Date.now();
+      }
     },
     SET_LOADING(state, status) {
       state.loading = status;
     },
     SET_ERROR(state, error) {
       state.error = error;
+    },
+    // 新增缓存相关mutation
+    UPDATE_POST_CACHE(state, post) {
+      if (!post || !post.id) return;
+      state.postCache[post.id] = post;
+      state.lastCacheUpdate[post.id] = Date.now();
+    },
+    // 更新帖子中的特定字段（如点赞数）
+    UPDATE_POST_FIELD(state, { postId, field, value }) {
+      // 更新缓存
+      if (state.postCache[postId]) {
+        state.postCache[postId][field] = value;
+      }
+      // 更新当前帖子
+      if (state.currentPost && state.currentPost.id === postId) {
+        state.currentPost[field] = value;
+      }
+      // 更新列表中的帖子
+      const postInList = state.posts.find(p => p.id === postId);
+      if (postInList) {
+        postInList[field] = value;
+      }
+      // 更新标签页中的帖子
+      Object.keys(state.tabPosts).forEach(tab => {
+        const post = state.tabPosts[tab].find(p => p.id === postId);
+        if (post) {
+          post[field] = value;
+        }
+      });
     }
   },
   actions: {
@@ -252,13 +312,17 @@ export default createStore({
     },
     
     // Post related actions - 从后端API获取帖子
-    async fetchPosts({ commit, state }) {
+    async fetchPosts({ commit, state, getters }) {
       commit('SET_LOADING', true);
       try {
-        // 使用API服务获取所有帖子
         console.log('从API获取所有帖子');
         const response = await apiService.posts.getAll();
         const posts = response.data.content || response.data;
+        
+        // 更新所有帖子并写入缓存
+        posts.forEach(post => {
+          commit('UPDATE_POST_CACHE', post);
+        });
         
         commit('SET_POSTS', posts);
         commit('SET_ERROR', null);
@@ -269,7 +333,7 @@ export default createStore({
         console.error('获取帖子失败:', error);
         commit('SET_ERROR', error.message || '获取帖子失败');
         
-        // 如果API调用失败，使用缓存或空数组
+        // 如果API调用失败，使用空数组
         commit('SET_POSTS', []);
         Object.keys(state.tabPosts).forEach(tab => {
           commit('SET_TAB_POSTS', { tab, posts: [] });
@@ -280,35 +344,65 @@ export default createStore({
     },
     
     // 获取特定栏目的帖子
-    async fetchPostsByTab({ commit, state }, tab) {
+    async fetchPostsByTab({ commit, state, getters }, tab) {
+      // 如果标签缓存未过期，直接使用缓存数据
+      if (!getters.isTabCacheExpired(tab) && state.tabPosts[tab] && state.tabPosts[tab].length > 0) {
+        console.log(`使用缓存中的${tab}栏目帖子`);
+        commit('SET_ACTIVE_TAB', tab);
+        return state.tabPosts[tab];
+      }
+      
       commit('SET_LOADING', true);
       try {
-        console.log(`从API获取 ${tab} 栏目的帖子`);
-        let posts = [];
+        console.log(`从API获取${tab}栏目的帖子`);
+        const response = await apiService.posts.getByTab(tab);
+        const posts = response.data.content || response.data;
         
-        // 使用API获取特定栏目的帖子
-        if (tab === '关注' || tab === '推荐' || tab === '热榜' || tab === '故事' || tab === '情感知识') {
-          const response = await apiService.posts.getByTab(tab);
-          posts = response.data.content || response.data || [];
-        }
+        // 更新标签帖子并写入缓存
+        posts.forEach(post => {
+          commit('UPDATE_POST_CACHE', post);
+        });
         
         commit('SET_TAB_POSTS', { tab, posts });
+        commit('SET_ACTIVE_TAB', tab);
         commit('SET_ERROR', null);
+        return posts;
       } catch (error) {
-        console.error(`获取 ${tab} 栏目帖子失败:`, error);
-        commit('SET_ERROR', `获取 ${tab} 栏目内容失败: ${error.message}`);
+        console.error(`获取${tab}栏目帖子失败:`, error);
+        commit('SET_ERROR', error.message || `获取${tab}栏目帖子失败`);
         
         // 如果API调用失败，使用空数组
         commit('SET_TAB_POSTS', { tab, posts: [] });
+        return [];
       } finally {
         commit('SET_LOADING', false);
       }
     },
     
-    async fetchPostById({ commit }, postId) {
+    async fetchPostById({ commit, state, getters }, postId) {
+      // 首先尝试从缓存获取
+      const cachedPost = getters.getCachedPost(postId);
+      if (cachedPost && !getters.isCacheExpired(postId)) {
+        console.log(`从缓存获取帖子ID: ${postId}`);
+        commit('SET_CURRENT_POST', cachedPost);
+        commit('SET_ERROR', null);
+        
+        // 在后台异步刷新缓存，但不等待结果
+        setTimeout(async () => {
+          try {
+            const response = await apiService.posts.getById(postId);
+            const freshPost = response.data;
+            commit('UPDATE_POST_CACHE', freshPost);
+          } catch (error) {
+            console.log('后台刷新缓存失败:', error);
+          }
+        }, 0);
+        
+        return cachedPost;
+      }
+      
       commit('SET_LOADING', true);
       try {
-        // 使用API获取特定帖子
         console.log(`从API获取帖子ID: ${postId}`);
         const response = await apiService.posts.getById(postId);
         const post = response.data;
@@ -359,11 +453,29 @@ export default createStore({
     },
     
     // 点赞帖子
-    async likePost({ commit }, postId) {
+    async likePost({ commit, state }, postId) {
       commit('SET_LOADING', true);
       try {
         console.log(`给帖子 ${postId} 点赞`);
         await apiService.posts.like(postId);
+        
+        // 在缓存和UI中更新点赞状态
+        if (state.postCache[postId]) {
+          commit('UPDATE_POST_FIELD', { 
+            postId, 
+            field: 'likedByCurrentUser', 
+            value: true 
+          });
+          
+          // 更新点赞数
+          const currentLikes = state.postCache[postId].likes || 0;
+          commit('UPDATE_POST_FIELD', {
+            postId,
+            field: 'likes',
+            value: currentLikes + 1
+          });
+        }
+        
         commit('SET_ERROR', null);
         return true;
       } catch (error) {
@@ -376,11 +488,29 @@ export default createStore({
     },
     
     // 取消点赞
-    async unlikePost({ commit }, postId) {
+    async unlikePost({ commit, state }, postId) {
       commit('SET_LOADING', true);
       try {
         console.log(`取消帖子 ${postId} 的点赞`);
         await apiService.posts.unlike(postId);
+        
+        // 在缓存和UI中更新点赞状态
+        if (state.postCache[postId]) {
+          commit('UPDATE_POST_FIELD', { 
+            postId, 
+            field: 'likedByCurrentUser', 
+            value: false 
+          });
+          
+          // 更新点赞数
+          const currentLikes = state.postCache[postId].likes || 0;
+          commit('UPDATE_POST_FIELD', {
+            postId,
+            field: 'likes',
+            value: Math.max(0, currentLikes - 1)
+          });
+        }
+        
         commit('SET_ERROR', null);
         return true;
       } catch (error) {
@@ -393,11 +523,29 @@ export default createStore({
     },
     
     // 收藏帖子
-    async favoritePost({ commit }, postId) {
+    async favoritePost({ commit, state }, postId) {
       commit('SET_LOADING', true);
       try {
         console.log(`收藏帖子 ${postId}`);
         await apiService.posts.favorite(postId);
+        
+        // 在缓存和UI中更新收藏状态
+        if (state.postCache[postId]) {
+          commit('UPDATE_POST_FIELD', { 
+            postId, 
+            field: 'favoritedByCurrentUser', 
+            value: true 
+          });
+          
+          // 更新收藏数
+          const currentFavorites = state.postCache[postId].favorites || 0;
+          commit('UPDATE_POST_FIELD', {
+            postId,
+            field: 'favorites',
+            value: currentFavorites + 1
+          });
+        }
+        
         commit('SET_ERROR', null);
         return true;
       } catch (error) {
@@ -410,11 +558,29 @@ export default createStore({
     },
     
     // 取消收藏
-    async unfavoritePost({ commit }, postId) {
+    async unfavoritePost({ commit, state }, postId) {
       commit('SET_LOADING', true);
       try {
         console.log(`取消收藏帖子 ${postId}`);
         await apiService.posts.unfavorite(postId);
+        
+        // 在缓存和UI中更新收藏状态
+        if (state.postCache[postId]) {
+          commit('UPDATE_POST_FIELD', { 
+            postId, 
+            field: 'favoritedByCurrentUser', 
+            value: false 
+          });
+          
+          // 更新收藏数
+          const currentFavorites = state.postCache[postId].favorites || 0;
+          commit('UPDATE_POST_FIELD', {
+            postId,
+            field: 'favorites',
+            value: Math.max(0, currentFavorites - 1)
+          });
+        }
+        
         commit('SET_ERROR', null);
         return true;
       } catch (error) {

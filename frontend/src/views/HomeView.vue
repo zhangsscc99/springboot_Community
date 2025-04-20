@@ -12,7 +12,7 @@
       </div>
     </div>
     
-    <div v-if="loading" class="loading-indicator">
+    <div v-if="loading && !hasAnyTabPosts" class="loading-indicator">
       <i class="fas fa-spinner fa-spin"></i> 加载中...
     </div>
     
@@ -21,6 +21,10 @@
     </div>
     
     <div v-else class="post-list">
+      <div v-if="loading && currentTabPosts.length === 0" class="tab-loading">
+        <i class="fas fa-spinner fa-spin"></i> 加载{{ activeTab }}内容...
+      </div>
+      
       <div v-for="post in currentTabPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
         <h3 class="post-title">{{ post.title }}</h3>
         <div class="post-header">
@@ -41,27 +45,31 @@
         </div>
         <div class="post-footer">
           <div class="post-actions">
-            <div class="post-action">
-              <i class="fas fa-heart"></i> {{ post.likes }}
+            <div class="post-action" :class="{ active: post.likedByCurrentUser }">
+              <i class="fas fa-heart"></i> {{ post.likes || 0 }}
             </div>
             <div class="post-action">
-              <i class="fas fa-comment-dots"></i> {{ post.comments }}
+              <i class="fas fa-comment-dots"></i> {{ post.comments || 0 }}
             </div>
-            <div class="post-action">
-              <i class="fas fa-star"></i> {{ Math.floor(Math.random() * 100) }}
+            <div class="post-action" :class="{ active: post.favoritedByCurrentUser }">
+              <i class="fas fa-star"></i> {{ post.favorites || 0 }}
             </div>
           </div>
           <div class="post-action">
-            <i class="fas fa-share-alt"></i> {{ Math.floor(Math.random() * 50) }}
+            <i class="fas fa-share-alt"></i> {{ post.views || 0 }}
           </div>
         </div>
+      </div>
+      
+      <div v-if="isPreloading" class="preloading-indicator">
+        <i class="fas fa-spinner fa-spin"></i> 正在加载更多内容...
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 import UserAvatar from '@/components/UserAvatar.vue';
 
 export default {
@@ -71,21 +79,42 @@ export default {
   },
   data() {
     return {
-      tabs: ['关注', '推荐', '热榜', '故事', '情感知识']
+      tabs: ['关注', '推荐', '热榜', '故事', '情感知识'],
+      isPreloading: false,
+      tabsPreloaded: {
+        '关注': false,
+        '推荐': false,
+        '热榜': false,
+        '故事': false,
+        '情感知识': false
+      }
     };
   },
   computed: {
+    ...mapState({
+      tabPosts: state => state.tabPosts
+    }),
     ...mapGetters({
       posts: 'allPosts',
       loading: 'isLoading',
       error: 'error',
       activeTab: 'activeTab',
-      currentTabPosts: 'currentTabPosts'
-    })
+      currentTabPosts: 'currentTabPosts',
+      isTabCacheExpired: 'isTabCacheExpired'
+    }),
+    hasAnyTabPosts() {
+      return Object.values(this.tabPosts).some(posts => posts && posts.length > 0);
+    }
   },
   methods: {
-    switchTab(tab) {
+    async switchTab(tab) {
       this.$store.dispatch('setActiveTab', tab);
+      
+      if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
+        await this.$store.dispatch('fetchPostsByTab', tab);
+      }
+      
+      this.preloadOtherTabs(tab);
     },
     formatDate(dateString) {
       const date = new Date(dateString);
@@ -106,10 +135,36 @@ export default {
     },
     goToPostDetail(postId) {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
+    },
+    async preloadOtherTabs(currentTab) {
+      if (this.isPreloading) return;
+      
+      this.isPreloading = true;
+      
+      setTimeout(async () => {
+        try {
+          for (const tab of this.tabs) {
+            if (tab === currentTab || this.tabsPreloaded[tab]) continue;
+            
+            if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
+              console.log(`预加载 ${tab} 标签页数据...`);
+              await this.$store.dispatch('fetchPostsByTab', tab);
+              this.tabsPreloaded[tab] = true;
+              
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        } catch (error) {
+          console.error('预加载标签页失败:', error);
+        } finally {
+          this.isPreloading = false;
+        }
+      }, 1000);
     }
   },
-  created() {
-    this.$store.dispatch('fetchPosts');
+  async created() {
+    const currentTab = this.activeTab;
+    await this.switchTab(currentTab);
   }
 }
 </script>
@@ -264,5 +319,32 @@ export default {
 
 .error-message {
   color: var(--error-color);
+}
+
+.tab-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--light-text-color);
+}
+
+.preloading-indicator {
+  text-align: center;
+  padding: 15px;
+  color: var(--light-text-color);
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.post-action.active {
+  color: var(--primary-color);
+}
+
+.post-card {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style> 

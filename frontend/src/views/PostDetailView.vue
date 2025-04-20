@@ -170,7 +170,14 @@ export default {
     async fetchPost() {
       this.loading = true;
       try {
+        // 使用store中优化过的fetchPostById方法（带缓存）
         const response = await this.fetchPostById(this.postId);
+        
+        // 如果没有返回数据，可能是获取失败
+        if (!response) {
+          throw new Error('帖子不存在或已被删除');
+        }
+        
         this.post = response;
         
         // 检查帖子是否已被当前用户点赞和收藏
@@ -179,13 +186,13 @@ export default {
           this.isFavorited = this.post.favoritedByCurrentUser || false;
         }
         
-        // 获取评论
+        // 获取评论 - 可以考虑也为评论添加缓存机制
         this.comments = await this.fetchComments(this.postId);
         
         this.error = null;
       } catch (error) {
         console.error('获取帖子详情失败:', error);
-        this.error = '获取帖子失败，请稍后再试';
+        this.error = error.message || '获取帖子失败，请稍后再试';
       } finally {
         this.loading = false;
       }
@@ -227,15 +234,15 @@ export default {
           
           // 异步发送API请求
           if (this.isLiked) {
-            // 点赞
+            // 点赞 - Vuex已处理缓存更新
             await this.likePost(this.postId);
           } else {
-            // 取消点赞
+            // 取消点赞 - Vuex已处理缓存更新
             await this.unlikePost(this.postId);
           }
           
-          // 成功操作后，不再重新获取整个帖子详情
-          // 注意：我们移除了fetchPost()调用，避免重新加载整个页面
+          // 不再需要重新获取帖子详情
+          // 缓存和状态已在Vuex中更新
           
         } catch (error) {
           console.error('点赞操作失败:', error);
@@ -350,14 +357,18 @@ export default {
     }
   },
   async created() {
-    await this.fetchPost();
+    // 在组件挂载前就开始获取数据，提高感知速度
+    this.fetchPost();
     
-    // 获取类似帖子
-    try {
-      // 这里可以添加获取类似帖子的逻辑
-    } catch (error) {
-      console.error('获取相似帖子失败:', error);
-    }
+    // 预加载可能需要的数据，提高切换到其它页面的速度
+    setTimeout(() => {
+      try {
+        // 这里可以预加载热门帖子、推荐帖子等
+        // 在后台进行，不会阻塞主要内容加载
+      } catch (error) {
+        console.error('预加载数据失败:', error);
+      }
+    }, 1000); // 延迟1秒预加载，优先加载当前页面
   }
 }
 </script>
