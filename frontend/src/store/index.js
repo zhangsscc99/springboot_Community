@@ -252,7 +252,7 @@ export default createStore({
     },
     
     // Post related actions - 从后端API获取帖子
-    async fetchPosts({ commit }) {
+    async fetchPosts({ commit, state }) {
       commit('SET_LOADING', true);
       try {
         // 使用API服务获取所有帖子
