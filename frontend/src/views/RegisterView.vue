@@ -19,6 +19,7 @@
             placeholder="请输入用户名"
             required
           >
+          <div class="input-hint">用户名只能包含字母、数字和下划线，长度在4-20之间</div>
         </div>
         
         <div class="form-group">
@@ -30,6 +31,7 @@
             placeholder="请输入邮箱地址"
             required
           >
+          <div class="input-hint">请输入有效的邮箱地址，例如 example@domain.com</div>
         </div>
         
         <div class="form-group">
@@ -56,6 +58,9 @@
               ></div>
             </div>
             <span>{{ passwordStrengthText }}</span>
+          </div>
+          <div class="password-requirements">
+            密码要求: 至少6个字符
           </div>
         </div>
         
@@ -97,6 +102,11 @@
           <span v-else>注册</span>
         </button>
         
+        <div v-if="backendStatus === 'error'" class="auth-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          无法连接到后端服务器，请确保服务器正在运行
+        </div>
+        
         <div v-if="error" class="auth-error">
           {{ error }}
         </div>
@@ -117,6 +127,7 @@
 
 <script>
 import { mapGetters } from 'vuex';
+import apiService from '../services/apiService';
 
 export default {
   name: 'RegisterView',
@@ -128,7 +139,8 @@ export default {
       confirmPassword: '',
       showPassword: false,
       showConfirmPassword: false,
-      agreement: false
+      agreement: false,
+      backendStatus: 'checking'
     };
   },
   computed: {
@@ -184,7 +196,7 @@ export default {
         this.password.trim() &&
         this.password === this.confirmPassword &&
         this.agreement &&
-        this.passwordStrength >= 3
+        this.password.length >= 6
       );
     }
   },
@@ -201,16 +213,99 @@ export default {
     async register() {
       if (!this.isFormValid) return;
       
+      // 清除之前的错误
+      this.$store.commit('SET_ERROR', null);
+      
       try {
-        // In a real app, would call an API endpoint
-        // For now, simulate success and redirect
-        setTimeout(() => {
-          this.$router.push({ name: 'login' });
-        }, 1000);
+        console.log('提交注册数据:', {
+          username: this.username,
+          email: this.email,
+          password: this.password ? '***已隐藏***' : '空'
+        });
+        
+        // 使用更具体的错误处理
+        const userData = {
+          username: this.username,
+          email: this.email,
+          password: this.password
+        };
+        
+        // 先检查后端服务是否可用
+        try {
+          const statusCheck = await apiService.checkBackendStatus();
+          if (statusCheck.status === 'error') {
+            throw new Error('后端服务不可用，请稍后再试');
+          }
+        } catch (statusError) {
+          console.error('后端服务检查失败:', statusError);
+          this.$store.commit('SET_ERROR', '无法连接到服务器，请确保后端服务正在运行');
+          return;
+        }
+        
+        await this.$store.dispatch('register', userData);
+        
+        // 注册成功，跳转到登录页面
+        this.$router.push({
+          name: 'login',
+          params: {
+            registrationSuccess: true,
+            username: this.username
+          }
+        });
       } catch (error) {
         console.error('Registration failed:', error);
+        // 在页面上显示详细错误信息
+        if (error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+          console.log('错误响应详情:', { status, data });
+          
+          // 处理具体错误类型
+          if (status === 400) {
+            if (data.message && data.message.includes('Username is already taken')) {
+              this.$store.commit('SET_ERROR', '用户名已被占用，请尝试其他用户名');
+            } else if (data.message && data.message.includes('Email is already in use')) {
+              this.$store.commit('SET_ERROR', '该邮箱已被注册，请尝试其他邮箱或找回密码');
+            } else if (data.message) {
+              this.$store.commit('SET_ERROR', `注册失败: ${data.message}`);
+            } else {
+              this.$store.commit('SET_ERROR', '请求参数有误，请检查您的输入');
+            }
+          } else if (status === 500) {
+            this.$store.commit('SET_ERROR', `服务器内部错误: ${data.message || '请联系管理员'}`);
+            console.error('服务器内部错误详情:', data);
+          } else {
+            this.$store.commit('SET_ERROR', `注册失败 (${status}): ${data.message || '未知错误'}`);
+          }
+        } else if (error.request) {
+          console.log('请求已发送但无响应:', error.request);
+          this.$store.commit('SET_ERROR', '无法连接到服务器，请检查您的网络连接');
+        } else {
+          console.log('请求构建错误:', error.message);
+          this.$store.commit('SET_ERROR', `请求错误: ${error.message}`);
+        }
+      }
+    },
+    async checkBackendStatus() {
+      try {
+        const result = await apiService.checkBackendStatus();
+        console.log('Backend status check result:', result);
+        this.backendStatus = result.status === 'error' ? 'error' : 'running';
+        
+        if (result.status === 'error') {
+          console.error('Backend server is not available');
+        } else {
+          console.log('Backend server is running');
+        }
+      } catch (error) {
+        console.error('Failed to check backend status:', error);
+        this.backendStatus = 'error';
       }
     }
+  },
+  mounted() {
+    // 检查后端服务状态
+    this.checkBackendStatus();
   }
 }
 </script>
@@ -304,6 +399,13 @@ export default {
   margin-top: 10px;
   font-size: 12px;
   color: var(--light-text-color);
+}
+
+.password-requirements {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--light-text-color);
+  font-style: italic;
 }
 
 .strength-bar {
@@ -440,6 +542,23 @@ export default {
 
 .login-link a:hover {
   text-decoration: underline;
+}
+
+.input-hint {
+  font-size: 12px;
+  color: var(--light-text-color);
+  margin-top: 4px;
+}
+
+.auth-warning {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 4px;
+  color: #d48806;
+  font-size: 14px;
+  text-align: center;
 }
 
 @media (max-width: 576px) {

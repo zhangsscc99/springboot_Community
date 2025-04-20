@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { createStore } from 'vuex'
+import apiService from '@/services/apiService'
 
 export default createStore({
   state: {
@@ -58,29 +59,187 @@ export default createStore({
     }
   },
   actions: {
+    // 初始化应用 - 检查存储的令牌并恢复会话
+    initializeApp({ commit }) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // 这里可以添加验证令牌的逻辑
+          // 理想情况下，应该调用后端API验证令牌是否有效
+          
+          // 从localStorage恢复用户信息（如果有的话）
+          const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+          if (userInfo) {
+            commit('SET_USER', userInfo);
+          }
+        } catch (error) {
+          console.error('Failed to initialize app:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('userInfo');
+        }
+      }
+    },
+  
     // User authentication actions
     async login({ commit }, credentials) {
       commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      
       try {
-        // Here would be an API call to authenticate
-        // 模拟登录成功，返回用户信息
-        const user = { 
-          id: 123, 
-          username: credentials.email,
-          avatar: "https://via.placeholder.com/40"
+        // 使用apiService进行登录
+        console.log('Attempting login with:', {
+          username: credentials.username || credentials.email,
+          password: credentials.password ? '[REDACTED]' : 'empty'
+        });
+        
+        const response = await apiService.auth.login({
+          username: credentials.username || credentials.email,
+          password: credentials.password
+        });
+        
+        console.log('Login response received:', {
+          status: response.status,
+          headers: response.headers,
+          data: response.data
+        });
+        
+        // 检查响应格式
+        const data = response.data;
+        if (!data || !data.token && !data.accessToken) {
+          console.error('API返回的数据缺少token字段:', data);
+          throw new Error('服务器返回的数据格式不正确');
+        }
+        
+        console.log('Login successful, response data:', data);
+        
+        // 获取token - 适应不同的返回格式
+        const token = data.token || data.accessToken;
+        if (!token) {
+          throw new Error('无法获取认证令牌');
+        }
+        
+        // 构建用户信息对象 - 确保字段名与后端返回一致
+        const userInfo = {
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          avatar: data.avatar || 'https://via.placeholder.com/40',
+          token: token,
+          roles: data.roles || []
         };
-        commit('SET_USER', user);
+        
+        // 保存token和用户信息到localStorage
+        localStorage.setItem('token', token);
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        
+        // 更新状态
+        commit('SET_USER', userInfo);
         commit('SET_ERROR', null);
-        return user;
+        return userInfo;
       } catch (error) {
-        commit('SET_ERROR', error.message);
+        console.error('Login error in store:', error);
+        
+        let errorMessage = '登录失败，请稍后再试';
+        
+        if (error.response) {
+          const status = error.response.status;
+          const responseData = error.response.data;
+          
+          console.error('API error response:', {
+            status,
+            data: responseData,
+            headers: error.response.headers
+          });
+          
+          if (status === 401) {
+            errorMessage = '用户名或密码错误，请检查后重试';
+          } else if (status === 403) {
+            errorMessage = '账号没有登录权限';
+          } else if (status === 500) {
+            errorMessage = `服务器内部错误: ${responseData.message || '请联系管理员'}`;
+            console.error('服务器内部错误详情:', responseData);
+          } else if (responseData && responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } else if (error.request) {
+          // 请求已发出，但没有收到响应
+          errorMessage = '服务器无响应，请检查网络连接';
+          console.error('No response received:', error.request);
+        } else {
+          // 请求设置时出现了错误
+          errorMessage = `请求错误: ${error.message}`;
+          console.error('Request error:', error.message);
+        }
+        
+        commit('SET_ERROR', errorMessage);
         throw error;
       } finally {
+        // 确保无论成功还是失败都会设置loading为false
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 用户注册
+    async register({ commit }, userData) {
+      commit('SET_LOADING', true);
+      commit('SET_ERROR', null);
+      
+      try {
+        console.log('Attempting registration with:', {
+          username: userData.username,
+          email: userData.email,
+          password: userData.password ? '[REDACTED]' : 'empty'
+        });
+        
+        // 调用API进行注册
+        const response = await apiService.auth.register(userData);
+        console.log('Registration successful, response:', response.data);
+        
+        commit('SET_ERROR', null);
+        return response.data;
+      } catch (error) {
+        console.error('Registration error in store:', error);
+        
+        let errorMessage = '注册失败，请稍后再试';
+        
+        if (error.response) {
+          const status = error.response.status;
+          const responseData = error.response.data;
+          
+          if (status === 400) {
+            if (responseData.message && responseData.message.includes('Username is already taken')) {
+              errorMessage = '用户名已被占用';
+            } else if (responseData.message && responseData.message.includes('Email is already in use')) {
+              errorMessage = '该邮箱已被注册';
+            } else if (responseData.message) {
+              errorMessage = responseData.message;
+            }
+          }
+          
+          console.error('API error response:', {
+            status,
+            data: responseData
+          });
+        } else if (error.request) {
+          errorMessage = '服务器无响应，请检查网络连接';
+          console.error('No response received:', error.request);
+        } else {
+          errorMessage = `请求错误: ${error.message}`;
+          console.error('Request error:', error.message);
+        }
+        
+        commit('SET_ERROR', errorMessage);
+        throw error;
+      } finally {
+        // 确保无论成功还是失败都会设置loading为false
         commit('SET_LOADING', false);
       }
     },
     
     logout({ commit }) {
+      // 清除localStorage中的token和用户信息
+      localStorage.removeItem('token');
+      localStorage.removeItem('userInfo');
       commit('SET_USER', null);
     },
     

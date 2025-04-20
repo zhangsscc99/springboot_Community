@@ -168,14 +168,23 @@ export default {
       currentUser: 'currentUser'
     }),
     profileName() {
+      if (this.isCurrentUser) {
+        return this.currentUser?.username || '未知用户';
+      }
       return this.profileId === '123' ? '咫尺燃灯' : 'User Not Found';
     },
     profileBio() {
+      if (this.isCurrentUser) {
+        return '这是您的个人资料页面，您可以在这里查看和管理您的帖子、喜欢和评论';
+      }
       return this.profileId === '123' ? '科技|思考|阅读|写作 / 分享有趣有用的内容 / 欢迎交流' : '';
     },
     isCurrentUser() {
-      // In a real app, compare to logged-in user ID
-      return this.profileId === '123' && this.isAuthenticated;
+      if (!this.isAuthenticated || !this.currentUser) {
+        return false;
+      }
+      
+      return this.profileId == this.currentUser.id;
     }
   },
   methods: {
