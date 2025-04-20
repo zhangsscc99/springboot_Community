@@ -15,17 +15,24 @@ const routes = [
   {
     path: '/register',
     name: 'register',
-    component: () => import(/* webpackChunkName: "register" */ '../views/RegisterView.vue')
-  },
-  {
-    path: '/post/:id',
-    name: 'post-detail',
-    component: () => import(/* webpackChunkName: "post-detail" */ '../views/PostDetailView.vue')
+    component: () => import('../views/RegisterView.vue')
   },
   {
     path: '/create-post',
     name: 'create-post',
-    component: () => import(/* webpackChunkName: "create-post" */ '../views/CreatePostView.vue')
+    component: () => import('../views/CreatePostView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/edit-post/:id',
+    name: 'edit-post',
+    component: () => import('../views/CreatePostView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/post/:id',
+    name: 'post-detail',
+    component: () => import('../views/PostDetailView.vue')
   },
   {
     path: '/profile/:id',
@@ -38,5 +45,22 @@ const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
 })
+
+// 全局路由守卫 - 处理需要认证的路由
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const isAuthenticated = !!localStorage.getItem('token');
+  
+  if (requiresAuth && !isAuthenticated) {
+    // 如果路由需要认证但用户未登录，重定向到登录页面
+    next({
+      name: 'login',
+      query: { redirect: to.fullPath }
+    });
+  } else {
+    // 否则继续
+    next();
+  }
+});
 
 export default router 

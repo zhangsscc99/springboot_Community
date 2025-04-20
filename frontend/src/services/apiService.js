@@ -7,7 +7,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // 启用跨域cookie
+  withCredentials: false // 禁用跨域cookie，使用Authorization头代替
 });
 
 // 启用调试，在开发环境中查看完整的请求/响应
@@ -49,12 +49,22 @@ apiClient.interceptors.response.use(
 apiClient.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');
+    console.log('发送请求到', config.url, '方法:', config.method);
+    console.log('认证头:', token ? 'Bearer Token已添加' : '无Token');
+    
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      // 请求需要认证的端点但没有token时，给出明确的日志
+      if (config.url.includes('/posts') && 
+          (config.method === 'post' || config.method === 'put' || config.method === 'delete')) {
+        console.warn('警告: 尝试访问需要认证的资源，但未找到Token');
+      }
     }
     return config;
   },
   error => {
+    console.error('请求拦截器错误:', error);
     return Promise.reject(error);
   }
 );
@@ -74,6 +84,11 @@ apiClient.interceptors.response.use(
 
 // API服务
 const apiService = {
+  // 获取基础URL，用于调试
+  getBaseURL() {
+    return apiConfig.BASE_URL;
+  },
+  
   // 检查后端服务可用性
   checkBackendStatus() {
     return apiClient.get('/api/test/all')
@@ -132,23 +147,49 @@ const apiService = {
   
   // 帖子相关
   posts: {
-    getAll() {
-      return apiClient.get('/api/posts');
+    // 获取所有帖子
+    getAll(page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc') {
+      return apiClient.get('/api/posts', {
+        params: { page, size, sortBy, sortDir }
+      });
     },
-    getByTab(tab) {
-      return apiClient.get(`/api/posts/tab/${tab}`);
+    // 根据标签获取帖子
+    getByTab(tab, page = 0, size = 10) {
+      return apiClient.get(`/api/posts/tab/${tab}`, {
+        params: { page, size }
+      });
     },
+    // 获取单个帖子详情
     getById(id) {
       return apiClient.get(`/api/posts/${id}`);
     },
+    // 创建新帖子
     create(postData) {
       return apiClient.post('/api/posts', postData);
     },
+    // 更新帖子
     update(id, postData) {
       return apiClient.put(`/api/posts/${id}`, postData);
     },
+    // 删除帖子
     delete(id) {
       return apiClient.delete(`/api/posts/${id}`);
+    },
+    // 点赞帖子
+    like(id) {
+      return apiClient.post(`/api/posts/${id}/like`);
+    },
+    // 取消点赞
+    unlike(id) {
+      return apiClient.delete(`/api/posts/${id}/like`);
+    },
+    // 收藏帖子
+    favorite(id) {
+      return apiClient.post(`/api/posts/${id}/favorite`);
+    },
+    // 取消收藏
+    unfavorite(id) {
+      return apiClient.delete(`/api/posts/${id}/favorite`);
     }
   },
   
