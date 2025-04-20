@@ -647,6 +647,27 @@ export default createStore({
         commit('CACHE_PAGE_DATA', { routePath, data });
         return data;
       });
+    },
+    
+    // 获取特定栏目的帖子（预加载专用，不切换激活标签）
+    async fetchTabDataWithoutActivating({ commit, state, getters }, tab) {
+      try {
+        console.log(`预加载 ${tab} 栏目的帖子数据`);
+        const response = await apiService.posts.getByTab(tab);
+        const posts = response.data.content || response.data;
+        
+        // 更新标签帖子并写入缓存，但不改变当前激活标签
+        posts.forEach(post => {
+          commit('UPDATE_POST_CACHE', post);
+        });
+        
+        commit('SET_TAB_POSTS', { tab, posts });
+        commit('SET_ERROR', null);
+        return posts;
+      } catch (error) {
+        console.error(`预加载 ${tab} 栏目帖子失败:`, error);
+        return [];
+      }
     }
   },
   modules: {

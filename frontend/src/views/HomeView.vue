@@ -154,7 +154,8 @@ export default {
           
             if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
               console.log(`预加载 ${tab} 标签页数据...`);
-              await this.$store.dispatch('fetchPostsByTab', tab);
+              
+              await this.preloadTabData(tab);
               this.tabsPreloaded[tab] = true;
               
               await new Promise(resolve => setTimeout(resolve, 300));
@@ -174,6 +175,15 @@ export default {
           }
         }
       }, 800);
+    },
+    async preloadTabData(tab) {
+      try {
+        const response = await this.$store.dispatch('fetchTabDataWithoutActivating', tab);
+        return response;
+      } catch (error) {
+        console.error(`预加载标签 ${tab} 失败:`, error);
+        return null;
+      }
     },
     formatDate(dateString) {
       const date = new Date(dateString);
