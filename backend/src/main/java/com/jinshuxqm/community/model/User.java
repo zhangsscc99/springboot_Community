@@ -55,6 +55,14 @@ public class User {
                joinColumns = @JoinColumn(name = "user_id"),
                inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+    
+    // 添加用户点赞集合
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostLike> likes = new HashSet<>();
+    
+    // 添加用户收藏集合
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostFavorite> favorites = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
@@ -65,5 +73,29 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+    
+    // 帮助方法：添加一个点赞
+    public void addLike(PostLike like) {
+        likes.add(like);
+        like.setUser(this);
+    }
+    
+    // 帮助方法：移除一个点赞
+    public void removeLike(PostLike like) {
+        likes.remove(like);
+        like.setUser(null);
+    }
+    
+    // 帮助方法：添加一个收藏
+    public void addFavorite(PostFavorite favorite) {
+        favorites.add(favorite);
+        favorite.setUser(this);
+    }
+    
+    // 帮助方法：移除一个收藏
+    public void removeFavorite(PostFavorite favorite) {
+        favorites.remove(favorite);
+        favorite.setUser(null);
     }
 } 

@@ -6,6 +6,8 @@ import com.jinshuxqm.community.model.dto.PostResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface PostService {
     // 创建帖子
     PostResponse createPost(PostRequest postRequest, String username);
@@ -39,4 +41,16 @@ public interface PostService {
     
     // 取消收藏
     void unfavoritePost(Long id, String username);
+    
+    // 检查用户是否已点赞帖子
+    boolean hasUserLikedPost(Long postId, String username);
+    
+    // 检查用户是否已收藏帖子
+    boolean hasUserFavoritedPost(Long postId, String username);
+    
+    // 获取用户点赞的所有帖子
+    List<PostResponse> getLikedPostsByUser(String username);
+    
+    // 获取用户收藏的所有帖子
+    List<PostResponse> getFavoritedPostsByUser(String username);
 } 

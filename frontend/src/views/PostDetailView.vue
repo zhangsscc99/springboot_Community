@@ -24,7 +24,7 @@
         />
         <div class="post-user-info">
           <h4 class="post-username">{{ post.author.username }}</h4>
-          <span class="post-time">{{ formatDate(post.created_at) }}</span>
+          <span class="post-time">{{ formattedDate }}</span>
         </div>
         <button class="follow-button">
           <i class="fas fa-plus"></i> 关注
@@ -42,30 +42,36 @@
       </div>
       
       <div class="post-actions-bar">
-        <div class="post-action">
-          <i class="fas fa-heart"></i> {{ post.likes }}
+        <div class="post-action" :class="{ active: isLiked }" @click="handleLike">
+          <i class="fas fa-heart"></i>
+          <span>{{ post.likes || 0 }}</span>
+        </div>
+        <div class="post-action" @click="scrollToComments">
+          <i class="fas fa-comment"></i>
+          <span>{{ post.comments || 0 }}</span>
+        </div>
+        <div class="post-action" :class="{ active: isFavorited }" @click="handleFavorite">
+          <i class="fas fa-star"></i>
+          <span>{{ post.favorites || 0 }}</span>
         </div>
         <div class="post-action">
-          <i class="fas fa-comment-dots"></i> {{ post.comments }}
-        </div>
-        <div class="post-action">
-          <i class="fas fa-star"></i> {{ Math.floor(Math.random() * 100) }}
-        </div>
-        <div class="post-action">
-          <i class="fas fa-share-alt"></i> {{ Math.floor(Math.random() * 50) }}
+          <i class="fas fa-eye"></i>
+          <span>{{ post.views || 0 }}</span>
         </div>
       </div>
       
-      <div class="comments-section">
-        <h3 class="comments-title">评论 ({{ post.commentList ? post.commentList.length : 0 }})</h3>
+      <div class="comments-section" ref="commentsSection">
+        <h3 class="comments-title">评论 ({{ post.comments || 0 }})</h3>
         
         <div class="comment-input">
           <textarea placeholder="添加评论..." v-model="newComment" rows="3"></textarea>
-          <button class="comment-submit" :disabled="!newComment.trim()">发布</button>
+          <button class="comment-submit" :disabled="!newComment.trim() || !isAuthenticated" @click="submitComment">
+            {{ isAuthenticated ? '发布' : '请先登录' }}
+          </button>
         </div>
         
-        <div class="comments-list" v-if="post.commentList && post.commentList.length > 0">
-          <div v-for="comment in post.commentList" :key="comment.id" class="comment-item">
+        <div class="comments-list" v-if="comments && comments.length > 0">
+          <div v-for="comment in comments" :key="comment.id" class="comment-item">
             <div class="comment-header">
               <UserAvatar 
                 :src="comment.author.avatar" 
@@ -73,7 +79,7 @@
               />
               <div class="comment-user-info">
                 <h4 class="comment-username">{{ comment.author.username }}</h4>
-                <span class="comment-time">{{ formatDate(comment.created_at) }}</span>
+                <span class="comment-time">{{ formattedDate(comment.created_at) }}</span>
               </div>
             </div>
             <div class="comment-content">{{ comment.content }}</div>
@@ -99,7 +105,9 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
+import { mapState, mapGetters, mapActions } from 'vuex';
+import { formatDistanceToNow } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
 import UserAvatar from '@/components/UserAvatar.vue';
 
 export default {
@@ -109,35 +117,154 @@ export default {
   },
   data() {
     return {
-      newComment: ''
+      post: null,
+      loading: true,
+      error: null,
+      similarPosts: [],
+      newComment: '',
+      isLiked: false,
+      isFavorited: false,
+      comments: []
     };
   },
   computed: {
-    ...mapGetters({
-      post: 'currentPost',
-      loading: 'isLoading',
-      error: 'error'
-    }),
+    ...mapState(['user']),
+    ...mapGetters(['isAuthenticated']),
+    postId() {
+      return this.$route.params.id;
+    },
+    formattedDate() {
+      if (!this.post || !this.post.createdAt) return '';
+      return formatDistanceToNow(new Date(this.post.createdAt), { 
+        addSuffix: true,
+        locale: zhCN
+      });
+    },
     contentParagraphs() {
       return this.post ? this.post.content.split('\n\n') : [];
     }
   },
   methods: {
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffInSeconds = Math.floor((now - date) / 1000);
+    ...mapActions([
+      'fetchPostById', 
+      'likePost', 
+      'unlikePost', 
+      'favoritePost', 
+      'unfavoritePost',
+      'createComment',
+      'fetchComments'
+    ]),
+    async fetchPost() {
+      this.loading = true;
+      try {
+        const response = await this.fetchPostById(this.postId);
+        this.post = response;
+        
+        // 检查帖子是否已被当前用户点赞和收藏
+        if (this.isAuthenticated) {
+          this.isLiked = this.post.likedByCurrentUser || false;
+          this.isFavorited = this.post.favoritedByCurrentUser || false;
+        }
+        
+        // 获取评论
+        this.comments = await this.fetchComments(this.postId);
+        
+        this.error = null;
+      } catch (error) {
+        console.error('获取帖子详情失败:', error);
+        this.error = '获取帖子失败，请稍后再试';
+      } finally {
+        this.loading = false;
+      }
+    },
+    // 处理点赞
+    async handleLike() {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
       
-      if (diffInSeconds < 60) {
-        return '刚刚';
-      } else if (diffInSeconds < 3600) {
-        return Math.floor(diffInSeconds / 60) + '分钟前';
-      } else if (diffInSeconds < 86400) {
-        return Math.floor(diffInSeconds / 3600) + '小时前';
-      } else if (diffInSeconds < 604800) {
-        return Math.floor(diffInSeconds / 86400) + '天前';
-      } else {
-        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      try {
+        if (this.isLiked) {
+          // 取消点赞
+          await this.unlikePost(this.postId);
+          this.isLiked = false;
+          // 直接更新帖子点赞数
+          this.post.likes = Math.max(0, (this.post.likes || 0) - 1);
+        } else {
+          // 点赞
+          await this.likePost(this.postId);
+          this.isLiked = true;
+          // 直接更新帖子点赞数
+          this.post.likes = (this.post.likes || 0) + 1;
+        }
+        // 重新获取帖子详情以更新状态
+        await this.fetchPost();
+      } catch (error) {
+        console.error('点赞操作失败:', error);
+      }
+    },
+    
+    // 处理收藏
+    async handleFavorite() {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
+      
+      try {
+        if (this.isFavorited) {
+          // 取消收藏
+          await this.unfavoritePost(this.postId);
+          this.isFavorited = false;
+          // 直接更新帖子收藏数
+          this.post.favorites = Math.max(0, (this.post.favorites || 0) - 1);
+        } else {
+          // 收藏
+          await this.favoritePost(this.postId);
+          this.isFavorited = true;
+          // 直接更新帖子收藏数
+          this.post.favorites = (this.post.favorites || 0) + 1;
+        }
+        // 重新获取帖子详情以更新状态
+        await this.fetchPost();
+      } catch (error) {
+        console.error('收藏操作失败:', error);
+      }
+    },
+    
+    // 滚动到评论区
+    scrollToComments() {
+      if (this.$refs.commentsSection) {
+        this.$refs.commentsSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    },
+    
+    // 提交评论
+    async submitComment() {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
+      
+      if (!this.newComment.trim()) {
+        return;
+      }
+      
+      try {
+        await this.createComment({
+          postId: this.postId,
+          commentData: { content: this.newComment.trim() }
+        });
+        
+        // 清空评论框
+        this.newComment = '';
+        
+        // 重新获取评论和帖子数据
+        this.comments = await this.fetchComments(this.postId);
+        await this.fetchPost();
+      } catch (error) {
+        console.error('提交评论失败:', error);
       }
     },
     goBack() {
@@ -147,9 +274,15 @@ export default {
       this.$router.push({ name: 'home' });
     }
   },
-  created() {
-    const postId = parseInt(this.$route.params.id);
-    this.$store.dispatch('fetchPostById', postId);
+  async created() {
+    await this.fetchPost();
+    
+    // 获取类似帖子
+    try {
+      // 这里可以添加获取类似帖子的逻辑
+    } catch (error) {
+      console.error('获取相似帖子失败:', error);
+    }
   }
 }
 </script>
@@ -320,6 +453,10 @@ export default {
 }
 
 .post-action:hover {
+  color: var(--primary-color);
+}
+
+.post-action.active {
   color: var(--primary-color);
 }
 

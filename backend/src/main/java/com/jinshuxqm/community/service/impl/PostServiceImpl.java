@@ -1,10 +1,14 @@
 package com.jinshuxqm.community.service.impl;
 
 import com.jinshuxqm.community.model.Post;
+import com.jinshuxqm.community.model.PostFavorite;
+import com.jinshuxqm.community.model.PostLike;
 import com.jinshuxqm.community.model.PostStats;
 import com.jinshuxqm.community.model.User;
 import com.jinshuxqm.community.model.dto.PostRequest;
 import com.jinshuxqm.community.model.dto.PostResponse;
+import com.jinshuxqm.community.repository.PostFavoriteRepository;
+import com.jinshuxqm.community.repository.PostLikeRepository;
 import com.jinshuxqm.community.repository.PostRepository;
 import com.jinshuxqm.community.repository.UserRepository;
 import com.jinshuxqm.community.service.PostService;
@@ -13,9 +17,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -25,6 +33,12 @@ public class PostServiceImpl implements PostService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private PostLikeRepository postLikeRepository;
+    
+    @Autowired
+    private PostFavoriteRepository postFavoriteRepository;
     
     @Override
     public PostResponse createPost(PostRequest postRequest, String username) {
@@ -55,13 +69,13 @@ public class PostServiceImpl implements PostService {
         Post savedPost = postRepository.save(post);
         
         // 转换为响应DTO
-        return convertToDto(savedPost);
+        return convertToDto(savedPost, username);
     }
     
     @Override
     public Page<PostResponse> getAllPosts(Pageable pageable) {
         return postRepository.findAll(pageable)
-                .map(this::convertToDto);
+                .map(post -> convertToDto(post, null));
     }
     
     @Override
@@ -72,13 +86,13 @@ public class PostServiceImpl implements PostService {
         // 增加浏览次数
         incrementViewCount(id);
         
-        return convertToDto(post);
+        return convertToDto(post, null);
     }
     
     @Override
     public Page<PostResponse> getPostsByTab(String tab, Pageable pageable) {
         return postRepository.findByTab(tab, pageable)
-                .map(this::convertToDto);
+                .map(post -> convertToDto(post, null));
     }
     
     @Override
@@ -104,7 +118,7 @@ public class PostServiceImpl implements PostService {
         
         Post updatedPost = postRepository.save(post);
         
-        return convertToDto(updatedPost);
+        return convertToDto(updatedPost, username);
     }
     
     @Override
@@ -131,57 +145,174 @@ public class PostServiceImpl implements PostService {
         }
     }
     
+    // 修改点赞方法，添加用户关联
     @Override
+    @Transactional
     public void likePost(Long id, String username) {
-        // 此处应实现点赞逻辑
-        // 需要一个单独的点赞表记录谁点赞了哪篇帖子
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
         
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        // 检查用户是否已经点赞
+        Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
+        
+        if (existingLike.isPresent()) {
+            // 用户已经点赞，不做处理
+            return;
+        }
+        
+        // 创建点赞记录
+        PostLike like = new PostLike(user, post);
+        postLikeRepository.save(like);
+        
+        // 更新统计数据
         if (post.getStats() != null) {
             post.getStats().incrementLikeCount();
             postRepository.save(post);
         }
     }
     
+    // 修改取消点赞方法，删除用户关联
     @Override
+    @Transactional
     public void unlikePost(Long id, String username) {
-        // 取消点赞的逻辑
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
         
-        if (post.getStats() != null) {
-            post.getStats().decrementLikeCount();
-            postRepository.save(post);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        // 检查用户是否已经点赞
+        Optional<PostLike> existingLike = postLikeRepository.findByUserAndPost(user, post);
+        
+        if (existingLike.isPresent()) {
+            // 删除点赞记录
+            postLikeRepository.deleteByUserAndPost(user, post);
+            
+            // 更新统计数据
+            if (post.getStats() != null) {
+                post.getStats().decrementLikeCount();
+                postRepository.save(post);
+            }
         }
     }
     
+    // 修改收藏方法，添加用户关联
     @Override
+    @Transactional
     public void favoritePost(Long id, String username) {
-        // 收藏帖子的逻辑
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
         
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        // 检查用户是否已经收藏
+        Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
+        
+        if (existingFavorite.isPresent()) {
+            // 用户已经收藏，不做处理
+            return;
+        }
+        
+        // 创建收藏记录
+        PostFavorite favorite = new PostFavorite(user, post);
+        postFavoriteRepository.save(favorite);
+        
+        // 更新统计数据
         if (post.getStats() != null) {
             post.getStats().incrementFavoriteCount();
             postRepository.save(post);
         }
     }
     
+    // 修改取消收藏方法，删除用户关联
     @Override
+    @Transactional
     public void unfavoritePost(Long id, String username) {
-        // 取消收藏的逻辑
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
         
-        if (post.getStats() != null) {
-            post.getStats().decrementFavoriteCount();
-            postRepository.save(post);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        // 检查用户是否已经收藏
+        Optional<PostFavorite> existingFavorite = postFavoriteRepository.findByUserAndPost(user, post);
+        
+        if (existingFavorite.isPresent()) {
+            // 删除收藏记录
+            postFavoriteRepository.deleteByUserAndPost(user, post);
+            
+            // 更新统计数据
+            if (post.getStats() != null) {
+                post.getStats().decrementFavoriteCount();
+                postRepository.save(post);
+            }
         }
     }
     
-    // 帮助方法：将实体转换为DTO
-    private PostResponse convertToDto(Post post) {
+    // 实现新增方法：检查用户是否已点赞帖子
+    @Override
+    public boolean hasUserLikedPost(Long postId, String username) {
+        if (username == null) {
+            return false;
+        }
+        
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + postId));
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        return postLikeRepository.findByUserAndPost(user, post).isPresent();
+    }
+    
+    // 实现新增方法：检查用户是否已收藏帖子
+    @Override
+    public boolean hasUserFavoritedPost(Long postId, String username) {
+        if (username == null) {
+            return false;
+        }
+        
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + postId));
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        return postFavoriteRepository.findByUserAndPost(user, post).isPresent();
+    }
+    
+    // 实现新增方法：获取用户点赞的所有帖子
+    @Override
+    public List<PostResponse> getLikedPostsByUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        List<PostLike> likes = postLikeRepository.findByUser(user);
+        
+        return likes.stream()
+                .map(like -> convertToDto(like.getPost(), username))
+                .collect(Collectors.toList());
+    }
+    
+    // 实现新增方法：获取用户收藏的所有帖子
+    @Override
+    public List<PostResponse> getFavoritedPostsByUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("用户不存在: " + username));
+        
+        List<PostFavorite> favorites = postFavoriteRepository.findByUser(user);
+        
+        return favorites.stream()
+                .map(favorite -> convertToDto(favorite.getPost(), username))
+                .collect(Collectors.toList());
+    }
+    
+    // 修改convertToDto方法，添加用户的点赞和收藏状态
+    private PostResponse convertToDto(Post post, String username) {
         PostResponse dto = new PostResponse();
         dto.setId(post.getId());
         dto.setTitle(post.getTitle());
@@ -206,6 +337,15 @@ public class PostServiceImpl implements PostService {
             dto.setComments(post.getStats().getCommentCount());
             dto.setFavorites(post.getStats().getFavoriteCount());
             dto.setViews(post.getStats().getViewCount());
+        }
+        
+        // 设置当前用户的点赞和收藏状态
+        if (username != null) {
+            dto.setLikedByCurrentUser(hasUserLikedPost(post.getId(), username));
+            dto.setFavoritedByCurrentUser(hasUserFavoritedPost(post.getId(), username));
+        } else {
+            dto.setLikedByCurrentUser(false);
+            dto.setFavoritedByCurrentUser(false);
         }
         
         return dto;

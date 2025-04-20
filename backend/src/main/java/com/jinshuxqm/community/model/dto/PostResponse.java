@@ -16,6 +16,10 @@ public class PostResponse {
     private int views;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // 添加用户的点赞和收藏状态
+    private boolean likedByCurrentUser;
+    private boolean favoritedByCurrentUser;
 
     // 作者简要信息的内部类
     public static class UserSummary {
@@ -149,5 +153,22 @@ public class PostResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    // 新增的getter和setter
+    public boolean isLikedByCurrentUser() {
+        return likedByCurrentUser;
+    }
+    
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
+        this.likedByCurrentUser = likedByCurrentUser;
+    }
+    
+    public boolean isFavoritedByCurrentUser() {
+        return favoritedByCurrentUser;
+    }
+    
+    public void setFavoritedByCurrentUser(boolean favoritedByCurrentUser) {
+        this.favoritedByCurrentUser = favoritedByCurrentUser;
     }
 } 

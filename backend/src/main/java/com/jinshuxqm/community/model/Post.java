@@ -38,6 +38,14 @@ public class Post {
 
     @OneToOne(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private PostStats stats;
+    
+    // 添加点赞关联集合
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostLike> likes = new HashSet<>();
+    
+    // 添加收藏关联集合
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostFavorite> favorites = new HashSet<>();
 
     // 构造函数
     public Post() {
@@ -116,5 +124,46 @@ public class Post {
 
     public void setStats(PostStats stats) {
         this.stats = stats;
+    }
+    
+    // 新增 getter 和 setter
+    public Set<PostLike> getLikes() {
+        return likes;
+    }
+    
+    public void setLikes(Set<PostLike> likes) {
+        this.likes = likes;
+    }
+    
+    public Set<PostFavorite> getFavorites() {
+        return favorites;
+    }
+    
+    public void setFavorites(Set<PostFavorite> favorites) {
+        this.favorites = favorites;
+    }
+    
+    // 帮助方法：添加一个点赞
+    public void addLike(PostLike like) {
+        likes.add(like);
+        like.setPost(this);
+    }
+    
+    // 帮助方法：移除一个点赞
+    public void removeLike(PostLike like) {
+        likes.remove(like);
+        like.setPost(null);
+    }
+    
+    // 帮助方法：添加一个收藏
+    public void addFavorite(PostFavorite favorite) {
+        favorites.add(favorite);
+        favorite.setPost(this);
+    }
+    
+    // 帮助方法：移除一个收藏
+    public void removeFavorite(PostFavorite favorite) {
+        favorites.remove(favorite);
+        favorite.setPost(null);
     }
 } 

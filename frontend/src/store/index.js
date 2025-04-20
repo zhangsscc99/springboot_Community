@@ -356,6 +356,109 @@ export default createStore({
       } finally {
         commit('SET_LOADING', false);
       }
+    },
+    
+    // 点赞帖子
+    async likePost({ commit }, postId) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`给帖子 ${postId} 点赞`);
+        await apiService.posts.like(postId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`给帖子 ${postId} 点赞失败:`, error);
+        commit('SET_ERROR', error.message || '点赞失败');
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 取消点赞
+    async unlikePost({ commit }, postId) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`取消帖子 ${postId} 的点赞`);
+        await apiService.posts.unlike(postId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`取消帖子 ${postId} 点赞失败:`, error);
+        commit('SET_ERROR', error.message || '取消点赞失败');
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 收藏帖子
+    async favoritePost({ commit }, postId) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`收藏帖子 ${postId}`);
+        await apiService.posts.favorite(postId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`收藏帖子 ${postId} 失败:`, error);
+        commit('SET_ERROR', error.message || '收藏失败');
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 取消收藏
+    async unfavoritePost({ commit }, postId) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`取消收藏帖子 ${postId}`);
+        await apiService.posts.unfavorite(postId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`取消收藏帖子 ${postId} 失败:`, error);
+        commit('SET_ERROR', error.message || '取消收藏失败');
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 创建评论
+    async createComment({ commit }, { postId, commentData }) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`为帖子 ${postId} 创建评论:`, commentData);
+        const response = await apiService.comments.create(postId, commentData);
+        commit('SET_ERROR', null);
+        return response.data;
+      } catch (error) {
+        console.error(`创建评论失败:`, error);
+        commit('SET_ERROR', error.message || '发表评论失败');
+        throw error;
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    // 获取帖子评论
+    async fetchComments({ commit }, postId) {
+      commit('SET_LOADING', true);
+      try {
+        console.log(`获取帖子 ${postId} 的评论`);
+        const response = await apiService.comments.getByPostId(postId);
+        const comments = response.data;
+        commit('SET_ERROR', null);
+        return comments;
+      } catch (error) {
+        console.error(`获取评论失败:`, error);
+        commit('SET_ERROR', error.message || '获取评论失败');
+        return [];
+      } finally {
+        commit('SET_LOADING', false);
+      }
     }
   },
   modules: {
