@@ -24,7 +24,9 @@ export default createStore({
     // 新增帖子缓存
     postCache: {}, // 以帖子ID为键存储帖子数据
     lastCacheUpdate: {}, // 记录每个帖子最后更新时间
-    tabCacheUpdate: {} // 记录每个标签页最后更新时间
+    tabCacheUpdate: {}, // 记录每个标签页最后更新时间
+    cachedPages: {}, // 用于存储各页面数据
+    cachedScrollPositions: {} // 用于存储各页面滚动位置
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -118,6 +120,14 @@ export default createStore({
           post[field] = value;
         }
       });
+    },
+    // 保存页面数据
+    CACHE_PAGE_DATA(state, { routePath, data }) {
+      state.cachedPages[routePath] = data;
+    },
+    // 保存滚动位置
+    SAVE_SCROLL_POSITION(state, { routePath, position }) {
+      state.cachedScrollPositions[routePath] = position;
     }
   },
   actions: {
@@ -352,7 +362,7 @@ export default createStore({
         return state.tabPosts[tab];
       }
       
-      commit('SET_LOADING', true);
+        commit('SET_LOADING', true);
       try {
         console.log(`从API获取${tab}栏目的帖子`);
         const response = await apiService.posts.getByTab(tab);
@@ -625,6 +635,18 @@ export default createStore({
       } finally {
         commit('SET_LOADING', false);
       }
+    },
+    
+    // 获取页面数据，优先使用缓存
+    fetchPageData({ state, commit }, { routePath, fetchFunction }) {
+      if (state.cachedPages[routePath]) {
+        return Promise.resolve(state.cachedPages[routePath]);
+      }
+      
+      return fetchFunction().then(data => {
+        commit('CACHE_PAGE_DATA', { routePath, data });
+        return data;
+      });
     }
   },
   modules: {

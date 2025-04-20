@@ -1,11 +1,11 @@
 <template>
   <div class="user-avatar-container">
-    <img 
-      :src="src || defaultAvatar" 
+      <img 
+        :src="src || defaultAvatar" 
       :alt="`${username}'s avatar`" 
       class="user-avatar"
-      @error="handleImageError"
-    />
+        @error="handleImageError"
+      />
     <div v-if="showUsername" class="avatar-username">{{ username }}</div>
   </div>
 </template>

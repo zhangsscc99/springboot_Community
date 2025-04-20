@@ -2,40 +2,40 @@
   <div class="home-view">
     <div class="nav-tabs">
       <div 
-        v-for="tab in tabs" 
-        :key="tab" 
+          v-for="tab in tabs"
+          :key="tab"
         class="nav-tab" 
         :class="{ active: activeTab === tab }"
         @click="switchTab(tab)"
-      >
-        {{ tab }}
+        >
+          {{ tab }}
       </div>
     </div>
-    
+
     <div v-if="loading && !hasAnyTabPosts" class="loading-indicator">
       <i class="fas fa-spinner fa-spin"></i> 加载中...
     </div>
-    
+
     <div v-else-if="error" class="error-message">
       <i class="fas fa-exclamation-circle"></i> {{ error }}
-    </div>
+      </div>
     
     <div v-else class="post-list">
       <div v-if="loading && currentTabPosts.length === 0" class="tab-loading">
         <i class="fas fa-spinner fa-spin"></i> 加载{{ activeTab }}内容...
-      </div>
-      
+    </div>
+
       <div v-for="post in currentTabPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
         <h3 class="post-title">{{ post.title }}</h3>
         <div class="post-header">
           <UserAvatar 
             :src="post.author.avatar" 
             :username="post.author.username"
-          />
+        />
           <div class="post-user-info">
             <h4 class="post-username">{{ post.author.username }}</h4>
             <span class="post-time">{{ formatDate(post.created_at) }}</span>
-          </div>
+      </div>
         </div>
         <p class="post-content">{{ post.content }}</p>
         <div class="post-tags" v-if="post.tags">
@@ -61,7 +61,7 @@
         </div>
       </div>
       
-      <div v-if="isPreloading" class="preloading-indicator">
+      <div v-if="isPreloading && showPreloader" class="preloading-indicator">
         <i class="fas fa-spinner fa-spin"></i> 正在加载更多内容...
       </div>
     </div>
@@ -81,6 +81,8 @@ export default {
     return {
       tabs: ['关注', '推荐', '热榜', '故事', '情感知识'],
       isPreloading: false,
+      preloadTimeout: null,
+      currentPreloadTab: null,
       tabsPreloaded: {
         '关注': false,
         '推荐': false,
@@ -104,23 +106,80 @@ export default {
     }),
     hasAnyTabPosts() {
       return Object.values(this.tabPosts).some(posts => posts && posts.length > 0);
+    },
+    showPreloader() {
+      return this.currentPreloadTab === this.activeTab;
     }
   },
   methods: {
     async switchTab(tab) {
-      this.$store.dispatch('setActiveTab', tab);
+      this.cancelPreloading();
       
+      this.$store.dispatch('setActiveTab', tab);
+    
       if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
         await this.$store.dispatch('fetchPostsByTab', tab);
       }
       
       this.preloadOtherTabs(tab);
     },
+    cancelPreloading() {
+      if (this.preloadTimeout) {
+        clearTimeout(this.preloadTimeout);
+        this.preloadTimeout = null;
+      }
+      this.isPreloading = false;
+      this.currentPreloadTab = null;
+    },
+    async preloadOtherTabs(currentTab) {
+      this.cancelPreloading();
+      
+      this.isPreloading = true;
+      this.currentPreloadTab = currentTab;
+      
+      this.preloadTimeout = setTimeout(async () => {
+        try {
+          if (this.activeTab !== currentTab) {
+            this.cancelPreloading();
+            return;
+          }
+          
+          for (const tab of this.tabs) {
+            if (this.activeTab !== currentTab) {
+              this.cancelPreloading();
+              return;
+            }
+            
+            if (tab === currentTab || this.tabsPreloaded[tab]) continue;
+          
+            if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
+              console.log(`预加载 ${tab} 标签页数据...`);
+              await this.$store.dispatch('fetchPostsByTab', tab);
+              this.tabsPreloaded[tab] = true;
+              
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              if (this.activeTab !== currentTab) {
+                this.cancelPreloading();
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('预加载标签页失败:', error);
+        } finally {
+          if (this.currentPreloadTab === currentTab) {
+            this.isPreloading = false;
+            this.currentPreloadTab = null;
+          }
+        }
+      }, 800);
+    },
     formatDate(dateString) {
       const date = new Date(dateString);
       const now = new Date();
       const diffInSeconds = Math.floor((now - date) / 1000);
-      
+    
       if (diffInSeconds < 60) {
         return '刚刚';
       } else if (diffInSeconds < 3600) {
@@ -135,32 +194,10 @@ export default {
     },
     goToPostDetail(postId) {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
-    },
-    async preloadOtherTabs(currentTab) {
-      if (this.isPreloading) return;
-      
-      this.isPreloading = true;
-      
-      setTimeout(async () => {
-        try {
-          for (const tab of this.tabs) {
-            if (tab === currentTab || this.tabsPreloaded[tab]) continue;
-            
-            if (this.isTabCacheExpired(tab) || !this.tabPosts[tab] || this.tabPosts[tab].length === 0) {
-              console.log(`预加载 ${tab} 标签页数据...`);
-              await this.$store.dispatch('fetchPostsByTab', tab);
-              this.tabsPreloaded[tab] = true;
-              
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
-        } catch (error) {
-          console.error('预加载标签页失败:', error);
-        } finally {
-          this.isPreloading = false;
-        }
-      }, 1000);
     }
+  },
+  beforeUnmount() {
+    this.cancelPreloading();
   },
   async created() {
     const currentTab = this.activeTab;
