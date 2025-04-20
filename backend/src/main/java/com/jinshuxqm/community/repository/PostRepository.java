@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
@@ -19,4 +20,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     
     // 根据标签列表查询帖子
     Page<Post> findByTagsContaining(String tag, Pageable pageable);
+    
+    // 根据标题查询帖子
+    Optional<Post> findByTitle(String title);
 } 
