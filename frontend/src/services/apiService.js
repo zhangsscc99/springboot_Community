@@ -1,8 +1,9 @@
 import axios from 'axios';
+import apiConfig from '@/config/api.config';
 
 // 创建axios实例
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8083', // 确保这个端口与后端一致
+  baseURL: apiConfig.BASE_URL, // 使用配置中的API基础URL
   headers: {
     'Content-Type': 'application/json'
   },
