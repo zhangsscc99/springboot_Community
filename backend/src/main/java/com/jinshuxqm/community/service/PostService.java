@@ -53,4 +53,7 @@ public interface PostService {
     
     // 获取用户收藏的所有帖子
     List<PostResponse> getFavoritedPostsByUser(String username);
+    
+    // 检查帖子是否存在
+    boolean existsById(Long id);
 } 

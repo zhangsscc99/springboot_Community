@@ -159,6 +159,7 @@ const apiService = {
     },
     // 获取单个帖子详情
     getById(id) {
+      console.log(`正在请求帖子: /api/posts/${id}`);
       return apiClient.get(`/api/posts/${id}`);
     },
     // 创建新帖子
@@ -193,14 +194,28 @@ const apiService = {
   
   // 评论相关
   comments: {
-    getByPostId(postId) {
-      return apiClient.get(`/api/posts/${postId}/comments`);
+    getByPostId(postId, page = 0, size = 10) {
+      // 确保这个URL路径是正确的，与后端匹配
+      console.log(`正在请求评论: /api/posts/${postId}/comments`, { page, size });
+      return apiClient.get(`/api/posts/${postId}/comments`, {
+        params: { page, size }
+      });
     },
     create(postId, commentData) {
+      console.log(`发送评论到服务器：/api/posts/${postId}/comments`, commentData);
       return apiClient.post(`/api/posts/${postId}/comments`, commentData);
+    },
+    createReply(commentId, replyData) {
+      return apiClient.post(`/api/comments/${commentId}/replies`, replyData);
     },
     delete(commentId) {
       return apiClient.delete(`/api/comments/${commentId}`);
+    },
+    like(commentId) {
+      return apiClient.post(`/api/comments/${commentId}/like`);
+    },
+    unlike(commentId) {
+      return apiClient.delete(`/api/comments/${commentId}/like`);
     }
   },
   

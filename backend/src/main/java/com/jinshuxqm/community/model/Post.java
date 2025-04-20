@@ -47,6 +47,9 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PostFavorite> favorites = new HashSet<>();
 
+    @Column(nullable = false)
+    private Integer comments = 0;
+
     // 构造函数
     public Post() {
         this.createdAt = LocalDateTime.now();
@@ -165,5 +168,13 @@ public class Post {
     public void removeFavorite(PostFavorite favorite) {
         favorites.remove(favorite);
         favorite.setPost(null);
+    }
+
+    public Integer getComments() {
+        return comments;
+    }
+
+    public void setComments(Integer comments) {
+        this.comments = comments;
     }
 } 

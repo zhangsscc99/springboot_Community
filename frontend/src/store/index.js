@@ -646,29 +646,12 @@ export default createStore({
       }
     },
     
-    // 创建评论
-    async createComment({ commit }, { postId, commentData }) {
+    // 获取评论（支持分页）
+    async fetchComments({ commit }, { postId, page = 0, size = 10 }) {
       commit('SET_LOADING', true);
       try {
-        console.log(`为帖子 ${postId} 创建评论:`, commentData);
-        const response = await apiService.comments.create(postId, commentData);
-        commit('SET_ERROR', null);
-        return response.data;
-      } catch (error) {
-        console.error(`创建评论失败:`, error);
-        commit('SET_ERROR', error.message || '发表评论失败');
-        throw error;
-      } finally {
-        commit('SET_LOADING', false);
-      }
-    },
-    
-    // 获取帖子评论
-    async fetchComments({ commit }, postId) {
-      commit('SET_LOADING', true);
-      try {
-        console.log(`获取帖子 ${postId} 的评论`);
-        const response = await apiService.comments.getByPostId(postId);
+        console.log(`获取帖子 ${postId} 的评论，页码: ${page}, 大小: ${size}`);
+        const response = await apiService.comments.getByPostId(postId, page, size);
         const comments = response.data;
         commit('SET_ERROR', null);
         return comments;
@@ -678,6 +661,74 @@ export default createStore({
         return [];
       } finally {
         commit('SET_LOADING', false);
+      }
+    },
+    
+    // 创建回复
+    async createReply({ commit }, { commentId, replyData }) {
+      commit('SET_ACTION_LOADING', true);
+      try {
+        console.log(`为评论 ${commentId} 创建回复:`, replyData);
+        const response = await apiService.comments.createReply(commentId, replyData);
+        commit('SET_ERROR', null);
+        return response.data;
+      } catch (error) {
+        console.error(`创建回复失败:`, error);
+        commit('SET_ERROR', error.message || '发表回复失败');
+        throw error;
+      } finally {
+        commit('SET_ACTION_LOADING', false);
+      }
+    },
+    
+    // 删除评论
+    async deleteComment({ commit }, commentId) {
+      commit('SET_ACTION_LOADING', true);
+      try {
+        console.log(`删除评论 ${commentId}`);
+        await apiService.comments.delete(commentId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`删除评论失败:`, error);
+        commit('SET_ERROR', error.message || '删除评论失败');
+        throw error;
+      } finally {
+        commit('SET_ACTION_LOADING', false);
+      }
+    },
+    
+    // 点赞评论
+    async likeComment({ commit }, commentId) {
+      commit('SET_ACTION_LOADING', true);
+      try {
+        console.log(`点赞评论 ${commentId}`);
+        await apiService.comments.like(commentId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`点赞评论失败:`, error);
+        commit('SET_ERROR', error.message || '点赞评论失败');
+        throw error;
+      } finally {
+        commit('SET_ACTION_LOADING', false);
+      }
+    },
+    
+    // 取消点赞评论
+    async unlikeComment({ commit }, commentId) {
+      commit('SET_ACTION_LOADING', true);
+      try {
+        console.log(`取消点赞评论 ${commentId}`);
+        await apiService.comments.unlike(commentId);
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`取消点赞评论失败:`, error);
+        commit('SET_ERROR', error.message || '取消点赞评论失败');
+        throw error;
+      } finally {
+        commit('SET_ACTION_LOADING', false);
       }
     },
     

@@ -389,4 +389,9 @@ public class PostServiceImpl implements PostService {
         
         return dto;
     }
+    
+    @Override
+    public boolean existsById(Long id) {
+        return postRepository.existsById(id);
+    }
 } 
