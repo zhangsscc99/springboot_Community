@@ -1,5 +1,5 @@
 <template>
-  <div class="post-detail-view">
+  <div class="post-detail-view" :class="{ 'no-wait-cursor': isActionLoading }">
     <div class="back-nav">
       <button class="back-button" @click="goBack">
         <i class="fas fa-arrow-left"></i> 返回
@@ -142,7 +142,13 @@ export default {
   },
   computed: {
     ...mapState(['user']),
-    ...mapGetters(['isAuthenticated']),
+    ...mapGetters({
+      post: 'currentPost',
+      loading: 'isLoading',
+      actionLoading: 'isActionLoading',
+      error: 'error',
+      isAuthenticated: 'isAuthenticated'
+    }),
     postId() {
       return this.$route.params.id;
     },
@@ -672,5 +678,16 @@ export default {
   .post-content-full {
     font-size: 15px;
   }
+}
+
+/* 新增样式 - 当操作加载时禁用等待光标 */
+.no-wait-cursor {
+  cursor: default !important;
+}
+.no-wait-cursor * {
+  cursor: default !important;
+}
+.no-wait-cursor .post-action {
+  cursor: pointer !important;
 }
 </style> 

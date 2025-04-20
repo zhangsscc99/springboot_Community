@@ -410,4 +410,17 @@ body {
     padding: 0 12px;
     font-size: 0.8rem;
   }
+}
+
+/* 当操作加载时防止鼠标显示为等待状态 */
+body[data-action-loading="true"] {
+  cursor: default !important;
+}
+body[data-action-loading="true"] * {
+  cursor: default !important;
+}
+body[data-action-loading="true"] button,
+body[data-action-loading="true"] .clickable,
+body[data-action-loading="true"] .post-action {
+  cursor: pointer !important;
 } 

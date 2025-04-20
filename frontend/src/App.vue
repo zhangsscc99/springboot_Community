@@ -50,7 +50,8 @@ export default {
   computed: {
     ...mapGetters({
       isAuthenticated: 'isAuthenticated',
-      currentUser: 'currentUser'
+      currentUser: 'currentUser',
+      actionLoading: 'isActionLoading'
     })
   },
   methods: {
@@ -65,6 +66,11 @@ export default {
     },
     goToRegister() {
       this.$router.push('/register');
+    }
+  },
+  watch: {
+    actionLoading(newVal) {
+      document.body.setAttribute('data-action-loading', newVal);
     }
   }
 }

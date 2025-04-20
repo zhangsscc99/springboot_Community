@@ -12,6 +12,7 @@ export default createStore({
     posts: [],
     currentPost: null,
     loading: false,
+    actionLoading: false,
     error: null,
     activeTab: '关注', // 默认选中"关注"栏目
     tabPosts: {
@@ -35,6 +36,7 @@ export default createStore({
     allPosts: state => state.posts,
     currentPost: state => state.currentPost,
     isLoading: state => state.loading,
+    isActionLoading: state => state.actionLoading,
     error: state => state.error,
     activeTab: state => state.activeTab,
     currentTabPosts: state => state.tabPosts[state.activeTab] || [],
@@ -89,6 +91,9 @@ export default createStore({
     },
     SET_LOADING(state, status) {
       state.loading = status;
+    },
+    SET_ACTION_LOADING(state, status) {
+      state.actionLoading = status;
     },
     SET_ERROR(state, error) {
       state.error = error;
@@ -503,7 +508,7 @@ export default createStore({
     
     // 点赞帖子
     async likePost({ commit, state }, postId) {
-      commit('SET_LOADING', true);
+      commit('SET_ACTION_LOADING', true);
       try {
         console.log(`给帖子 ${postId} 点赞`);
         await apiService.posts.like(postId);
@@ -532,13 +537,13 @@ export default createStore({
         commit('SET_ERROR', error.message || '点赞失败');
         throw error;
       } finally {
-        commit('SET_LOADING', false);
+        commit('SET_ACTION_LOADING', false);
       }
     },
     
     // 取消点赞
     async unlikePost({ commit, state }, postId) {
-      commit('SET_LOADING', true);
+      commit('SET_ACTION_LOADING', true);
       try {
         console.log(`取消帖子 ${postId} 的点赞`);
         await apiService.posts.unlike(postId);
@@ -567,13 +572,13 @@ export default createStore({
         commit('SET_ERROR', error.message || '取消点赞失败');
         throw error;
       } finally {
-        commit('SET_LOADING', false);
+        commit('SET_ACTION_LOADING', false);
       }
     },
     
     // 收藏帖子
     async favoritePost({ commit, state }, postId) {
-      commit('SET_LOADING', true);
+      commit('SET_ACTION_LOADING', true);
       try {
         console.log(`收藏帖子 ${postId}`);
         await apiService.posts.favorite(postId);
@@ -602,13 +607,13 @@ export default createStore({
         commit('SET_ERROR', error.message || '收藏失败');
         throw error;
       } finally {
-        commit('SET_LOADING', false);
+        commit('SET_ACTION_LOADING', false);
       }
     },
     
     // 取消收藏
     async unfavoritePost({ commit, state }, postId) {
-      commit('SET_LOADING', true);
+      commit('SET_ACTION_LOADING', true);
       try {
         console.log(`取消收藏帖子 ${postId}`);
         await apiService.posts.unfavorite(postId);
@@ -637,7 +642,7 @@ export default createStore({
         commit('SET_ERROR', error.message || '取消收藏失败');
         throw error;
       } finally {
-        commit('SET_LOADING', false);
+        commit('SET_ACTION_LOADING', false);
       }
     },
     
