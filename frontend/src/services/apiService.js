@@ -142,6 +142,9 @@ const apiService = {
   users: {
     getProfile(userId) {
       return apiClient.get(`/api/users/${userId}`);
+    },
+    updateProfile(userId, profileData) {
+      return apiClient.put(`/api/users/${userId}`, profileData);
     }
   },
   

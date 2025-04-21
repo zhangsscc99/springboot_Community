@@ -49,7 +49,7 @@
           <button class="follow-btn" v-if="!isCurrentUser">
             <i class="fas fa-plus"></i> 关注
           </button>
-          <button class="edit-profile-btn" v-else>
+          <button class="edit-profile-btn" v-if="isCurrentUser" @click="openEditModal">
             <i class="fas fa-pencil-alt"></i> 编辑资料
           </button>
           <button class="message-btn" v-if="!isCurrentUser">
@@ -171,6 +171,42 @@
         </div>
       </div>
     </template>
+    
+    <div v-if="showEditModal" class="edit-profile-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>编辑个人资料</h2>
+          <button class="close-btn" @click="closeEditModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>用户名</label>
+            <input type="text" v-model="editForm.username" disabled class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>头像</label>
+            <input type="text" v-model="editForm.avatar" class="form-control" placeholder="输入头像URL地址" />
+          </div>
+          <div class="form-group">
+            <label>个人简介</label>
+            <textarea v-model="editForm.bio" class="form-control" placeholder="介绍一下自己吧..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>邮箱</label>
+            <input type="email" v-model="editForm.email" class="form-control" placeholder="输入您的邮箱" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeEditModal">取消</button>
+          <button class="save-btn" @click="saveProfile" :disabled="saving">
+            <span v-if="saving"><i class="fas fa-spinner fa-spin"></i> 保存中...</span>
+            <span v-else>保存</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -195,7 +231,15 @@ export default {
       likesLoading: false,
       error: null,
       favoritedPosts: [],
-      favoritesLoading: false
+      favoritesLoading: false,
+      showEditModal: false,
+      editForm: {
+        username: '',
+        avatar: '',
+        bio: '',
+        email: ''
+      },
+      saving: false
     };
   },
   computed: {
@@ -302,6 +346,68 @@ export default {
         this.error = '加载用户收藏帖子失败';
       } finally {
         this.favoritesLoading = false;
+      }
+    },
+    openEditModal() {
+      this.editForm = {
+        username: this.profileName,
+        avatar: '',
+        bio: this.profileBio,
+        email: ''
+      };
+      this.showEditModal = true;
+    },
+    closeEditModal() {
+      this.showEditModal = false;
+    },
+    async saveProfile() {
+      try {
+        this.saving = true;
+        
+        await apiService.users.updateProfile(this.profileId, {
+          avatar: this.editForm.avatar,
+          bio: this.editForm.bio,
+          email: this.editForm.email
+        });
+        
+        this.profileAvatar = this.editForm.avatar;
+        this.profileBio = this.editForm.bio;
+        
+        alert('个人资料已更新');
+        this.closeEditModal();
+        
+        this.fetchUserProfile();
+        
+        // 更新用户界面显示
+        if (this.editForm.avatar) {
+          // 如果有新头像，更新头像
+          document.querySelector('.profile-avatar-component img').src = this.editForm.avatar;
+        }
+        
+        // 更新个人简介
+        if (this.editForm.bio) {
+          this.profileBio = this.editForm.bio;
+        }
+      } catch (error) {
+        console.error('更新个人资料失败:', error);
+        alert('更新个人资料失败：' + (error.response?.data || error.message));
+      } finally {
+        this.saving = false;
+      }
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await apiService.users.getProfile(this.profileId);
+        const userData = response.data;
+        
+        this.profileName = userData.username;
+        this.profileBio = userData.bio || '这个人很懒，还没有介绍自己...';
+        this.profileAvatar = userData.avatar;
+        this.profileEmail = userData.email;
+        
+        // 更新其他数据...
+      } catch (error) {
+        console.error('获取用户资料失败:', error);
       }
     }
   },
@@ -618,5 +724,107 @@ export default {
 /* 为收藏图标添加样式 */
 .bookmark {
   color: var(--primary-color);
+}
+
+.edit-profile-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+textarea.form-control {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 20px;
+  border-top: 1px solid var(--border-color);
+  gap: 10px;
+}
+
+.cancel-btn, .save-btn {
+  padding: 8px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+}
+
+.cancel-btn {
+  background-color: #f5f5f5;
+  color: #444;
+}
+
+.save-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
