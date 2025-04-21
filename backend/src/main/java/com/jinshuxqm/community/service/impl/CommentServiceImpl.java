@@ -246,4 +246,11 @@ public class CommentServiceImpl implements CommentService {
         
         return dto;
     }
+
+    @Override
+    public List<CommentDTO> getCommentsByPostId(Long postId) {
+        // 使用已有方法，返回简化的结果
+        PagedResponseDTO<CommentDTO> pagedResponse = getCommentsByPostId(postId, 0, 20, null);
+        return pagedResponse.getContent();
+    }
 } 

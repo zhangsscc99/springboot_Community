@@ -78,6 +78,12 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('token');
       // 如果需要，这里可以触发重定向到登录页面
     }
+    // 处理500错误
+    if (error.response && error.response.status === 500) {
+      console.error('服务器错误:', error.response.data);
+      // 可以显示通知或执行其他错误处理逻辑
+      alert('服务器出现错误，请稍后再试');
+    }
     return Promise.reject(error);
   }
 );
@@ -227,12 +233,14 @@ const apiService = {
   
   // 评论相关
   comments: {
-    getByPostId(postId, page = 0, size = 10) {
-      // 确保这个URL路径是正确的，与后端匹配
-      console.log(`正在请求评论: /api/posts/${postId}/comments`, { page, size });
-      return apiClient.get(`/api/posts/${postId}/comments`, {
-        params: { page, size }
-      });
+    getCommentsByPostId(postId) {
+      // 添加验证，确保postId有效
+      if (!postId || postId === 'undefined') {
+        console.error('无效的帖子ID');
+        return Promise.reject(new Error('无效的帖子ID'));
+      }
+      
+      return apiClient.get(`/api/posts/${postId}/comments`);
     },
     create(postId, commentData) {
       console.log(`发送评论到服务器：/api/posts/${postId}/comments`, commentData);

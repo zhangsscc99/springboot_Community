@@ -58,6 +58,14 @@ router.beforeEach((to, from, next) => {
       query: { redirect: to.fullPath }
     });
   } else {
+    if (to.name === 'PostDetail') {
+      const postId = to.params.id;
+      if (!postId || postId === 'undefined' || isNaN(Number(postId))) {
+        // 帖子ID无效，重定向到首页
+        next({ name: 'Home' });
+        return;
+      }
+    }
     // 否则继续
     next();
   }

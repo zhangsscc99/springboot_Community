@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/")
@@ -30,25 +31,29 @@ public class CommentController {
 
     // 获取帖子的评论
     @GetMapping("/posts/{postId}/comments")
-    public ResponseEntity<PagedResponseDTO<CommentDTO>> getCommentsByPostId(
-            @PathVariable Long postId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            Authentication authentication) {
-        
+    public ResponseEntity<?> getPostComments(@PathVariable Long postId) {
         try {
-            // 添加调试日志
-            System.out.println("接收到评论获取请求: 帖子ID=" + postId + ", 页码=" + page + ", 大小=" + size);
+            // 添加参数验证
+            if (postId == null) {
+                return ResponseEntity.badRequest().body("帖子ID不能为空");
+            }
             
             // 检查帖子是否存在
             if (!postService.existsById(postId)) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("帖子不存在");
             }
             
-            return ResponseEntity.ok(commentService.getCommentsByPostId(postId, page, size, authentication));
+            List<CommentDTO> comments = commentService.getCommentsByPostId(postId);
+            return ResponseEntity.ok(comments);
+        } catch (NumberFormatException e) {
+            // 处理ID格式错误
+            return ResponseEntity.badRequest().body("无效的帖子ID格式");
         } catch (Exception e) {
+            System.err.println("获取评论失败，帖子ID=" + postId + ", 错误: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("获取评论失败: " + e.getMessage());
         }
     }
 

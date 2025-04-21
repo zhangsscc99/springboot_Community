@@ -41,9 +41,22 @@ public class PostController {
 
     // 根据ID获取帖子
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPostById(@PathVariable Long id) {
-        PostResponse post = postService.getPostById(id);
-        return ResponseEntity.ok(post);
+    public ResponseEntity<?> getPostById(@PathVariable Long id) {
+        System.out.println("开始获取帖子详情，ID: " + id);
+        try {
+            System.out.println("获取帖子详情，ID: " + id);
+            
+            // 使用服务而非直接访问仓库
+            PostResponse postResponse = postService.getPostById(id);
+            
+            System.out.println("成功获取帖子详情，ID: " + id);
+            return ResponseEntity.ok(postResponse);
+        } catch (Exception e) {
+            System.err.println("获取帖子详情失败，ID: " + id + ", 错误类型: " + e.getClass().getName());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("获取帖子详情失败: " + e.getMessage());
+        }
     }
 
     // 根据标签获取帖子

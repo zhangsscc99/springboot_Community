@@ -20,6 +20,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.cache.annotation.Cacheable;
 
 import javax.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -32,6 +37,8 @@ import java.util.stream.Collectors;
 import com.jinshuxqm.community.exception.ResourceNotFoundException;
 import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
+import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -95,14 +102,33 @@ public class PostServiceImpl implements PostService {
     }
     
     @Override
+    @Cacheable(value = "posts", key = "#id")
     public PostResponse getPostById(Long id) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
-        
-        // 增加浏览次数
-        incrementViewCount(id);
-        
-        return convertToDto(post, null);
+        try {
+            // 先获取帖子数据
+            Post post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
+            
+            // 转换为DTO
+            PostResponse response = convertToDto(post, null);
+            
+            // 异步增加浏览次数，不影响主流程
+            CompletableFuture.runAsync(() -> {
+                try {
+                    incrementViewCount(id);
+                } catch (Exception e) {
+                    System.err.println("异步增加浏览次数失败: " + e.getMessage());
+                }
+            });
+            
+            return response;
+        } catch (ResourceNotFoundException ex) {
+            throw ex;
+        } catch (Exception e) {
+            System.err.println("获取帖子详情失败，ID=" + id + ", 错误: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("获取帖子详情失败", e);
+        }
     }
     
     @Override
@@ -151,13 +177,14 @@ public class PostServiceImpl implements PostService {
     }
     
     @Override
-    public void incrementViewCount(Long id) {
-        Post post = postRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("帖子不存在: " + id));
-        
-        if (post.getStats() != null) {
-            post.getStats().incrementViewCount();
-            postRepository.save(post);
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void incrementViewCount(Long postId) {
+        try {
+            // 使用乐观锁或悲观锁确保并发安全
+            postRepository.incrementViewCount(postId);
+        } catch (Exception e) {
+            // 仅记录错误，不影响主流程
+            System.err.println("增加浏览次数失败: " + e.getMessage());
         }
     }
     

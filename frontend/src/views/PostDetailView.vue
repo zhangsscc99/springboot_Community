@@ -220,7 +220,9 @@ export default {
       commentPage: 0,
       commentSize: 10,
       hasMoreComments: false,
-      loadingMoreComments: false
+      loadingMoreComments: false,
+      isLoadingComments: false,
+      commentError: null
     };
   },
   computed: {
@@ -414,17 +416,26 @@ export default {
     },
     
     // 获取评论
-    async fetchPostComments() {
-      this.commentsLoading = true;
+    async loadComments() {
+      if (!this.post || !this.post.id) {
+        console.log('帖子ID不存在，无法加载评论');
+        return; // 确保帖子ID存在再加载评论
+      }
+      
+      this.isLoadingComments = true;
+      
       try {
-        const response = await apiService.comments.getByPostId(this.postId);
-        console.log('获取到的评论:', response.data);
-        // 确保我们正确处理评论数据，无论是数组还是分页对象
-        this.comments = response.data.content || response.data || [];
+        const response = await apiService.comments.getCommentsByPostId(this.post.id);
+        this.comments = response.data;
       } catch (error) {
         console.error('加载评论失败:', error);
+        if (error.response) {
+          this.commentError = `加载评论失败: ${error.response.status} ${error.response.statusText}`;
+        } else {
+          this.commentError = '加载评论失败，请稍后再试';
+        }
       } finally {
-        this.commentsLoading = false;
+        this.isLoadingComments = false;
       }
     },
     
@@ -440,7 +451,7 @@ export default {
         await apiService.comments.create(this.postId, { content: this.newComment.trim() });
         this.newComment = ''; // 清空输入框
         // 重新加载评论
-        await this.fetchPostComments(); // 使用现有的获取评论方法
+        await this.loadComments(); // 使用现有的获取评论方法
         console.log('评论已添加并刷新');
       } catch (error) {
         console.error('提交评论出错:', error);
@@ -524,7 +535,7 @@ export default {
       this.commentPage++;
       this.loadingMoreComments = true;
       try {
-        await this.fetchPostComments();
+        await this.loadComments();
       } finally {
         this.loadingMoreComments = false;
       }
@@ -590,22 +601,14 @@ export default {
       }
     },
     goBack() {
+      // 使用Vue Router的历史导航
       this.$router.go(-1);
+      
+      // 如果上面的方法出现问题，可以改为返回首页
+      // this.$router.push('/');
     },
     goHome() {
       this.$router.push({ name: 'home' });
-    },
-    // 加载评论
-    async loadComments() {
-      this.commentsLoading = true;
-      try {
-        const response = await apiService.comments.getByPostId(this.postId);
-        this.comments = response.data.content || [];
-      } catch (error) {
-        console.error('加载评论失败:', error);
-      } finally {
-        this.commentsLoading = false;
-      }
     },
     formatDate(dateString) {
       if (!dateString) return '';
@@ -617,6 +620,13 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       });
+    },
+    // 单独修改帖子加载完成的回调
+    onPostLoaded() {
+      // 帖子加载完成后再加载评论
+      if (this.post && this.post.id) {
+        this.loadComments();
+      }
     }
   },
   async mounted() {
@@ -624,7 +634,7 @@ export default {
     await this.fetchPost();
     
     // 加载评论
-    await this.fetchPostComments();
+    await this.loadComments();
     
     // 检查认证状态
     console.log('当前认证状态:', this.isAuthenticated);
