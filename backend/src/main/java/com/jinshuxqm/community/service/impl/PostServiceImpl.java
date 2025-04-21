@@ -427,4 +427,32 @@ public class PostServiceImpl implements PostService {
                 postPage.isLast()
         );
     }
+
+    @Override
+    public PagedResponseDTO<PostDTO> getLikedPostsByUserId(Long userId, int page, int size) {
+        // 验证用户是否存在
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // 创建分页请求
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        // 使用PostLikeRepository获取用户点赞过的帖子
+        Page<Post> likedPosts = postRepository.findPostsLikedByUser(userId, pageable);
+        
+        // 转换为 PostDTO 列表
+        List<PostDTO> content = likedPosts.getContent().stream()
+                .map(post -> PostDTO.fromEntity(post, user))
+                .collect(Collectors.toList());
+        
+        // 返回分页响应
+        return new PagedResponseDTO<>(
+                content,
+                likedPosts.getNumber(),
+                likedPosts.getSize(),
+                likedPosts.getTotalElements(),
+                likedPosts.getTotalPages(),
+                likedPosts.isLast()
+        );
+    }
 } 

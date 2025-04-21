@@ -195,6 +195,12 @@ const apiService = {
       return apiClient.get(`/api/users/${userId}/posts`, {
         params: { page, size }
       });
+    },
+    // 获取用户点赞过的帖子
+    getLikedByUserId(userId, page = 0, size = 10) {
+      return apiClient.get(`/api/users/${userId}/likes`, {
+        params: { page, size }
+      });
     }
   },
   

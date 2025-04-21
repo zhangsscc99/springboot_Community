@@ -65,21 +65,21 @@
         <div 
           class="profile-tab" 
           :class="{ active: activeTab === 'posts' }"
-          @click="activeTab = 'posts'"
+          @click="setActiveTab('posts')"
         >
           帖子
         </div>
         <div 
           class="profile-tab" 
           :class="{ active: activeTab === 'likes' }"
-          @click="activeTab = 'likes'"
+          @click="setActiveTab('likes')"
         >
           喜欢
         </div>
         <div 
           class="profile-tab" 
           :class="{ active: activeTab === 'comments' }"
-          @click="activeTab = 'comments'"
+          @click="setActiveTab('comments')"
         >
           评论
         </div>
@@ -87,7 +87,10 @@
       
       <div class="profile-content">
         <div v-if="activeTab === 'posts'" class="posts-list">
-          <div v-if="userPosts.length > 0" class="post-list">
+          <div v-if="postsLoading" class="loading-indicator">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+          </div>
+          <div v-else-if="userPosts.length > 0" class="post-list">
             <div v-for="post in userPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
               <h3 class="post-title">{{ post.title }}</h3>
               <p class="post-content">{{ post.content }}</p>
@@ -111,7 +114,27 @@
         </div>
         
         <div v-else-if="activeTab === 'likes'" class="likes-list">
-          <div class="no-content">
+          <div v-if="likesLoading" class="loading-indicator">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+          </div>
+          <div v-else-if="likedPosts.length > 0" class="posts-list">
+            <div v-for="post in likedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
+              <h3 class="post-title">{{ post.title }}</h3>
+              <p class="post-content">{{ post.content }}</p>
+              <div class="post-footer">
+                <div class="post-actions">
+                  <div class="post-action">
+                    <i class="fas fa-heart"></i> {{ post.likes }}
+                  </div>
+                  <div class="post-action">
+                    <i class="far fa-comment"></i> {{ post.comments }}
+                  </div>
+                </div>
+                <div class="post-time">{{ formatDate(post.created_at) }}</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-content">
             <i class="far fa-heart"></i>
             <p>还没有喜欢任何帖子</p>
           </div>
@@ -144,7 +167,9 @@ export default {
       profileId: '',
       activeTab: 'posts',
       userPosts: [],
+      likedPosts: [],
       postsLoading: false,
+      likesLoading: false,
       error: null
     };
   },
@@ -216,15 +241,36 @@ export default {
       } finally {
         this.postsLoading = false;
       }
+    },
+    async fetchLikedPosts() {
+      try {
+        this.likesLoading = true;
+        const response = await apiService.posts.getLikedByUserId(this.profileId);
+        this.likedPosts = response.data.content || response.data || [];
+        console.log('获取到的用户点赞帖子:', this.likedPosts);
+      } catch (error) {
+        console.error('获取用户点赞帖子失败:', error);
+        this.error = '加载用户点赞帖子失败';
+      } finally {
+        this.likesLoading = false;
+      }
+    },
+    setActiveTab(tab) {
+      this.activeTab = tab;
+      
+      if (tab === 'posts' && this.userPosts.length === 0) {
+        this.fetchUserPosts();
+      } else if (tab === 'likes' && this.likedPosts.length === 0) {
+        this.fetchLikedPosts();
+      }
     }
   },
   created() {
     this.loading = true;
-    // Simulate API call
     setTimeout(() => {
       this.profileId = this.$route.params.id || '123';
       this.loading = false;
-      // 获取帖子
+      
       this.fetchUserPosts();
     }, 500);
   }

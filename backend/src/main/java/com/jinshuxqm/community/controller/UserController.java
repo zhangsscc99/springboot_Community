@@ -63,4 +63,28 @@ public class UserController {
                 .body("获取用户帖子失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取用户点赞过的帖子
+     */
+    @GetMapping("/{userId}/likes")
+    public ResponseEntity<?> getUserLikedPosts(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page, 
+            @RequestParam(defaultValue = "10") int size) {
+        
+        System.out.println("获取用户ID为 " + userId + " 点赞的帖子");
+        
+        try {
+            PagedResponseDTO<PostDTO> likedPosts = postService.getLikedPostsByUserId(userId, page, size);
+            return ResponseEntity.ok(likedPosts);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("用户不存在: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("获取用户点赞帖子失败: " + e.getMessage());
+        }
+    }
 } 

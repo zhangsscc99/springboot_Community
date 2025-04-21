@@ -5,6 +5,8 @@ import com.jinshuxqm.community.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -26,4 +28,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     // 添加此方法
     Page<Post> findByAuthorId(Long authorId, Pageable pageable);
+
+    // 查询用户点赞的帖子
+    @Query("SELECT p FROM Post p JOIN p.likes l WHERE l.user.id = :userId")
+    Page<Post> findPostsLikedByUser(@Param("userId") Long userId, Pageable pageable);
 } 
