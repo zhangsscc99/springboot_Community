@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import com.jinshuxqm.community.exception.ResourceNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -119,12 +120,13 @@ public class UserController {
      * 更新用户个人资料
      */
     @PutMapping("/{id}")
+    @Transactional
     @PreAuthorize("isAuthenticated() and (authentication.principal.id == #id or hasRole('ADMIN'))")
     public ResponseEntity<?> updateUserProfile(
             @PathVariable Long id,
             @RequestBody Map<String, String> profileData) {
         
-        System.out.println("更新用户ID为 " + id + " 的个人资料");
+        System.out.println("更新用户ID为 " + id + " 的个人资料: " + profileData);
         
         try {
             Optional<User> userOptional = userRepository.findById(id);
@@ -145,11 +147,7 @@ public class UserController {
                 user.setBio(profileData.get("bio"));
             }
             
-            // 更新邮箱（需要验证）
-            if (profileData.containsKey("email")) {
-                // 在实际应用中，这里应该进行邮箱格式验证和唯一性检查
-                user.setEmail(profileData.get("email"));
-            }
+            // 不再更新邮箱
             
             // 保存更新
             User updatedUser = userRepository.save(user);
@@ -158,7 +156,6 @@ public class UserController {
             Map<String, Object> response = new HashMap<>();
             response.put("id", updatedUser.getId());
             response.put("username", updatedUser.getUsername());
-            response.put("email", updatedUser.getEmail());
             response.put("avatar", updatedUser.getAvatar());
             response.put("bio", updatedUser.getBio());
             

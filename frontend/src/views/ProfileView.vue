@@ -21,7 +21,7 @@
     <template v-else>
       <div class="profile-info">
         <UserAvatar 
-          src="https://via.placeholder.com/100" 
+          :src="profileAvatar || 'https://via.placeholder.com/100'" 
           :username="profileName"
           class="profile-avatar-component"
         />
@@ -43,7 +43,7 @@
           </div>
         </div>
         
-        <p class="profile-bio">{{ profileBio }}</p>
+        <p class="profile-bio">{{ formattedProfileBio }}</p>
         
         <div class="profile-actions">
           <button class="follow-btn" v-if="!isCurrentUser">
@@ -193,10 +193,6 @@
             <label>个人简介</label>
             <textarea v-model="editForm.bio" class="form-control" placeholder="介绍一下自己吧..."></textarea>
           </div>
-          <div class="form-group">
-            <label>邮箱</label>
-            <input type="email" v-model="editForm.email" class="form-control" placeholder="输入您的邮箱" />
-          </div>
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="closeEditModal">取消</button>
@@ -223,7 +219,11 @@ export default {
   data() {
     return {
       loading: false,
-      profileId: '',
+      profileId: this.$route.params.id,
+      currentUserId: parseInt(localStorage.getItem('userId')) || null,
+      profileName: '',
+      profileBio: '',
+      profileAvatar: '',
       activeTab: 'posts',
       userPosts: [],
       likedPosts: [],
@@ -247,17 +247,8 @@ export default {
       isAuthenticated: 'isAuthenticated',
       currentUser: 'currentUser'
     }),
-    profileName() {
-      if (this.isCurrentUser) {
-        return this.currentUser?.username || '未知用户';
-      }
-      return this.profileId === '123' ? '咫尺燃灯' : 'User Not Found';
-    },
-    profileBio() {
-      if (this.isCurrentUser) {
-        return '这是您的个人资料页面，您可以在这里查看和管理您的帖子、喜欢和评论';
-      }
-      return this.profileId === '123' ? '科技|思考|阅读|写作 / 分享有趣有用的内容 / 欢迎交流' : '';
+    formattedProfileBio() {
+      return this.profileBio || '这个人很懒，还没有介绍自己...';
     },
     isCurrentUser() {
       if (!this.isAuthenticated || !this.currentUser) {
@@ -352,7 +343,7 @@ export default {
       this.editForm = {
         username: this.profileName,
         avatar: '',
-        bio: this.profileBio,
+        bio: this.formattedProfileBio,
         email: ''
       };
       this.showEditModal = true;
@@ -366,31 +357,21 @@ export default {
         
         await apiService.users.updateProfile(this.profileId, {
           avatar: this.editForm.avatar,
-          bio: this.editForm.bio,
-          email: this.editForm.email
+          bio: this.editForm.bio
         });
         
+        // 立即更新本地数据
         this.profileAvatar = this.editForm.avatar;
-        this.profileBio = this.editForm.bio;
+        this.profileBio = this.editForm.bio; // 更新 data 中的 profileBio
         
         alert('个人资料已更新');
         this.closeEditModal();
         
-        this.fetchUserProfile();
-        
-        // 更新用户界面显示
-        if (this.editForm.avatar) {
-          // 如果有新头像，更新头像
-          document.querySelector('.profile-avatar-component img').src = this.editForm.avatar;
-        }
-        
-        // 更新个人简介
-        if (this.editForm.bio) {
-          this.profileBio = this.editForm.bio;
-        }
+        // 页面刷新以确保一切更新
+        window.location.reload();
       } catch (error) {
         console.error('更新个人资料失败:', error);
-        alert('更新个人资料失败：' + (error.response?.data || error.message));
+        alert('更新个人资料失败: ' + (error.response?.data || error.message));
       } finally {
         this.saving = false;
       }
@@ -398,14 +379,11 @@ export default {
     async fetchUserProfile() {
       try {
         const response = await apiService.users.getProfile(this.profileId);
-        const userData = response.data;
         
-        this.profileName = userData.username;
-        this.profileBio = userData.bio || '这个人很懒，还没有介绍自己...';
-        this.profileAvatar = userData.avatar;
-        this.profileEmail = userData.email;
-        
-        // 更新其他数据...
+        // 更新数据
+        this.profileName = response.data.username;
+        this.profileBio = response.data.bio || '这个人很懒，还没有介绍自己...';
+        this.profileAvatar = response.data.avatar;
       } catch (error) {
         console.error('获取用户资料失败:', error);
       }
@@ -419,6 +397,10 @@ export default {
       
       this.fetchUserPosts();
     }, 500);
+  },
+  mounted() {
+    // 直接获取用户资料，不需要额外条件判断
+    this.fetchUserProfile();
   }
 }
 </script>

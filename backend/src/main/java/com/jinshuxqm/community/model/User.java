@@ -30,9 +30,8 @@ public class User {
     @Size(max = 20)
     private String username;
 
-    @NotBlank
+    @Email(message = "邮箱格式不正确")
     @Size(max = 50)
-    @Email
     private String email;
 
     @NotBlank

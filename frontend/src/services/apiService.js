@@ -140,8 +140,20 @@ const apiService = {
   
   // 用户相关
   users: {
-    getProfile(userId) {
-      return apiClient.get(`/api/users/${userId}`);
+    getProfile(userId, config = {}) {
+      // 设置默认的 headers 禁用缓存
+      const defaultConfig = {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      };
+      
+      // 合并配置
+      const mergedConfig = { ...defaultConfig, ...config };
+      
+      return apiClient.get(`/api/users/${userId}`, mergedConfig);
     },
     updateProfile(userId, profileData) {
       return apiClient.put(`/api/users/${userId}`, profileData);

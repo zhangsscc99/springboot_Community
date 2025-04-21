@@ -1,7 +1,7 @@
 <template>
   <div class="user-avatar-container">
       <img 
-        :src="src || defaultAvatar" 
+        :src="imageSource" 
       :alt="`${username}'s avatar`" 
       class="user-avatar"
         @error="handleImageError"
@@ -20,7 +20,7 @@ export default {
     },
     username: {
       type: String,
-      default: 'User'
+      required: true
     },
     showUsername: {
       type: Boolean,
@@ -31,6 +31,18 @@ export default {
     return {
       defaultAvatar: 'https://thumbs.dreamstime.com/b/%E9%BB%98%E8%AE%A4%E5%A4%B4%E5%83%8F%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E5%9B%BE%E6%A0%87-%E7%A4%BE%E4%BA%A4%E5%AA%92%E4%BD%93%E7%94%A8%E6%88%B7%E7%9F%A2%E9%87%8F%E5%9B%BE-%E7%A4%BE%E4%BA%A4%E5%AA%92%E4%BD%93%E7%94%A8%E6%88%B7%E7%9F%A2%E9%87%8F%E5%9B%BE%E5%9B%BE%E5%83%8F-209162840.jpg',
       imageError: false
+    }
+  },
+  computed: {
+    imageSource() {
+      const timestamp = new Date().getTime();
+      if (this.src) {
+        if (this.src.startsWith('http')) {
+          return `${this.src}${this.src.includes('?') ? '&' : '?'}t=${timestamp}`;
+        }
+        return `${this.src}?t=${timestamp}`;
+      }
+      return `https://via.placeholder.com/100?text=${this.username.charAt(0).toUpperCase()}&t=${timestamp}`;
     }
   },
   methods: {
