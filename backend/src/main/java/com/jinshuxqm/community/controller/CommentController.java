@@ -54,30 +54,37 @@ public class CommentController {
 
     // 添加评论
     @PostMapping("/posts/{postId}/comments")
-    public ResponseEntity<CommentDTO> addComment(
+    public ResponseEntity<?> addComment(
             @PathVariable Long postId,
             @Valid @RequestBody CommentDTO commentDTO,
             @AuthenticationPrincipal User currentUser) {
         
-        if (currentUser == null) {
-            throw new UnauthorizedException("用户未登录");
-        }
-        
         try {
-            // 设置帖子ID
-            commentDTO.setPostId(postId);
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("用户未登录，请先登录");
+            }
             
-            // 记录接收到的请求
-            System.out.println("接收到评论请求: " + commentDTO);
+            // 设置帖子ID和详细日志
+            commentDTO.setPostId(postId);
+            System.out.println("接收到评论请求: postId=" + postId + ", 用户=" + currentUser.getUsername() + ", 内容=" + commentDTO.getContent());
+            
+            // 检查帖子是否存在
+            if (!postService.existsById(postId)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("要评论的帖子不存在");
+            }
             
             // 创建评论
             CommentDTO createdComment = commentService.createComment(postId, commentDTO, currentUser);
+            System.out.println("评论创建成功，ID: " + createdComment.getId());
             
             // 返回创建的评论
             return ResponseEntity.ok(createdComment);
         } catch (Exception e) {
             e.printStackTrace();
-            throw e;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("创建评论时发生错误: " + e.getMessage());
         }
     }
 
