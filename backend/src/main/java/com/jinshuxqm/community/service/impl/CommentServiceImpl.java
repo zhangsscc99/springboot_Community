@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +39,14 @@ public class CommentServiceImpl implements CommentService {
      * 获取帖子的评论（分页，带回复）
      */
     @Override
-    public PagedResponseDTO<CommentDTO> getCommentsByPostId(Long postId, int page, int size, User currentUser) {
+    public PagedResponseDTO<CommentDTO> getCommentsByPostId(Long postId, int page, int size, Authentication authentication) {
+        // 从Authentication中提取User
+        User currentUser = null;
+        if (authentication != null) {
+            String username = authentication.getName();
+            currentUser = userRepository.findByUsername(username).orElse(null);
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
         
         // 验证帖子是否存在
@@ -77,54 +85,50 @@ public class CommentServiceImpl implements CommentService {
      */
     @Override
     @Transactional
-    public CommentDTO createComment(Long postId, CommentDTO commentDTO, User currentUser) {
-        Post post = postRepository.findById(postId)
-            .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
-        
-        Comment comment = Comment.builder()
-            .content(commentDTO.getContent())
-            .post(post)
-            .author(currentUser)
-            .likes(0)
-            .isDeleted(false)
-            .build();
-        
-        // 如果是回复他人评论
-        if (commentDTO.getParentId() != null) {
-            Comment parentComment = commentRepository.findById(commentDTO.getParentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentDTO.getParentId()));
-            
-            // 确保父评论属于同一帖子
-            if (!parentComment.getPost().getId().equals(postId)) {
-                throw new ResourceNotFoundException("Comment", "id", commentDTO.getParentId());
+    public CommentDTO createComment(Long postId, CommentDTO commentDTO, Authentication authentication) {
+        try {
+            // 从Authentication中提取User
+            User author = null;
+            if (authentication != null) {
+                String username = authentication.getName();
+                author = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
             }
             
-            comment.setParent(parentComment);
+            Comment comment = new Comment();
+            comment.setContent(commentDTO.getContent());
             
-            // 如果指定了回复对象
-            if (commentDTO.getReplyToUser() != null && commentDTO.getReplyToUser().getId() != null) {
-                User replyToUser = userRepository.findById(commentDTO.getReplyToUser().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", commentDTO.getReplyToUser().getId()));
-                
-                comment.setReplyToUser(replyToUser);
-            } else {
-                // 默认回复父评论的作者
-                comment.setReplyToUser(parentComment.getAuthor());
+            // 处理null用户情况
+            if (author == null) {
+                // 获取系统用户
+                author = userRepository.findByUsername("system")
+                    .orElseThrow(() -> new RuntimeException("系统用户不存在"));
             }
+            
+            // 设置作者和帖子
+            comment.setAuthor(author);
+            
+            Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
+            comment.setPost(post);
+            
+            // 处理父评论(如果是回复)
+            if (commentDTO.getParentId() != null) {
+                Comment parentComment = commentRepository.findById(commentDTO.getParentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentDTO.getParentId()));
+                comment.setParent(parentComment);
+            }
+            
+            // 保存评论
+            comment = commentRepository.save(comment);
+            
+            // 将实体转换为DTO并返回
+            return convertToDTO(comment, author);
+        } catch (Exception e) {
+            System.err.println("创建评论出错: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
-        
-        Comment savedComment = commentRepository.save(comment);
-        
-        // 更新帖子评论数
-        long commentCount = commentRepository.countByPostIdAndIsDeletedFalse(postId);
-        post.setComments((int) commentCount);
-        postRepository.save(post);
-        
-        // 构建带有点赞信息的DTO
-        CommentDTO savedCommentDTO = CommentDTO.fromEntity(savedComment, false);
-        savedCommentDTO.setLikedByCurrentUser(false);
-        
-        return savedCommentDTO;
     }
     
     /**
@@ -132,7 +136,16 @@ public class CommentServiceImpl implements CommentService {
      */
     @Override
     @Transactional
-    public void deleteComment(Long commentId, User currentUser) {
+    public void deleteComment(Long commentId, Authentication authentication) {
+        // 提取用户
+        User currentUser = null;
+        if (authentication != null) {
+            currentUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new UnauthorizedException("用户不存在"));
+        } else {
+            throw new UnauthorizedException("需要登录才能删除评论");
+        }
+        
         Comment comment = commentRepository.findById(commentId)
             .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
         
@@ -158,7 +171,16 @@ public class CommentServiceImpl implements CommentService {
      */
     @Override
     @Transactional
-    public void likeComment(Long commentId, User currentUser) {
+    public void likeComment(Long commentId, Authentication authentication) {
+        // 提取用户
+        User currentUser = null;
+        if (authentication != null) {
+            currentUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new UnauthorizedException("用户不存在"));
+        } else {
+            throw new UnauthorizedException("需要登录才能点赞评论");
+        }
+        
         Comment comment = commentRepository.findById(commentId)
             .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
         
@@ -173,7 +195,16 @@ public class CommentServiceImpl implements CommentService {
      */
     @Override
     @Transactional
-    public void unlikeComment(Long commentId, User currentUser) {
+    public void unlikeComment(Long commentId, Authentication authentication) {
+        // 提取用户
+        User currentUser = null;
+        if (authentication != null) {
+            currentUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new UnauthorizedException("用户不存在"));
+        } else {
+            throw new UnauthorizedException("需要登录才能取消点赞评论");
+        }
+        
         Comment comment = commentRepository.findById(commentId)
             .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
         
@@ -181,5 +212,38 @@ public class CommentServiceImpl implements CommentService {
             comment.removeLike(currentUser);
             commentRepository.save(comment);
         }
+    }
+
+    /**
+     * 将评论实体转换为DTO
+     */
+    private CommentDTO convertToDTO(Comment comment, User currentUser) {
+        // 使用构造函数或工厂方法创建DTO
+        CommentDTO dto = CommentDTO.fromEntity(comment, false);
+        
+        // 只调用已知存在的setter
+        dto.setId(comment.getId());
+        dto.setContent(comment.getContent());
+        dto.setPostId(comment.getPost().getId());
+        
+        // 设置用户是否点赞
+        if (currentUser != null) {
+            dto.setLikedByCurrentUser(comment.isLikedByUser(currentUser));
+        }
+        
+        if (comment.getParent() != null) {
+            dto.setParentId(comment.getParent().getId());
+        }
+        
+        // 处理回复
+        if (comment.getReplies() != null && !comment.getReplies().isEmpty()) {
+            List<CommentDTO> replies = comment.getReplies().stream()
+                .filter(reply -> !reply.getIsDeleted())
+                .map(reply -> CommentDTO.fromEntity(reply, false))
+                .collect(Collectors.toList());
+            dto.setReplies(replies);
+        }
+        
+        return dto;
     }
 } 

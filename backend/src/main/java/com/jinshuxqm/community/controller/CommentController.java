@@ -10,13 +10,13 @@ import com.jinshuxqm.community.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/")
 public class CommentController {
 
     @Autowired
@@ -34,7 +34,7 @@ public class CommentController {
             @PathVariable Long postId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
         
         try {
             // 添加调试日志
@@ -45,7 +45,7 @@ public class CommentController {
                 return ResponseEntity.notFound().build();
             }
             
-            return ResponseEntity.ok(commentService.getCommentsByPostId(postId, page, size, currentUser));
+            return ResponseEntity.ok(commentService.getCommentsByPostId(postId, page, size, authentication));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -57,17 +57,29 @@ public class CommentController {
     public ResponseEntity<?> addComment(
             @PathVariable Long postId,
             @Valid @RequestBody CommentDTO commentDTO,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
+        
+        System.out.println("=== 收到评论创建请求 ===");
+        System.out.println("路径参数 postId: " + postId);
+        System.out.println("请求体: " + commentDTO);
         
         try {
-            if (currentUser == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("用户未登录，请先登录");
+            // 从Authentication直接获取用户
+            User currentUser = null;
+            if (authentication != null) {
+                String username = authentication.getName();
+                currentUser = userService.findByUsername(username);
+                System.out.println("认证名称: " + username);
+                System.out.println("当前用户: " + (currentUser != null ? currentUser.getUsername() : "未找到用户"));
+            } else {
+                System.out.println("认证对象为null");
             }
             
             // 设置帖子ID和详细日志
             commentDTO.setPostId(postId);
-            System.out.println("接收到评论请求: postId=" + postId + ", 用户=" + currentUser.getUsername() + ", 内容=" + commentDTO.getContent());
+            System.out.println("接收到评论请求: postId=" + postId + ", 用户=" + 
+                (currentUser != null ? currentUser.getUsername() : "系统用户") + 
+                ", 内容=" + commentDTO.getContent());
             
             // 检查帖子是否存在
             if (!postService.existsById(postId)) {
@@ -76,7 +88,7 @@ public class CommentController {
             }
             
             // 创建评论
-            CommentDTO createdComment = commentService.createComment(postId, commentDTO, currentUser);
+            CommentDTO createdComment = commentService.createComment(postId, commentDTO, authentication);
             System.out.println("评论创建成功，ID: " + createdComment.getId());
             
             // 返回创建的评论
@@ -93,18 +105,18 @@ public class CommentController {
     public ResponseEntity<CommentDTO> addReply(
             @PathVariable Long commentId,
             @Valid @RequestBody CommentDTO replyDTO,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
         
-        return ResponseEntity.ok(commentService.createComment(replyDTO.getPostId(), replyDTO, currentUser));
+        return ResponseEntity.ok(commentService.createComment(replyDTO.getPostId(), replyDTO, authentication));
     }
 
     // 删除评论
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
         
-        commentService.deleteComment(commentId, currentUser);
+        commentService.deleteComment(commentId, authentication);
         return ResponseEntity.ok().build();
     }
 
@@ -112,9 +124,9 @@ public class CommentController {
     @PostMapping("/comments/{commentId}/like")
     public ResponseEntity<Void> likeComment(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
         
-        commentService.likeComment(commentId, currentUser);
+        commentService.likeComment(commentId, authentication);
         return ResponseEntity.ok().build();
     }
 
@@ -122,9 +134,9 @@ public class CommentController {
     @DeleteMapping("/comments/{commentId}/like")
     public ResponseEntity<Void> unlikeComment(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal User currentUser) {
+            Authentication authentication) {
         
-        commentService.unlikeComment(commentId, currentUser);
+        commentService.unlikeComment(commentId, authentication);
         return ResponseEntity.ok().build();
     }
 } 

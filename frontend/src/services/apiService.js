@@ -203,7 +203,25 @@ const apiService = {
     },
     create(postId, commentData) {
       console.log(`发送评论到服务器：/api/posts/${postId}/comments`, commentData);
-      return apiClient.post(`/api/posts/${postId}/comments`, commentData);
+      
+      // 添加详细日志以帮助调试
+      console.log('发送详细信息:', {
+        url: `/api/posts/${postId}/comments`,
+        data: commentData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : 'None'
+        }
+      });
+      
+      // 确保数据结构符合后端期望
+      const formattedData = {
+        content: commentData.content,
+        parentId: commentData.parentId || null,
+        // 其他必要的字段
+      };
+      
+      return apiClient.post(`/api/posts/${postId}/comments`, formattedData);
     },
     createReply(commentId, replyData) {
       return apiClient.post(`/api/comments/${commentId}/replies`, replyData);

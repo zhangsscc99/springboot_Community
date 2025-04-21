@@ -75,3 +75,12 @@ Spring Boot实现的锦书情感社区RESTful API后端服务。
 ## 数据库
 
 系统使用MySQL数据库存储数据。通过Spring Data JPA进行对象关系映射，可以轻松地替换为其他支持的数据库系统。 
+
+
+
+
+(base) PS C:\Users\zhang\relationship_complex\relationship_community> curl.exe -X POST "http://communityapi.jinshuqingci.com/api/posts/4/comments" `
+>>   -H "Content-Type: application/json" `
+>>   -H "Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ5dzQ1NTQiLCJpYXQiOjE3NDUxMzc3MTYsImV4cCI6MTc0NTIyNDExNn0.8eN5rTG0D2TMojXKUEekxRUpDqNvZWdpib1GIci2xs7tEOiFdHost5-zYhXZgtzDGaJm2zIsSgPvK3QDCRbqOw" `
+>>   -d '{\"content\":\"这是一条测试评论\"}'
+用户未登录，请先登录
