@@ -15,6 +15,8 @@ import com.jinshuxqm.community.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import com.jinshuxqm.community.exception.ResourceNotFoundException;
+import com.jinshuxqm.community.dto.PagedResponseDTO;
+import com.jinshuxqm.community.dto.PostDTO;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -393,5 +398,33 @@ public class PostServiceImpl implements PostService {
     @Override
     public boolean existsById(Long id) {
         return postRepository.existsById(id);
+    }
+
+    @Override
+    public PagedResponseDTO<PostDTO> getPostsByUserId(Long userId, int page, int size) {
+        // 验证用户是否存在
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // 创建分页请求
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        // 获取用户的帖子
+        Page<Post> postPage = postRepository.findByAuthorId(userId, pageable);
+        
+        // 转换为 PostDTO 列表
+        List<PostDTO> content = postPage.getContent().stream()
+                .map(post -> PostDTO.fromEntity(post, null))
+                .collect(Collectors.toList());
+        
+        // 返回分页响应
+        return new PagedResponseDTO<>(
+                content,
+                postPage.getNumber(),
+                postPage.getSize(),
+                postPage.getTotalElements(),
+                postPage.getTotalPages(),
+                postPage.isLast()
+        );
     }
 } 

@@ -3,8 +3,11 @@ package com.jinshuxqm.community.service;
 import com.jinshuxqm.community.model.Post;
 import com.jinshuxqm.community.model.dto.PostRequest;
 import com.jinshuxqm.community.model.dto.PostResponse;
+import com.jinshuxqm.community.dto.PagedResponseDTO;
+import com.jinshuxqm.community.dto.PostDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -56,4 +59,7 @@ public interface PostService {
     
     // 检查帖子是否存在
     boolean existsById(Long id);
+    
+    // 添加这个方法
+    PagedResponseDTO<PostDTO> getPostsByUserId(Long userId, int page, int size);
 } 

@@ -131,6 +131,7 @@
 <script>
 import UserAvatar from '@/components/UserAvatar.vue';
 import { mapGetters } from 'vuex';
+import apiService from '@/services/apiService';
 
 export default {
   name: 'ProfileView',
@@ -142,24 +143,9 @@ export default {
       loading: false,
       profileId: '',
       activeTab: 'posts',
-      userPosts: [
-        {
-          id: 1,
-          title: "执行间隙为什么会毁掉一个人？",
-          content: "刚刚读到一篇好文：一个人真正废掉的核心原因，往往不是能力不足或资源匮乏，而是从想法到行动的「执行间隙」太大，想做的事情迟迟不能落地。",
-          likes: 1488,
-          comments: 3468,
-          created_at: "2023-05-13T14:45:00Z"
-        },
-        {
-          id: 2,
-          title: "大厂程序员的那些事",
-          content: "今天想和大家分享一下在大厂工作的一些感受和思考。大厂工作节奏确实比较快，但是学习的机会也很多...",
-          likes: 254,
-          comments: 78,
-          created_at: "2023-05-10T09:15:00Z"
-        }
-      ]
+      userPosts: [],
+      postsLoading: false,
+      error: null
     };
   },
   computed: {
@@ -214,6 +200,22 @@ export default {
     },
     goToPostDetail(postId) {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
+    },
+    async fetchUserPosts() {
+      try {
+        this.postsLoading = true;
+        // 修正: profileId 而不是 userId
+        const response = await apiService.posts.getByUserId(this.profileId); 
+        
+        // 确保正确映射数据
+        this.userPosts = response.data.content || response.data || [];
+        console.log('获取到的用户帖子:', this.userPosts);
+      } catch (error) {
+        console.error('获取用户帖子失败:', error);
+        this.error = '加载用户帖子失败';
+      } finally {
+        this.postsLoading = false;
+      }
     }
   },
   created() {
@@ -222,6 +224,8 @@ export default {
     setTimeout(() => {
       this.profileId = this.$route.params.id || '123';
       this.loading = false;
+      // 获取帖子
+      this.fetchUserPosts();
     }, 500);
   }
 }

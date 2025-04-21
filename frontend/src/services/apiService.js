@@ -189,6 +189,12 @@ const apiService = {
     // 取消收藏
     unfavorite(id) {
       return apiClient.delete(`/api/posts/${id}/favorite`);
+    },
+    // 获取用户帖子
+    getByUserId(userId, page = 0, size = 10) {
+      return apiClient.get(`/api/users/${userId}/posts`, {
+        params: { page, size }
+      });
     }
   },
   

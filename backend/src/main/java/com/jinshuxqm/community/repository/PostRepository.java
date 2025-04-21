@@ -23,4 +23,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     
     // 根据标题查询帖子
     Optional<Post> findByTitle(String title);
+
+    // 添加此方法
+    Page<Post> findByAuthorId(Long authorId, Pageable pageable);
 } 

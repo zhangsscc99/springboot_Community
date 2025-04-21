@@ -50,6 +50,9 @@ public class Post {
     @Column(nullable = false)
     private Integer comments = 0;
 
+    // slug 属性及方法
+    private String slug;
+
     // 构造函数
     public Post() {
         this.createdAt = LocalDateTime.now();
@@ -171,10 +174,29 @@ public class Post {
     }
 
     public Integer getComments() {
-        return comments;
+        // 优先从 stats 获取计数
+        if (this.stats != null) {
+            return this.stats.getCommentCount();
+        }
+        // 否则返回自身存储的值
+        return comments != null ? comments : 0;
     }
 
     public void setComments(Integer comments) {
         this.comments = comments;
+    }
+
+    // slug 属性及方法
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    // views 方法 (可能依赖于 PostStats)
+    public int getViews() {
+        return this.stats != null ? this.stats.getViewCount() : 0;
     }
 } 
