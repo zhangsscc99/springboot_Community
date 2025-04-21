@@ -65,4 +65,7 @@ public interface PostService {
     
     // 添加这个方法
     PagedResponseDTO<PostDTO> getLikedPostsByUserId(Long userId, int page, int size);
+    
+    // 添加这个方法
+    PagedResponseDTO<PostDTO> getFavoritedPostsByUserId(Long userId, int page, int size);
 } 

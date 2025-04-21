@@ -78,10 +78,10 @@
         </div>
         <div 
           class="profile-tab" 
-          :class="{ active: activeTab === 'comments' }"
-          @click="setActiveTab('comments')"
+          :class="{ active: activeTab === 'favorites' }"
+          @click="setActiveTab('favorites')"
         >
-          评论
+          收藏
         </div>
       </div>
       
@@ -140,10 +140,33 @@
           </div>
         </div>
         
-        <div v-else-if="activeTab === 'comments'" class="comments-list">
-          <div class="no-content">
-            <i class="far fa-comment"></i>
-            <p>还没有评论任何帖子</p>
+        <div v-else-if="activeTab === 'favorites'" class="favorites-content">
+          <div v-if="favoritesLoading" class="loading-indicator">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+          </div>
+          <div v-else-if="favoritedPosts && favoritedPosts.length > 0" class="posts-list">
+            <div v-for="post in favoritedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post.id)">
+              <h3 class="post-title">{{ post.title }}</h3>
+              <p class="post-content">{{ post.content }}</p>
+              <div class="post-footer">
+                <div class="post-actions">
+                  <div class="post-action">
+                    <i class="far fa-heart"></i> {{ post.likes }}
+                  </div>
+                  <div class="post-action">
+                    <i class="far fa-comment"></i> {{ post.comments }}
+                  </div>
+                  <div class="post-action bookmark">
+                    <i class="fas fa-bookmark"></i>
+                  </div>
+                </div>
+                <div class="post-time">{{ formatDate(post.created_at) }}</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="no-content">
+            <i class="far fa-bookmark"></i>
+            <p>还没有收藏任何帖子</p>
           </div>
         </div>
       </div>
@@ -170,7 +193,9 @@ export default {
       likedPosts: [],
       postsLoading: false,
       likesLoading: false,
-      error: null
+      error: null,
+      favoritedPosts: [],
+      favoritesLoading: false
     };
   },
   computed: {
@@ -262,6 +287,21 @@ export default {
         this.fetchUserPosts();
       } else if (tab === 'likes' && this.likedPosts.length === 0) {
         this.fetchLikedPosts();
+      } else if (tab === 'favorites' && this.favoritedPosts.length === 0) {
+        this.fetchFavoritedPosts();
+      }
+    },
+    async fetchFavoritedPosts() {
+      try {
+        this.favoritesLoading = true;
+        const response = await apiService.posts.getFavoritedByUserId(this.profileId);
+        this.favoritedPosts = response.data.content || response.data || [];
+        console.log('获取到的用户收藏帖子:', this.favoritedPosts);
+      } catch (error) {
+        console.error('获取用户收藏帖子失败:', error);
+        this.error = '加载用户收藏帖子失败';
+      } finally {
+        this.favoritesLoading = false;
       }
     }
   },
@@ -573,5 +613,10 @@ export default {
     padding: 6px 15px;
     font-size: 13px;
   }
+}
+
+/* 为收藏图标添加样式 */
+.bookmark {
+  color: var(--primary-color);
 }
 </style>

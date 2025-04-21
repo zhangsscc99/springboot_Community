@@ -30,6 +30,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByAuthorId(Long authorId, Pageable pageable);
 
     // 查询用户点赞的帖子
-    @Query("SELECT p FROM Post p JOIN p.likes l WHERE l.user.id = :userId")
+    @Query("SELECT DISTINCT p FROM Post p JOIN p.likes l WHERE l.user.id = :userId")
     Page<Post> findPostsLikedByUser(@Param("userId") Long userId, Pageable pageable);
+
+    // 查询用户收藏的帖子
+    @Query("SELECT DISTINCT p FROM Post p JOIN p.favorites f WHERE f.user.id = :userId")
+    Page<Post> findPostsFavoritedByUser(@Param("userId") Long userId, Pageable pageable);
 } 

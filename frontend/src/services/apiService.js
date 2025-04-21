@@ -201,6 +201,12 @@ const apiService = {
       return apiClient.get(`/api/users/${userId}/likes`, {
         params: { page, size }
       });
+    },
+    // 获取用户收藏的帖子
+    getFavoritedByUserId(userId, page = 0, size = 10) {
+      return apiClient.get(`/api/users/${userId}/favorites`, {
+        params: { page, size }
+      });
     }
   },
   

@@ -87,4 +87,30 @@ public class UserController {
                 .body("获取用户点赞帖子失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取用户收藏的帖子
+     */
+    @GetMapping("/{userId}/favorites")
+    public ResponseEntity<?> getUserFavoritedPosts(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page, 
+            @RequestParam(defaultValue = "10") int size) {
+        
+        System.out.println("获取用户ID为 " + userId + " 收藏的帖子");
+        
+        try {
+            System.out.println("正在尝试查询用户ID为" + userId + "的收藏帖子");
+            PagedResponseDTO<PostDTO> favoritedPosts = postService.getFavoritedPostsByUserId(userId, page, size);
+            return ResponseEntity.ok(favoritedPosts);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("用户不存在: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("获取收藏帖子时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("获取用户收藏帖子失败: " + e.getMessage());
+        }
+    }
 } 
