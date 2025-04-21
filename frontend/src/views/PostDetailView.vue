@@ -430,50 +430,20 @@ export default {
     
     // 提交评论
     async submitComment() {
-      if (!this.newComment.trim()) {
-        alert('请输入评论内容');
-        return;
-      }
-      
-      if (!this.isAuthenticated) {
-        alert('请先登录');
-        return;
+      if (!this.newComment.trim() || !this.isAuthenticated) {
+        return; // 如果内容为空或未登录，不执行
       }
       
       this.commentLoading = true;
       try {
-        console.log('准备提交评论');
-        
-        // 创建评论数据对象
-        const commentData = {
-          content: this.newComment.trim(),
-          postId: this.postId  // 确保包含帖子ID
-        };
-        
-        console.log('提交评论数据:', commentData);
-        
-        // 直接使用axios发送请求以排除apiService可能的问题
-        const response = await axios.post(
-          `/api/posts/${this.postId}/comments`, 
-          commentData,
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        
-        console.log('评论提交响应:', response);
-        
-        if (response.data) {
-          // 添加到评论列表
-          this.comments.unshift(response.data);
-          this.newComment = '';
-          
-          // 更新评论计数
-          if (this.post) {
-            this.post.comments = (this.post.comments || 0) + 1;
-          }
-        }
+        // 修改这一行 - 使用正确的方法
+        await apiService.comments.create(this.postId, { content: this.newComment.trim() });
+        this.newComment = ''; // 清空输入框
+        // 重新加载评论
+        await this.fetchPostComments(); // 使用现有的获取评论方法
+        console.log('评论已添加并刷新');
       } catch (error) {
-        console.error('提交评论失败:', error.response || error);
-        alert('评论提交失败: ' + (error.response?.data?.message || error.message || '未知错误'));
+        console.error('提交评论出错:', error);
       } finally {
         this.commentLoading = false;
       }
@@ -633,6 +603,17 @@ export default {
       } finally {
         this.commentsLoading = false;
       }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
   },
   async mounted() {

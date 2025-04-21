@@ -234,6 +234,10 @@ const apiService = {
     },
     unlike(commentId) {
       return apiClient.delete(`/api/comments/${commentId}/like`);
+    },
+    // 注意URL格式
+    addComment(postId, content) {
+      return apiClient.post(`/api/posts/${postId}/comments`, { content });
     }
   },
   
