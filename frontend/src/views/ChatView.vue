@@ -43,17 +43,18 @@
           </div>
 
           <!-- Message bubble -->
-          <div class="message" :class="{ 'own-message': isOwnMessage(message) }">
+          <div class="message" :class="{ 
+            'message-sent': isOwnMessage(message),
+            'message-received': !isOwnMessage(message)
+          }">
             <div class="avatar" v-if="!isOwnMessage(message)">
               <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
             </div>
-            <div class="message-content">
-              <div class="message-bubble" :class="{ 
-                'own-bubble': isOwnMessage(message),
-                'failed': message.sendFailed
-              }">
-                {{ message.content }}
-              </div>
+            <div class="message-content" :class="{ 
+              'own-bubble': isOwnMessage(message),
+              'failed': message.sendFailed
+            }">
+              {{ message.content }}
               <div v-if="isOwnMessage(message)" class="message-status" :class="{ 'failed': message.sendFailed }">
                 <span v-if="message.sendFailed">
                   发送失败 <button class="retry-button" @click="retryMessage(message)">重试</button>
@@ -156,7 +157,16 @@ export default {
     this.setupSseConnection();
   },
   mounted() {
-    // No need for auto-resize with a standard input
+    // Force scroll to bottom on mount
+    this.$nextTick(() => {
+      this.scrollToBottom();
+    });
+    
+    // Focus on input field
+    const input = document.querySelector('.chat-input');
+    if (input) {
+      input.focus();
+    }
   },
   beforeUnmount() {
     this.closeSseConnection();
@@ -479,6 +489,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
   background-color: #f6f6f6;
   position: relative;
   margin: 0 auto;
@@ -491,11 +502,12 @@ export default {
 .chat-header {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background-color: #f6f6f6;
   border-bottom: 1px solid #e0e0e0;
   z-index: 10;
   flex-shrink: 0; /* Prevent header from shrinking */
+  height: 50px; /* Fixed height */
 }
 
 .back-button, .menu-button {
@@ -529,10 +541,11 @@ export default {
 .chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 8px;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  position: relative; /* Establish positioning context */
+  position: relative;
+  height: calc(100vh - 110px); /* Adjusted height: viewport height minus header and input */
 }
 
 .message-list {
@@ -542,12 +555,12 @@ export default {
 }
 
 .message-wrapper {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .date-divider {
   text-align: center;
-  margin: 20px 0;
+  margin: 10px 0;
   color: #999;
   font-size: 12px;
   background: #cecece;
@@ -567,15 +580,19 @@ export default {
 
 .message {
   display: flex;
-  flex-direction: row;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   align-items: flex-start;
   max-width: 85%;
 }
 
-.message.own-message {
-  margin-left: auto;
+.message-sent {
   flex-direction: row-reverse;
+  margin-left: auto;
+}
+
+.message-received {
+  flex-direction: row;
+  margin-right: auto;
 }
 
 .avatar {
@@ -591,6 +608,28 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.message-content {
+  padding: 10px 15px;
+  border-radius: 16px;
+  word-break: break-word;
+  position: relative;
+}
+
+.message-sent .message-content {
+  background-color: #95ec69;
+  color: #000;
+  border-top-right-radius: 4px;
+  margin-right: 5px;
+}
+
+.message-received .message-content {
+  background-color: #ffffff;
+  color: #000;
+  border-top-left-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-left: 5px;
 }
 
 .message-bubble {
@@ -638,26 +677,6 @@ export default {
   text-decoration: underline;
 }
 
-.message-content {
-  max-width: 70%;
-  padding: 10px 15px;
-  border-radius: 16px;
-  word-break: break-word;
-}
-
-.message-sent .message-content {
-  background-color: #95ec69;
-  color: #000;
-  border-top-right-radius: 4px;
-}
-
-.message-received .message-content {
-  background-color: #ffffff;
-  color: #000;
-  border-top-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
 .message-sender {
   font-size: 12px;
   color: #999;
@@ -696,7 +715,9 @@ export default {
 
 /* Updated chat input styles for desktop and mobile */
 .chat-input-bar {
-  padding: 10px 12px;
+  position: relative; /* Change from sticky to relative */
+  bottom: 0;
+  padding: 8px;
   border-top: 1px solid #e6e6e6;
   display: flex;
   align-items: center;
@@ -705,6 +726,7 @@ export default {
   box-sizing: border-box;
   flex-shrink: 0; /* Prevent input from shrinking */
   width: 100%; /* Full width */
+  height: 60px; /* Fixed height */
 }
 
 .chat-input-container {
@@ -790,40 +812,34 @@ export default {
   line-height: 1.4;
 }
 
-/* Bottom space for mobile browsers to account for navigation bars */
+/* Remove fixed positioning on mobile */
 @media (max-width: 768px) {
   .chat-input-bar {
-    position: fixed;
-    bottom: 56px; /* Ensure it stays just above the navbar on mobile */
-    left: 0;
-    right: 0;
-    padding: 8px 10px;
-    max-width: 100%;
+    position: relative;
+    bottom: auto;
+    padding: 8px;
   }
   
   .chat-body {
-    padding-bottom: 140px; /* Larger padding on mobile to ensure content is visible */
-  }
-  
-  .chat-input {
-    padding: 6px 8px;
-    font-size: 15px;
+    padding-bottom: 8px; /* Reduced padding */
+    height: calc(100vh - 110px); /* Adjusted height calculation */
   }
   
   .chat-container {
-    max-width: 100%;
-    border: none;
+    height: 100vh;
+    max-height: 100vh;
   }
 }
 
 @media (min-width: 769px) {
   /* Desktop specific styles */
   .chat-container {
-    height: calc(100vh - 20px); /* Slightly less than viewport height to prevent scroll */
+    height: 100vh;
+    max-height: 100vh;
   }
   
   .chat-body {
-    padding-bottom: 10px; /* Reduced padding as we don't need space for fixed input */
+    height: calc(100vh - 110px); /* Adjusted height */
   }
 }
 
