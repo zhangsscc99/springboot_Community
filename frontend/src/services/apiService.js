@@ -200,6 +200,12 @@ const apiService = {
         params: { page, size, sortBy, sortDir }
       });
     },
+    // 搜索帖子
+    search(query, page = 0, size = 10) {
+      return apiClient.get('/api/posts/search', {
+        params: { query, page, size }
+      });
+    },
     // 根据标签获取帖子
     getByTab: (tab, config = {}) => {
       return apiClient.get(`/api/posts/tab/${tab}`, config);

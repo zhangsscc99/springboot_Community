@@ -18,6 +18,11 @@ const routes = [
     component: () => import('../views/RegisterView.vue')
   },
   {
+    path: '/search',
+    name: 'search',
+    component: () => import(/* webpackChunkName: "search" */ '../views/SearchView.vue')
+  },
+  {
     path: '/create-post',
     name: 'create-post',
     component: () => import('../views/CreatePostView.vue'),

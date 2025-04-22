@@ -7,9 +7,12 @@ import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 public interface PostService {
     // 创建帖子
@@ -68,4 +71,13 @@ public interface PostService {
     
     // 添加这个方法
     PagedResponseDTO<PostDTO> getFavoritedPostsByUserId(Long userId, int page, int size);
+
+    /**
+     * 搜索帖子
+     * 
+     * @param query 搜索关键词
+     * @param pageable 分页信息
+     * @return 匹配的帖子分页
+     */
+    Page<Post> searchPosts(String query, Pageable pageable);
 } 

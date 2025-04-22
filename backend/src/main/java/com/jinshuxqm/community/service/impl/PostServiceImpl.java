@@ -39,6 +39,7 @@ import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
 import java.util.concurrent.CompletableFuture;
 import java.util.ArrayList;
+import org.springframework.data.domain.PageImpl;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -509,5 +510,15 @@ public class PostServiceImpl implements PostService {
                 favoritedPosts.getTotalPages(),
                 favoritedPosts.isLast()
         );
+    }
+
+    @Override
+    public Page<Post> searchPosts(String query, Pageable pageable) {
+        if (query == null || query.trim().isEmpty()) {
+            return new PageImpl<>(new ArrayList<>());
+        }
+        
+        // 使用仓库方法执行搜索
+        return postRepository.searchByTitleOrContent(query.trim(), pageable);
     }
 } 

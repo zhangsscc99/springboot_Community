@@ -44,4 +44,10 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Transactional
     @Query("UPDATE PostStats ps SET ps.viewCount = ps.viewCount + 1 WHERE ps.post.id = :postId")
     int incrementViewCount(@Param("postId") Long postId);
+
+    // 搜索帖子
+    @Query("SELECT p FROM Post p WHERE " +
+           "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Post> searchByTitleOrContent(@Param("query") String query, Pageable pageable);
 } 

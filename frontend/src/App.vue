@@ -11,9 +11,16 @@
       </div>
       
       <div class="search-box-container">
-        <div class="search-box">
+        <div class="search-box" @click="goToSearch">
           <i class="fas fa-search search-icon"></i>
-          <input type="text" class="search-input" placeholder="搜索内容..." />
+          <input 
+            type="text" 
+            class="search-input" 
+            placeholder="搜索内容..." 
+            @click.stop="goToSearch"
+            readonly
+            v-model="searchPlaceholder"
+          />
         </div>
       </div>
       
@@ -49,6 +56,11 @@ export default {
   components: {
     BottomTabBar
   },
+  data() {
+    return {
+      searchPlaceholder: ''
+    };
+  },
   computed: {
     ...mapGetters({
       isAuthenticated: 'isAuthenticated',
@@ -68,6 +80,9 @@ export default {
     },
     goToRegister() {
       this.$router.push('/register');
+    },
+    goToSearch() {
+      this.$router.push('/search');
     }
   },
   watch: {

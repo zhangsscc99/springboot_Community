@@ -69,6 +69,7 @@ public class WebSecurityConfig {
             .antMatchers("/auth/**").permitAll()
             .antMatchers("/api/test/**").permitAll()
             .antMatchers(HttpMethod.GET, "/posts/**").permitAll()
+            .antMatchers(HttpMethod.GET, "/posts/search").permitAll()
             .antMatchers(HttpMethod.GET, "/users/**").permitAll()
             .antMatchers(HttpMethod.GET, "/users/*/follow/count").permitAll()
             .antMatchers(HttpMethod.GET, "/users/*/followers").permitAll()
