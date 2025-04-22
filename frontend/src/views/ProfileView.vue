@@ -1082,13 +1082,16 @@ textarea.form-control {
 
 /* New styles for follow features */
 .follow-btn.following {
-  background-color: #eee;
-  border: 1px solid #ddd;
-  color: #666;
+  /* 与未关注状态完全相同的样式 */
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border: none;
 }
 
+/* 只在悬停时改变样式，显示取消关注的视觉效果 */
 .follow-btn.following:hover {
   background-color: #f8d7da;
+  background-image: none; /* 悬停时去掉渐变 */
   border-color: #f5c6cb;
   color: #721c24;
 }
@@ -1106,6 +1109,23 @@ textarea.form-control {
   text-align: center;
   padding: 20px;
   color: var(--light-text-color);
+}
+
+.follow-btn-sm {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.follow-btn-sm.following {
+  /* 完全相同的样式，无任何不同 */
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border: none;
 }
 
 .follow-modal {
@@ -1197,23 +1217,6 @@ textarea.form-control {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.follow-btn-sm {
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-.follow-btn-sm.following {
-  background-image: none;
-  background-color: #f0f0f0;
-  color: #666;
-  border: 1px solid #ddd;
 }
 
 /* Make the profile stats clickable */
