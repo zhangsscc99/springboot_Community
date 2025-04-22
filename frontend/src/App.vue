@@ -10,9 +10,11 @@
         </div>
       </div>
       
-      <div class="search-box">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" class="search-input" placeholder="搜索" />
+      <div class="search-box-container">
+        <div class="search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" class="search-input" placeholder="搜索内容..." />
+        </div>
       </div>
       
       <div class="user-controls">
@@ -111,5 +113,32 @@ export default {
   background-clip: text;
   color: transparent;
   margin: 0 2px;
+}
+
+.search-box-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 320px;
+}
+
+@media (max-width: 576px) {
+  .search-box-container {
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .logo {
+    font-size: 0.9em;
+  }
+  
+  .main-title {
+    font-size: 18px;
+  }
+  
+  .subtitle {
+    font-size: 12px;
+  }
 }
 </style> 

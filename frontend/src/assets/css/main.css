@@ -251,8 +251,12 @@ body {
   border-radius: 20px;
   padding: 8px 15px;
   margin: 0 10px;
-  flex: 1;
-  max-width: 300px;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+  box-shadow: 0 0 0 2px rgba(var(--primary-gradient-start-rgb), 0.3);
 }
 
 .search-icon {
@@ -388,10 +392,16 @@ body {
 @media (max-width: 576px) {
   .app-header {
     padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 10px;
   }
   
   .search-box {
-    display: none;
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+    margin: 8px 0 0 0;
+    background-color: #f5f5f5;
   }
   
   .app-header h1 {
