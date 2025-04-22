@@ -29,16 +29,16 @@
         <div class="profile-userid">ID: {{ profileId }}</div>
         
         <div class="profile-stats">
-          <div class="stat-item">
-            <div class="stat-value">108</div>
+          <div class="stat-item" @click="openFollowingList">
+            <div class="stat-value">{{ followingCount }}</div>
             <div class="stat-label">关注</div>
           </div>
-          <div class="stat-item">
-            <div class="stat-value">2534</div>
+          <div class="stat-item" @click="openFollowersList">
+            <div class="stat-value">{{ followerCount }}</div>
             <div class="stat-label">粉丝</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">62</div>
+            <div class="stat-value">{{ likesCount }}</div>
             <div class="stat-label">获赞</div>
           </div>
         </div>
@@ -46,13 +46,22 @@
         <p class="profile-bio">{{ formattedProfileBio }}</p>
         
         <div class="profile-actions">
-          <button class="follow-btn" v-if="!isCurrentUser">
-            <i class="fas fa-plus"></i> 关注
+          <button 
+            v-if="!isCurrentUser && isAuthenticated" 
+            class="follow-btn" 
+            :class="{ 'following': isFollowing }"
+            @click="toggleFollow"
+            :disabled="followLoading"
+          >
+            <i v-if="followLoading" class="fas fa-spinner fa-spin"></i>
+            <i v-else-if="isFollowing" class="fas fa-check"></i>
+            <i v-else class="fas fa-plus"></i>
+            {{ isFollowing ? '（已关注）' : '关注' }}
           </button>
           <button class="edit-profile-btn" v-if="isCurrentUser" @click="openEditModal">
             <i class="fas fa-pencil-alt"></i> 编辑资料
           </button>
-          <button class="message-btn" v-if="!isCurrentUser">
+          <button class="message-btn" v-if="!isCurrentUser && isAuthenticated">
             <i class="fas fa-comment"></i> 私信
           </button>
           <button class="logout-btn" v-if="isCurrentUser" @click="logout">
@@ -205,6 +214,47 @@
         </div>
       </div>
     </div>
+    
+    <!-- Follow users modal -->
+    <div v-if="showFollowModal" class="follow-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>{{ followModalTitle }}</h2>
+          <button class="close-btn" @click="closeFollowModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div v-if="followUsersLoading" class="loading-indicator-small">
+            <i class="fas fa-spinner fa-spin"></i> 加载中...
+          </div>
+          <div v-else-if="followUsers.length === 0" class="no-users">
+            <p>{{ followModalEmptyText }}</p>
+          </div>
+          <div v-else class="user-list">
+            <div v-for="user in followUsers" :key="user.id" class="user-item">
+              <UserAvatar 
+                :src="user.avatar" 
+                :username="user.username"
+                :userId="user.id"
+              />
+              <div class="user-info">
+                <div class="user-name">{{ user.username }}</div>
+                <div class="user-bio">{{ user.bio || '这个人很懒，还没有介绍自己...' }}</div>
+              </div>
+              <button 
+                v-if="isAuthenticated && currentUserId !== user.id"
+                class="follow-btn-sm" 
+                :class="{ 'following': isUserInFollowingList(user.id) }"
+                @click="toggleFollowUser(user.id)"
+              >
+                {{ isUserInFollowingList(user.id) ? '（已关注）' : '关注' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -241,7 +291,18 @@ export default {
         bio: '',
         email: ''
       },
-      saving: false
+      saving: false,
+      // New follow-related data
+      isFollowing: false,
+      followLoading: false,
+      followerCount: 0,
+      followingCount: 0,
+      likesCount: 0,
+      showFollowModal: false,
+      followModalType: 'followers', // or 'following'
+      followUsers: [],
+      followUsersLoading: false,
+      followingUserIds: [] // IDs of users the current user is following
     };
   },
   computed: {
@@ -258,6 +319,12 @@ export default {
       }
       
       return this.profileId == this.currentUser.id;
+    },
+    followModalTitle() {
+      return this.followModalType === 'followers' ? '粉丝列表' : '关注列表';
+    },
+    followModalEmptyText() {
+      return this.followModalType === 'followers' ? '还没有粉丝' : '还没有关注任何人';
     }
   },
   watch: {
@@ -271,6 +338,12 @@ export default {
         }
       },
       immediate: false
+    },
+    // Watch for authentication state change
+    isAuthenticated(newValue) {
+      if (newValue && this.profileId) {
+        this.checkFollowStatus();
+      }
     }
   },
   methods: {
@@ -300,6 +373,14 @@ export default {
         
         // 加载用户帖子
         await this.fetchUserPosts();
+        
+        // 获取关注数据
+        await this.fetchFollowCounts();
+        
+        // 如果用户已登录，检查关注状态
+        if (this.isAuthenticated) {
+          await this.checkFollowStatus();
+        }
         
         // 如果是当前用户查看自己的资料，预加载喜欢和收藏的帖子
         if (this.isCurrentUser) {
@@ -429,6 +510,140 @@ export default {
         alert('更新个人资料失败: ' + (error.response?.data || error.message));
       } finally {
         this.saving = false;
+      }
+    },
+    async fetchFollowCounts() {
+      try {
+        const response = await apiService.users.getFollowCounts(this.profileId);
+        this.followerCount = response.data.followerCount || 0;
+        this.followingCount = response.data.followingCount || 0;
+        // For now, we'll use a placeholder for likes count
+        this.likesCount = 0; // This would need to be implemented on the backend
+      } catch (error) {
+        console.error('获取关注数据失败:', error);
+      }
+    },
+    async checkFollowStatus() {
+      if (!this.isAuthenticated || this.isCurrentUser) {
+        return;
+      }
+      
+      try {
+        const response = await apiService.users.checkFollowing(this.profileId);
+        this.isFollowing = response.data.following;
+      } catch (error) {
+        console.error('检查关注状态失败:', error);
+      }
+    },
+    async toggleFollow() {
+      if (!this.isAuthenticated) {
+        // Redirect to login if not authenticated
+        this.$router.push('/login');
+        return;
+      }
+      
+      this.followLoading = true;
+      
+      try {
+        if (this.isFollowing) {
+          // Unfollow
+          await apiService.users.unfollow(this.profileId);
+          this.isFollowing = false;
+          this.followerCount = Math.max(0, this.followerCount - 1);
+        } else {
+          // Follow
+          await apiService.users.follow(this.profileId);
+          this.isFollowing = true;
+          this.followerCount += 1;
+        }
+      } catch (error) {
+        console.error('操作关注失败:', error);
+        alert('操作失败，请稍后再试');
+      } finally {
+        this.followLoading = false;
+      }
+    },
+    async openFollowersList() {
+      this.followModalType = 'followers';
+      this.showFollowModal = true;
+      this.followUsers = [];
+      await this.fetchFollowUsers('followers');
+    },
+    async openFollowingList() {
+      this.followModalType = 'following';
+      this.showFollowModal = true;
+      this.followUsers = [];
+      await this.fetchFollowUsers('following');
+    },
+    closeFollowModal() {
+      this.showFollowModal = false;
+    },
+    async fetchFollowUsers(type) {
+      this.followUsersLoading = true;
+      
+      try {
+        let response;
+        if (type === 'followers') {
+          response = await apiService.users.getFollowers(this.profileId);
+          this.followUsers = response.data.followers || [];
+        } else {
+          response = await apiService.users.getFollowing(this.profileId);
+          this.followUsers = response.data.following || [];
+        }
+        
+        // If the current user is authenticated, fetch their following list
+        // to determine which users in this list they are already following
+        if (this.isAuthenticated && !this.isCurrentUser) {
+          await this.fetchCurrentUserFollowing();
+        }
+      } catch (error) {
+        console.error(`获取${type === 'followers' ? '粉丝' : '关注'}列表失败:`, error);
+      } finally {
+        this.followUsersLoading = false;
+      }
+    },
+    async fetchCurrentUserFollowing() {
+      try {
+        const response = await apiService.users.getFollowing(this.currentUserId);
+        this.followingUserIds = (response.data.following || []).map(user => user.id);
+      } catch (error) {
+        console.error('获取当前用户关注列表失败:', error);
+      }
+    },
+    isUserInFollowingList(userId) {
+      return this.followingUserIds.includes(userId);
+    },
+    async toggleFollowUser(userId) {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login');
+        return;
+      }
+      
+      try {
+        if (this.isUserInFollowingList(userId)) {
+          // Unfollow
+          await apiService.users.unfollow(userId);
+          this.followingUserIds = this.followingUserIds.filter(id => id !== userId);
+          
+          // If we're on our own following list, remove the user
+          if (this.isCurrentUser && this.followModalType === 'following') {
+            this.followUsers = this.followUsers.filter(user => user.id !== userId);
+            this.followingCount = Math.max(0, this.followingCount - 1);
+          }
+        } else {
+          // Follow
+          await apiService.users.follow(userId);
+          this.followingUserIds.push(userId);
+          
+          // If we're on our own followers list and follow someone back,
+          // update the following count
+          if (this.isCurrentUser && this.followModalType === 'followers') {
+            this.followingCount += 1;
+          }
+        }
+      } catch (error) {
+        console.error('操作关注失败:', error);
+        alert('操作失败，请稍后再试');
       }
     }
   },
@@ -863,5 +1078,155 @@ textarea.form-control {
 .save-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* New styles for follow features */
+.follow-btn.following {
+  background-color: #eee;
+  border: 1px solid #ddd;
+  color: #666;
+}
+
+.follow-btn.following:hover {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.follow-btn.following:hover i {
+  display: none;
+}
+
+.follow-btn.following:hover::before {
+  content: '取消关注';
+  font-size: 14px;
+}
+
+.loading-indicator-small {
+  text-align: center;
+  padding: 20px;
+  color: var(--light-text-color);
+}
+
+.follow-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.follow-modal .modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.follow-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.follow-modal .modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+
+.follow-modal .modal-body {
+  padding: 15px;
+}
+
+.no-users {
+  text-align: center;
+  padding: 30px 0;
+  color: var(--light-text-color);
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.user-item:hover {
+  background-color: #f9f9f9;
+}
+
+.user-info {
+  flex: 1;
+  margin-left: 12px;
+  overflow: hidden;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.user-bio {
+  font-size: 13px;
+  color: var(--light-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.follow-btn-sm {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.follow-btn-sm.following {
+  background-image: none;
+  background-color: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+/* Make the profile stats clickable */
+.stat-item {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+}
+
+.stat-item:hover .stat-value {
+  color: var(--primary-color);
 }
 </style>

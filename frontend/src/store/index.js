@@ -30,7 +30,11 @@ export default createStore({
     cachedScrollPositions: {}, // 用于存储各页面滚动位置
     requestCancelTokens: {}, // 用于存储取消标记
     currentComments: [],
-    commentError: null
+    commentError: null,
+    // 用户关注相关状态
+    userFollowState: {}, // 以用户ID为键存储关注状态 {userId: {isFollowing: true/false, followersCount: 0, followingCount: 0}}
+    followLoading: false, // 关注操作加载状态
+    followError: null // 关注操作错误信息
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -149,6 +153,22 @@ export default createStore({
       // 清空评论相关状态
       state.currentComments = [];
       state.commentError = null;
+    },
+    // 关注功能相关的mutations
+    SET_FOLLOW_LOADING(state, loading) {
+      state.followLoading = loading;
+    },
+    SET_FOLLOW_ERROR(state, error) {
+      state.followError = error;
+    },
+    SET_USER_FOLLOW_STATE(state, { userId, followState }) {
+      state.userFollowState = {
+        ...state.userFollowState,
+        [userId]: {
+          ...(state.userFollowState[userId] || {}),
+          ...followState
+        }
+      };
     }
   },
   actions: {
@@ -777,6 +797,78 @@ export default createStore({
     resetComments({ commit }) {
       commit('RESET_COMMENTS');
       commit('SET_ERROR', null); // 同时清除全局错误状态
+    },
+    
+    // 关注用户
+    async followUser({ commit, dispatch }, userId) {
+      commit('SET_FOLLOW_LOADING', true);
+      commit('SET_FOLLOW_ERROR', null);
+      
+      try {
+        const response = await apiService.users.follow(userId);
+        commit('SET_USER_FOLLOW_STATE', { 
+          userId, 
+          followState: { 
+            isFollowing: true,
+            followersCount: response.data?.followersCount || 0
+          } 
+        });
+        return response;
+      } catch (error) {
+        console.error('Failed to follow user:', error);
+        commit('SET_FOLLOW_ERROR', error.message || 'Failed to follow user');
+        throw error;
+      } finally {
+        commit('SET_FOLLOW_LOADING', false);
+      }
+    },
+    
+    // 取消关注用户
+    async unfollowUser({ commit }, userId) {
+      commit('SET_FOLLOW_LOADING', true);
+      commit('SET_FOLLOW_ERROR', null);
+      
+      try {
+        const response = await apiService.users.unfollow(userId);
+        commit('SET_USER_FOLLOW_STATE', { 
+          userId, 
+          followState: { 
+            isFollowing: false,
+            followersCount: response.data?.followersCount || 0
+          } 
+        });
+        return response;
+      } catch (error) {
+        console.error('Failed to unfollow user:', error);
+        commit('SET_FOLLOW_ERROR', error.message || 'Failed to unfollow user');
+        throw error;
+      } finally {
+        commit('SET_FOLLOW_LOADING', false);
+      }
+    },
+    
+    // 获取用户关注状态
+    async getUserFollowState({ commit }, userId) {
+      commit('SET_FOLLOW_LOADING', true);
+      
+      try {
+        const response = await apiService.users.checkFollowing(userId);
+        commit('SET_USER_FOLLOW_STATE', { 
+          userId, 
+          followState: { 
+            isFollowing: response.data?.isFollowing || false,
+            followersCount: response.data?.followersCount || 0,
+            followingCount: response.data?.followingCount || 0
+          } 
+        });
+        return response.data;
+      } catch (error) {
+        console.error('Failed to get user follow state:', error);
+        commit('SET_FOLLOW_ERROR', error.message || 'Failed to get user follow state');
+        throw error;
+      } finally {
+        commit('SET_FOLLOW_LOADING', false);
+      }
     }
   },
   modules: {

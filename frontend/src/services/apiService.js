@@ -163,6 +163,32 @@ const apiService = {
     },
     updateProfile(userId, profileData) {
       return apiClient.put(`/api/users/${userId}`, profileData);
+    },
+    // 关注用户
+    follow(userId) {
+      console.log(`请求关注用户: ${userId}`);
+      return apiClient.post(`/api/users/${userId}/follow`);
+    },
+    // 取消关注
+    unfollow(userId) {
+      console.log(`请求取消关注用户: ${userId}`);
+      return apiClient.delete(`/api/users/${userId}/follow`);
+    },
+    // 获取用户关注列表
+    getFollowing(userId, page = 0, size = 10) {
+      return apiClient.get(`/api/users/${userId}/following`, {
+        params: { page, size }
+      });
+    },
+    // 获取用户粉丝列表
+    getFollowers(userId, page = 0, size = 10) {
+      return apiClient.get(`/api/users/${userId}/followers`, {
+        params: { page, size }
+      });
+    },
+    // 检查当前用户是否关注了某个用户
+    checkFollowing(userId) {
+      return apiClient.get(`/api/users/${userId}/follow/check`);
     }
   },
   
