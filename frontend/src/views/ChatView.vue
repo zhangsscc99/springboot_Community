@@ -34,6 +34,11 @@
           <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
             {{ formatDate(message.createdAt) }}
           </div>
+          
+          <!-- Time display -->
+          <div v-if="shouldShowTimeDisplay(message, index)" class="time-display">
+            {{ formatMessageTime(message.createdAt) }}
+          </div>
 
           <!-- Message bubble -->
           <div class="message" :class="{ 'own-message': isOwnMessage(message) }">
@@ -42,7 +47,6 @@
             </div>
             <div class="message-bubble" :class="{ 'own-bubble': isOwnMessage(message) }">
               <div class="message-content">{{ message.content }}</div>
-              <div class="message-time">{{ formatMessageTime(message.createdAt) }}</div>
             </div>
             <div class="avatar" v-if="isOwnMessage(message)">
               <img :src="userAvatar || '/default-avatar.png'" alt="You">
@@ -60,25 +64,18 @@
       </div>
     </div>
 
-    <!-- Input Area -->
-    <div class="input-area">
-      <div class="tools">
-        <i class="fas fa-smile emoji-button" @click="toggleEmojiPicker"></i>
-        <i class="fas fa-image image-button" @click="openImagePicker"></i>
-      </div>
-      <div class="input-wrapper">
-        <textarea 
-          class="message-input" 
-          v-model="newMessage"
-          placeholder="输入消息..." 
-          @keyup.enter.exact="sendMessage"
-          @focus="scrollToBottom"
-          ref="messageInput"
-        ></textarea>
-      </div>
-      <div class="send-button" :class="{ 'active': newMessage.trim().length > 0 }" @click="sendMessage">
+    <!-- Fixed Simple Input Area -->
+    <div class="fixed-input-bar">
+      <input 
+        type="text" 
+        class="simple-input" 
+        v-model="newMessage"
+        placeholder="输入消息..." 
+        @keyup.enter="sendMessage"
+      />
+      <button class="send-btn" @click="sendMessage" :disabled="!newMessage.trim()">
         <i class="fas fa-paper-plane"></i>
-      </div>
+      </button>
     </div>
   </div>
 </template>
@@ -116,20 +113,12 @@ export default {
     this.setupSseConnection();
   },
   mounted() {
-    // Set up the textarea auto-resize listener
-    if (this.$refs.messageInput) {
-      this.$refs.messageInput.addEventListener('input', this.autoResizeTextarea);
-    }
+    // No need for auto-resize with a standard input
   },
   beforeUnmount() {
     this.closeSseConnection();
     // Mark messages as read when leaving
     this.markAsRead();
-    
-    // Clean up the textarea auto-resize listener
-    if (this.$refs.messageInput) {
-      this.$refs.messageInput.removeEventListener('input', this.autoResizeTextarea);
-    }
   },
   methods: {
     loadUserInfo() {
@@ -244,8 +233,9 @@ export default {
         this.$nextTick(() => {
           this.scrollToBottom();
           // Focus input for continuous typing
-          if (this.$refs.messageInput) {
-            this.$refs.messageInput.focus();
+          const input = document.querySelector('.simple-input');
+          if (input) {
+            input.focus();
           }
         });
         
@@ -261,7 +251,7 @@ export default {
         }
       } catch (error) {
         console.error('Failed to send message:', error);
-        this.$message.error('发送失败，请重试');
+        alert('发送失败，请重试');
       }
     },
     async markAsRead() {
@@ -349,6 +339,16 @@ export default {
       const prevMessage = this.messages[index - 1];
       return !isSameDay(new Date(message.createdAt), new Date(prevMessage.createdAt));
     },
+    shouldShowTimeDisplay(message, index) {
+      if (index === 0) return true;
+      
+      const prevMessage = this.messages[index - 1];
+      const currentTime = new Date(message.createdAt);
+      const prevTime = new Date(prevMessage.createdAt);
+      
+      // Show time if more than 5 minutes have passed since the last message
+      return (currentTime - prevTime) > 5 * 60 * 1000;
+    },
     formatDate(dateString) {
       const date = new Date(dateString);
       
@@ -362,54 +362,63 @@ export default {
     },
     formatMessageTime(dateString) {
       const date = new Date(dateString);
-      return format(date, 'HH:mm');
+      const now = new Date();
+      
+      // Format for timestamps - format like "下午3:44"
+      const hour = date.getHours();
+      const amPm = hour < 12 ? '上午' : '下午';
+      const hour12 = hour <= 12 ? hour : hour - 12;
+      const hourFormatted = hour12 === 0 ? 12 : hour12; // Handle midnight (0 hours)
+      const minuteFormatted = date.getMinutes().toString().padStart(2, '0');
+      
+      return `${amPm}${hourFormatted}:${minuteFormatted}`;
     },
     goBack() {
       this.$router.push('/messages');
     },
     showMenu() {
       // TODO: Show options menu (delete conversation, block user, etc.)
-      this.$message.info('功能开发中');
+      alert('功能开发中');
     },
     toggleEmojiPicker() {
       // TODO: Implement emoji picker
-      this.$message.info('表情选择器开发中');
+      alert('表情选择器开发中');
     },
     openImagePicker() {
       // TODO: Implement image upload
-      this.$message.info('图片上传功能开发中');
+      alert('图片上传功能开发中');
     },
-    autoResizeTextarea(event) {
-      const textarea = event.target;
-      textarea.style.height = 'auto';
-      
-      // Limit the height to max-height defined in CSS
-      const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight);
-      const scrollHeight = textarea.scrollHeight;
-      
-      textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+    toggleVoiceInput() {
+      alert('语音输入功能开发中');
     }
   }
 };
 </script>
 
 <style scoped>
+.main-content {
+  flex: 1;
+  position: relative;
+  height: 100%;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
-  background-color: #f1f1f1;
-  position: relative;
+  height: calc(100vh - 56px); /* Account for the bottom navigation height */
+  max-height: calc(100vh - 56px);
+  background-color: #ededed;
+  position: relative; 
   overflow: hidden;
+  width: 100%;
 }
 
 .chat-header {
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #eaeaea;
+  background-color: #f6f6f6;
+  border-bottom: 1px solid #e0e0e0;
   z-index: 10;
 }
 
@@ -431,7 +440,7 @@ export default {
 }
 
 .partner-name {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 500;
   color: #000;
 }
@@ -445,7 +454,8 @@ export default {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background-color: #f1f1f1;
+  padding-bottom: 55px; /* Adjust to match input bar height */
+  background-color: #ededed;
   position: relative;
 }
 
@@ -463,17 +473,24 @@ export default {
   margin: 20px 0;
   color: #999;
   font-size: 12px;
-  background: #f1f1f1;
-  padding: 6px 12px;
+  background: #cecece;
+  padding: 4px 10px;
   border-radius: 10px;
   display: inline-block;
   margin-left: auto;
   margin-right: auto;
 }
 
+.time-display {
+  text-align: center;
+  margin: 10px 0;
+  color: #999;
+  font-size: 13px;
+}
+
 .message {
   display: flex;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   align-items: flex-start;
 }
 
@@ -484,9 +501,10 @@ export default {
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 4px;
+  border-radius: 50%;
   overflow: hidden;
-  margin: 0 12px;
+  margin: 0 10px;
+  flex-shrink: 0;
 }
 
 .avatar img {
@@ -497,15 +515,16 @@ export default {
 
 .message-bubble {
   max-width: 70%;
-  padding: 10px 16px;
-  border-radius: 4px;
+  padding: 10px 14px;
+  border-radius: 18px;
   background-color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
   position: relative;
 }
 
 .own-bubble {
   background-color: #95ec69;
+  border-top-right-radius: 4px;
 }
 
 .message-content {
@@ -513,6 +532,7 @@ export default {
   color: #333;
   word-break: break-word;
   white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 .message-time {
@@ -527,18 +547,23 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  position: absolute;
+  top: 40%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
 }
 
 .empty-message {
   text-align: center;
   color: #999;
+  padding: 20px;
 }
 
 .empty-message i {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #ddd;
+  font-size: 54px;
+  margin-bottom: 20px;
+  color: #dadada;
 }
 
 .empty-message p {
@@ -550,76 +575,50 @@ export default {
   color: #aaa;
 }
 
-.input-area {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background-color: #fff;
-  border-top: 1px solid #eaeaea;
-  position: sticky;
-  bottom: 0;
+/* Simple fixed input bar */
+.fixed-input-bar {
+  position: fixed;
+  bottom: 56px; /* Position it right above the navigation bar */
   left: 0;
   right: 0;
+  height: 46px;
+  background-color: #ededed; /* Match the chat background */
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
   z-index: 10;
-  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
-.tools {
-  display: flex;
-  align-items: center;
-}
-
-.emoji-button, .image-button {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #999;
-  cursor: pointer;
-  margin-right: 8px;
-}
-
-.input-wrapper {
+.simple-input {
   flex: 1;
-  border-radius: 20px;
-  background-color: #f1f1f1;
-  padding: 8px 16px;
-  margin: 0 8px;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-}
-
-.message-input {
-  width: 100%;
-  border: none;
+  height: 34px;
+  border: 1px solid #e0e0e0;
+  border-radius: 17px;
+  padding: 0 12px;
+  font-size: 15px;
+  background-color: white;
   outline: none;
-  background: transparent;
-  font-size: 16px;
-  resize: none;
-  max-height: 100px;
-  min-height: 20px;
-  line-height: 20px;
-  overflow-y: auto;
 }
 
-.send-button {
+.send-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  background-color: #07c160;
+  color: white;
+  border: none;
+  margin-left: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #ddd;
-  color: #fff;
-  cursor: not-allowed;
-  flex-shrink: 0;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-.send-button.active {
-  background-color: #07c160;
-  cursor: pointer;
+.send-btn:disabled {
+  background-color: #ccc;
 }
 
 .loading-indicator {
@@ -644,12 +643,12 @@ export default {
 }
 
 .load-more button {
-  padding: 8px 16px;
-  background-color: #f1f1f1;
+  padding: 6px 14px;
+  background-color: rgba(0, 0, 0, 0.1);
   color: #666;
-  border: 1px solid #ddd;
+  border: none;
   border-radius: 16px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -675,28 +674,18 @@ export default {
 
 /* Mobile device adjustments */
 @media (max-width: 768px) {
-  .input-area {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 8px 12px;
-  }
-  
   .chat-container {
-    padding-bottom: 58px; /* Make room for the fixed input area */
+    height: calc(100vh - 56px); /* Match the tab bar height */
+    max-height: calc(100vh - 56px);
   }
   
-  .messages-area {
-    padding-bottom: 24px;
+  .fixed-input-bar {
+    bottom: 56px; /* Ensure it stays just above the navbar on mobile */
+    padding: 0 8px;
   }
   
-  .input-wrapper {
-    padding: 6px 12px;
-  }
-  
-  .message-input {
-    font-size: 15px;
+  .simple-input {
+    font-size: 14px;
   }
   
   /* Handle iOS keyboards */
