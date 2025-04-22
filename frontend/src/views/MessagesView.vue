@@ -1,293 +1,276 @@
 <template>
-  <div class="messages-page min-h-screen bg-white">
-    <div class="container mx-auto py-4 px-4 lg:px-8">
-      <div class="messages-container bg-white rounded-lg shadow-lg border overflow-hidden">
-        <div class="flex flex-col md:flex-row h-[80vh]">
-          <!-- 会话列表 -->
-          <div class="conversation-list-container w-full md:w-1/3 md:border-r">
-            <ConversationList 
-              ref="conversationList"
-              :selected-conversation="selectedConversation"
-              @conversation-selected="handleConversationSelected"
-            />
-          </div>
-          
-          <!-- 消息窗口 -->
-          <div class="message-window-container w-full md:w-2/3">
-            <MessageWindow 
-              ref="messageWindow"
-              :conversation="selectedConversation"
-              :current-user-id="currentUserId"
-              @message-sent="handleMessageSent"
-            />
+  <div class="messages-container">
+    <!-- 顶部导航栏 -->
+    <div class="messages-header">
+      <div class="title">消息</div>
+      <div class="action-buttons">
+        <i class="iconfont icon-plus" @click="showActionMenu"></i>
+      </div>
+    </div>
+
+    <!-- 系统分类通知 -->
+    <div class="notification-categories">
+      <div class="category-item" @click="navigateToCategory('likes')">
+        <div class="category-icon like-icon">
+          <i class="iconfont icon-like"></i>
+          <div class="badge" v-if="notifications.likes.unreadCount > 0">
+            {{ notifications.likes.unreadCount > 99 ? '99+' : notifications.likes.unreadCount }}
           </div>
         </div>
+        <div class="category-text">赞和收藏</div>
+      </div>
+      
+      <div class="category-item" @click="navigateToCategory('follows')">
+        <div class="category-icon follow-icon">
+          <i class="iconfont icon-user-add"></i>
+          <div class="badge" v-if="notifications.follows.unreadCount > 0">
+            {{ notifications.follows.unreadCount > 99 ? '99+' : notifications.follows.unreadCount }}
+          </div>
+        </div>
+        <div class="category-text">新增关注</div>
+      </div>
+      
+      <div class="category-item" @click="navigateToCategory('comments')">
+        <div class="category-icon comment-icon">
+          <i class="iconfont icon-comment"></i>
+          <div class="badge" v-if="notifications.comments.unreadCount > 0">
+            {{ notifications.comments.unreadCount > 99 ? '99+' : notifications.comments.unreadCount }}
+          </div>
+        </div>
+        <div class="category-text">评论和@</div>
+      </div>
+      
+      <div class="category-item" @click="navigateToCategory('system')">
+        <div class="category-icon system-icon">
+          <i class="iconfont icon-notification"></i>
+          <div class="badge" v-if="notifications.system.unreadCount > 0">
+            {{ notifications.system.unreadCount > 99 ? '99+' : notifications.system.unreadCount }}
+          </div>
+        </div>
+        <div class="category-text">系统通知</div>
+      </div>
+    </div>
+
+    <!-- 消息会话列表 -->
+    <div class="message-list-header">
+      <span>聊天</span>
+      <span class="discover-group" @click="navigateToDiscoverGroups">发现群聊</span>
+    </div>
+
+    <!-- 会话列表 -->
+    <div class="conversation-list">
+      <div 
+        v-for="conversation in conversations" 
+        :key="conversation.id" 
+        @click="navigateToConversation(conversation.id)"
+        class="conversation-wrapper"
+      >
+        <conversation-item 
+          :conversation="conversation"
+        />
+      </div>
+      <div v-if="conversations.length === 0" class="empty-state">
+        暂无聊天会话
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import ConversationList from '@/components/Messages/ConversationList.vue';
-import MessageWindow from '@/components/Messages/MessageWindow.vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import ConversationItem from '@/components/ConversationItem.vue';
 import MessageService from '@/services/message.service';
-import { mapState } from 'vuex';
+import NotificationService from '@/services/notification.service';
 
 export default {
   name: 'MessagesView',
   components: {
-    ConversationList,
-    MessageWindow
+    ConversationItem
   },
   data() {
     return {
-      selectedConversation: null,
-      eventSource: null,
-      unreadPollingInterval: null
+      conversations: [],
+      loading: false,
+      notifications: {
+        likes: {
+          id: 'likes',
+          title: '赞和收藏',
+          content: '查看你收到的赞和收藏',
+          type: 'like',
+          unreadCount: 0
+        },
+        follows: {
+          id: 'follows',
+          title: '新增关注',
+          content: '查看谁关注了你',
+          type: 'follow',
+          unreadCount: 0
+        },
+        comments: {
+          id: 'comments',
+          title: '评论和@',
+          content: '查看收到的评论和提及',
+          type: 'comment',
+          unreadCount: 0
+        },
+        system: {
+          id: 'system',
+          title: '系统通知',
+          content: '查看系统消息',
+          type: 'system',
+          unreadCount: 0
+        }
+      },
+      eventSource: null
     };
   },
-  computed: {
-    ...mapState({
-      user: state => state.auth?.user
-    }),
-    currentUserId() {
-      // 优先从Vuex store获取用户ID
-      if (this.user && this.user.id) {
-        return this.user.id;
-      }
-      
-      // 如果Vuex中没有，尝试从localStorage获取
-      try {
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const userData = JSON.parse(userStr);
-          return userData?.id || null;
-        }
-      } catch (e) {
-        console.error('Error getting user ID from localStorage:', e);
-      }
-      
-      return null;
-    },
-    isAuthenticated() {
-      // 检查Vuex状态和localStorage，综合判断登录状态
-      const hasUserInStore = !!this.user;
-      const hasTokenInStorage = !!localStorage.getItem('token') || !!localStorage.getItem('user');
-      return hasUserInStore || hasTokenInStorage;
-    }
-  },
   created() {
-    // 如果用户未登录，重定向到登录页
-    if (!this.isAuthenticated) {
-      this.$router.push('/login');
-      return;
-    }
-    
-    // 如果本地存储有token但Vuex store中没有用户数据，尝试加载用户数据
-    if (!this.user && (localStorage.getItem('token') || localStorage.getItem('user'))) {
-      try {
-        // 尝试从本地存储初始化用户数据
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          const userData = JSON.parse(userStr);
-          if (userData && userData.id) {
-            // 保存到Vuex，用于当前页面显示
-            this.$store.commit('SET_USER', userData);
-          }
-        }
-      } catch (e) {
-        console.error('Error initializing user data from localStorage:', e);
-      }
-    }
-    
-    // 检查URL中是否有partnerId参数
-    const partnerId = parseInt(this.$route.query.partnerId);
-    if (partnerId) {
-      this.loadConversationWithUser(partnerId);
-    }
-  },
-  mounted() {
-    // 确保用户已登录再设置连接
-    if (this.isAuthenticated) {
-      this.setupSSEConnection();
-      this.startUnreadPolling();
-    }
+    this.fetchConversations();
+    this.fetchNotifications();
+    this.setupSseConnection();
   },
   beforeUnmount() {
-    this.closeSSEConnection();
-    this.stopUnreadPolling();
+    this.closeSseConnection();
   },
   methods: {
-    handleConversationSelected(conversation) {
-      this.selectedConversation = conversation;
-      
-      // 更新URL，但不重新加载页面
-      this.$router.replace({ 
-        query: { 
-          partnerId: conversation.partnerId 
-        }
-      });
-    },
-    handleMessageSent(event) {
-      // 更新会话列表
-      if (this.$refs.conversationList) {
-        const { partnerId, message } = event;
-        
-        // 如果是新会话，需要获取会话详情
-        if (!this.selectedConversation || this.selectedConversation.partnerId !== partnerId) {
-          this.loadConversationWithUser(partnerId);
-        } else {
-          // 更新现有会话的最后一条消息
-          const updatedConversation = { ...this.selectedConversation };
-          updatedConversation.lastMessageContent = message.content;
-          updatedConversation.lastMessageTime = message.createdAt;
-          
-          this.$refs.conversationList.updateConversation(updatedConversation);
-        }
-      }
-    },
-    // 根据用户ID加载或创建会话
-    async loadConversationWithUser(partnerId) {
+    async fetchConversations() {
       try {
-        // 先尝试获取现有会话
-        const response = await MessageService.getConversationDetails(partnerId);
-        let conversation = response.data;
-        
-        // 如果没有现有会话，创建一个临时会话对象
-        if (!conversation) {
-          // 这里需要先获取用户信息
-          // 简化处理，仅创建基本会话对象
-          conversation = {
-            id: null,
-            partnerId: partnerId,
-            partnerUsername: `用户 ${partnerId}`, // 理想情况下应该获取真实用户名
-            partnerAvatar: null,
-            lastMessageContent: null,
-            lastMessageTime: null,
-            unreadCount: 0
-          };
+        this.loading = true;
+        const response = await MessageService.getConversations();
+        if (response.data && response.data.content) {
+          // Transform backend data to match our component structure
+          this.conversations = response.data.content.map(conv => ({
+            id: conv.id,
+            name: conv.partnerUsername,
+            avatar: conv.partnerAvatar,
+            lastMessage: conv.lastMessageContent,
+            lastMessageTime: conv.lastMessageTime,
+            unreadCount: conv.unreadCount
+          }));
         }
-        
-        this.selectedConversation = conversation;
-        
-        // 如果会话列表组件已加载，更新选中状态
-        if (this.$refs.conversationList) {
-          const existingConversation = this.$refs.conversationList.conversations.find(
-            c => c.partnerId === partnerId
-          );
-          
-          if (existingConversation) {
-            this.$refs.conversationList.selectConversation(existingConversation);
-          } else {
-            // 如果会话不在列表中，添加到列表
-            this.$refs.conversationList.updateConversation(conversation);
-          }
-        }
-        
       } catch (error) {
-        console.error('加载会话失败:', error);
+        console.error('Failed to fetch conversations:', error);
+      } finally {
+        this.loading = false;
       }
     },
-    // 设置SSE连接
-    setupSSEConnection() {
-      if (!this.isAuthenticated) return;
+    
+    async fetchNotifications() {
+      try {
+        const response = await NotificationService.getUnreadCountsByType();
+        if (response.data) {
+          this.notifications.likes.unreadCount = response.data.likeCount || 0;
+          this.notifications.follows.unreadCount = response.data.followCount || 0;
+          this.notifications.comments.unreadCount = response.data.commentCount || 0;
+          this.notifications.system.unreadCount = response.data.systemCount || 0;
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    },
+    
+    setupSseConnection() {
+      // Only set up SSE if user is logged in
+      const userJson = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      
+      if (!userJson && !token) return;
       
       try {
         this.eventSource = MessageService.createSseConnection();
         
-        // 监听私信事件
+        // Listen for private message events
         this.eventSource.addEventListener('privateMessage', event => {
           const message = JSON.parse(event.data);
-          
-          // 如果当前正在查看与发送者的对话，则添加消息
-          if (this.$refs.messageWindow && 
-              this.selectedConversation && 
-              message.senderId === this.selectedConversation.partnerId) {
-            this.$refs.messageWindow.addReceivedMessage(message);
-          }
-          
-          // 更新会话列表
-          if (this.$refs.conversationList) {
-            this.updateConversationWithMessage(message);
-          }
+          this.handleNewMessage(message);
         });
         
-        // 监听未读计数更新事件
+        // Listen for unread count updates
         this.eventSource.addEventListener('unreadCount', event => {
-          const count = parseInt(event.data);
-          if (count === -1) {
-            // 需要查询最新未读数
-            this.fetchUnreadCount();
+          const unreadCount = JSON.parse(event.data);
+          if (unreadCount === -1) {
+            // Need to refresh our data
+            this.fetchConversations();
           }
         });
         
-        // 错误处理
+        // Handle SSE connection errors
         this.eventSource.onerror = error => {
-          console.error('SSE连接错误:', error);
-          this.closeSSEConnection();
-          
-          // 5秒后尝试重新连接
-          setTimeout(() => {
-            this.setupSSEConnection();
-          }, 5000);
+          console.error('SSE connection error:', error);
+          this.closeSseConnection();
+          // Retry connection after a delay
+          setTimeout(() => this.setupSseConnection(), 5000);
         };
-        
       } catch (error) {
-        console.error('建立SSE连接失败:', error);
+        console.error('Failed to establish SSE connection:', error);
       }
     },
-    closeSSEConnection() {
+    
+    closeSseConnection() {
       if (this.eventSource) {
         this.eventSource.close();
         this.eventSource = null;
       }
     },
-    // 定期轮询未读消息数
-    startUnreadPolling() {
-      this.unreadPollingInterval = setInterval(() => {
-        this.fetchUnreadCount();
-      }, 60000); // 每分钟查询一次
+    
+    handleNewMessage(message) {
+      // Find if conversation exists
+      const conversationIndex = this.conversations.findIndex(
+        conv => conv.name === message.senderUsername || conv.name === message.receiverUsername
+      );
       
-      // 立即查询一次
-      this.fetchUnreadCount();
-    },
-    stopUnreadPolling() {
-      if (this.unreadPollingInterval) {
-        clearInterval(this.unreadPollingInterval);
-        this.unreadPollingInterval = null;
+      if (conversationIndex !== -1) {
+        // Update existing conversation
+        const conversation = this.conversations[conversationIndex];
+        conversation.lastMessage = message.content;
+        conversation.lastMessageTime = message.createdAt;
+        conversation.unreadCount += 1;
+        
+        // Move conversation to top
+        this.conversations.splice(conversationIndex, 1);
+        this.conversations.unshift(conversation);
+      } else {
+        // Add new conversation
+        const isIncoming = message.receiverId !== this.getCurrentUserId();
+        const newConversation = {
+          id: Date.now(), // Temporary ID, will be replaced when fetching full list
+          name: isIncoming ? message.senderUsername : message.receiverUsername,
+          avatar: isIncoming ? message.senderAvatar : message.receiverAvatar,
+          lastMessage: message.content,
+          lastMessageTime: message.createdAt,
+          unreadCount: 1
+        };
+        this.conversations.unshift(newConversation);
       }
     },
-    async fetchUnreadCount() {
-      if (!this.isAuthenticated) return;
-      
-      try {
-        const response = await MessageService.getUnreadCount();
-        const totalUnread = response.data;
-        
-        // 通知全局消息未读数（可以通过Vuex存储）
-        this.$store.commit('setUnreadMessageCount', totalUnread);
-      } catch (error) {
-        console.error('获取未读消息数失败:', error);
-      }
-    },
-    // 根据新消息更新会话
-    async updateConversationWithMessage(message) {
-      // 获取对方ID
-      const partnerId = message.senderId === this.currentUserId 
-        ? message.receiverId 
-        : message.senderId;
-      
-      try {
-        // 获取最新的会话信息
-        const response = await MessageService.getConversationDetails(partnerId);
-        const conversation = response.data;
-        
-        if (conversation && this.$refs.conversationList) {
-          this.$refs.conversationList.updateConversation(conversation);
+    
+    getCurrentUserId() {
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        try {
+          const userData = JSON.parse(userJson);
+          return userData.id;
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
         }
-      } catch (error) {
-        console.error('更新会话失败:', error);
       }
+      return null;
+    },
+    
+    navigateToConversation(conversationId) {
+      this.$router.push(`/chat/${conversationId}`);
+    },
+    
+    navigateToCategory(category) {
+      this.$router.push(`/notifications/${category}`);
+    },
+    
+    navigateToDiscoverGroups() {
+      this.$router.push('/discover-groups');
+    },
+    
+    showActionMenu() {
+      this.$message.info('功能开发中');
     }
   }
 };
@@ -295,18 +278,135 @@ export default {
 
 <style scoped>
 .messages-container {
-  height: calc(100vh - 120px);
-  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #ededed;
 }
 
-@media (max-width: 768px) {
-  .conversation-list-container {
-    height: 40vh;
-    overflow-y: auto;
-  }
-  
-  .message-window-container {
-    height: 60vh;
-  }
+.messages-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+}
+
+.action-buttons i {
+  font-size: 20px;
+  cursor: pointer;
+  color: #07c160;
+}
+
+.notification-categories {
+  display: flex;
+  background-color: #fff;
+  padding: 20px 0;
+  justify-content: space-around;
+  border-bottom: 1px solid #eaeaea;
+  margin-bottom: 8px;
+}
+
+.category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.category-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.category-icon i {
+  font-size: 24px;
+  color: #fff;
+}
+
+.like-icon {
+  background-color: #f25542;
+}
+
+.follow-icon {
+  background-color: #07c160;
+}
+
+.comment-icon {
+  background-color: #1989fa;
+}
+
+.system-icon {
+  background-color: #ff9500;
+}
+
+.category-text {
+  font-size: 12px;
+  color: #333;
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background-color: #ff3b30;
+  color: white;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.message-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.discover-group {
+  color: #07c160;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.conversation-list {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+.conversation-wrapper {
+  cursor: pointer;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  color: #999;
+  font-size: 14px;
 }
 </style> 

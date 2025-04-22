@@ -49,6 +49,18 @@ const routes = [
     name: 'messages',
     component: () => import(/* webpackChunkName: "messages" */ '../views/MessagesView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/chat/:id',
+    name: 'chat',
+    component: () => import(/* webpackChunkName: "chat" */ '../views/ChatView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/notifications/:category',
+    name: 'notifications',
+    component: () => import(/* webpackChunkName: "notifications" */ '../views/NotificationsView.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
