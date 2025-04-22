@@ -115,10 +115,21 @@ export default {
     this.fetchMessages();
     this.setupSseConnection();
   },
+  mounted() {
+    // Set up the textarea auto-resize listener
+    if (this.$refs.messageInput) {
+      this.$refs.messageInput.addEventListener('input', this.autoResizeTextarea);
+    }
+  },
   beforeUnmount() {
     this.closeSseConnection();
     // Mark messages as read when leaving
     this.markAsRead();
+    
+    // Clean up the textarea auto-resize listener
+    if (this.$refs.messageInput) {
+      this.$refs.messageInput.removeEventListener('input', this.autoResizeTextarea);
+    }
   },
   methods: {
     loadUserInfo() {
@@ -213,16 +224,40 @@ export default {
       if (!content) return;
       
       try {
+        // Show optimistic update
+        const tempMessage = {
+          id: 'temp-' + Date.now(),
+          senderId: this.getCurrentUserId(),
+          receiverId: this.partnerId,
+          content: content,
+          createdAt: new Date().toISOString(),
+          senderAvatar: this.userAvatar
+        };
+        
+        // Add temporary message immediately
+        this.messages.push(tempMessage);
+        
+        // Clear input right away for better UX
+        this.newMessage = '';
+        
+        // Scroll to the new message
+        this.$nextTick(() => {
+          this.scrollToBottom();
+          // Focus input for continuous typing
+          if (this.$refs.messageInput) {
+            this.$refs.messageInput.focus();
+          }
+        });
+        
+        // Send to server
         const response = await MessageService.sendMessage(this.partnerId, content);
+        
+        // Replace temp message with actual response if needed
         if (response.data) {
-          // Add the sent message to the list
-          this.messages.push(response.data);
-          // Clear input
-          this.newMessage = '';
-          // Scroll to bottom
-          this.$nextTick(() => {
-            this.scrollToBottom();
-          });
+          const index = this.messages.findIndex(m => m.id === tempMessage.id);
+          if (index !== -1) {
+            this.messages.splice(index, 1, response.data);
+          }
         }
       } catch (error) {
         console.error('Failed to send message:', error);
@@ -303,7 +338,9 @@ export default {
     },
     scrollToBottom() {
       if (this.$refs.messagesContainer) {
-        this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
+        this.$nextTick(() => {
+          this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
+        });
       }
     },
     shouldShowDateDivider(message, index) {
@@ -341,6 +378,16 @@ export default {
     openImagePicker() {
       // TODO: Implement image upload
       this.$message.info('图片上传功能开发中');
+    },
+    autoResizeTextarea(event) {
+      const textarea = event.target;
+      textarea.style.height = 'auto';
+      
+      // Limit the height to max-height defined in CSS
+      const maxHeight = parseInt(window.getComputedStyle(textarea).maxHeight);
+      const scrollHeight = textarea.scrollHeight;
+      
+      textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px';
     }
   }
 };
@@ -351,7 +398,10 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
   background-color: #f1f1f1;
+  position: relative;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -396,6 +446,7 @@ export default {
   overflow-y: auto;
   padding: 16px;
   background-color: #f1f1f1;
+  position: relative;
 }
 
 .message-list {
@@ -505,6 +556,12 @@ export default {
   padding: 10px 16px;
   background-color: #fff;
   border-top: 1px solid #eaeaea;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.05);
 }
 
 .tools {
@@ -529,6 +586,9 @@ export default {
   background-color: #f1f1f1;
   padding: 8px 16px;
   margin: 0 8px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
 
 .message-input {
@@ -539,7 +599,9 @@ export default {
   font-size: 16px;
   resize: none;
   max-height: 100px;
+  min-height: 20px;
   line-height: 20px;
+  overflow-y: auto;
 }
 
 .send-button {
@@ -552,6 +614,7 @@ export default {
   background-color: #ddd;
   color: #fff;
   cursor: not-allowed;
+  flex-shrink: 0;
 }
 
 .send-button.active {
@@ -608,5 +671,39 @@ export default {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Mobile device adjustments */
+@media (max-width: 768px) {
+  .input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 12px;
+  }
+  
+  .chat-container {
+    padding-bottom: 58px; /* Make room for the fixed input area */
+  }
+  
+  .messages-area {
+    padding-bottom: 24px;
+  }
+  
+  .input-wrapper {
+    padding: 6px 12px;
+  }
+  
+  .message-input {
+    font-size: 15px;
+  }
+  
+  /* Handle iOS keyboards */
+  @supports (-webkit-touch-callout: none) {
+    .chat-container {
+      height: -webkit-fill-available;
+    }
+  }
 }
 </style> 
