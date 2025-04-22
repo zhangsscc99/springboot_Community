@@ -54,10 +54,10 @@
     <!-- 消息会话列表 -->
     <div class="message-list-header">
       <span class="title-text">聊天</span>
-      <span class="discover-group" @click="navigateToDiscoverGroups">
+      <!-- <span class="discover-group" @click="navigateToDiscoverGroups">
         <i class="iconfont icon-group"></i>
         发现群聊
-      </span>
+      </span> -->
     </div>
 
     <!-- 会话列表 -->
