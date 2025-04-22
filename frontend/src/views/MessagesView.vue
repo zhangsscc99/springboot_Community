@@ -51,10 +51,29 @@ export default {
       user: state => state.auth?.user
     }),
     currentUserId() {
-      return this.user ? this.user.id : null;
+      // 优先从Vuex store获取用户ID
+      if (this.user && this.user.id) {
+        return this.user.id;
+      }
+      
+      // 如果Vuex中没有，尝试从localStorage获取
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const userData = JSON.parse(userStr);
+          return userData?.id || null;
+        }
+      } catch (e) {
+        console.error('Error getting user ID from localStorage:', e);
+      }
+      
+      return null;
     },
     isAuthenticated() {
-      return !!this.user;
+      // 检查Vuex状态和localStorage，综合判断登录状态
+      const hasUserInStore = !!this.user;
+      const hasTokenInStorage = !!localStorage.getItem('token') || !!localStorage.getItem('user');
+      return hasUserInStore || hasTokenInStorage;
     }
   },
   created() {
@@ -62,6 +81,23 @@ export default {
     if (!this.isAuthenticated) {
       this.$router.push('/login');
       return;
+    }
+    
+    // 如果本地存储有token但Vuex store中没有用户数据，尝试加载用户数据
+    if (!this.user && (localStorage.getItem('token') || localStorage.getItem('user'))) {
+      try {
+        // 尝试从本地存储初始化用户数据
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const userData = JSON.parse(userStr);
+          if (userData && userData.id) {
+            // 保存到Vuex，用于当前页面显示
+            this.$store.commit('SET_USER', userData);
+          }
+        }
+      } catch (e) {
+        console.error('Error initializing user data from localStorage:', e);
+      }
     }
     
     // 检查URL中是否有partnerId参数
