@@ -15,14 +15,16 @@
     </div>
 
     <!-- Messages Area -->
-    <div class="messages-area" ref="messagesContainer">
+    <div class="chat-body">
       <div class="loading-indicator" v-if="loading">
         <div class="loader"></div>
       </div>
 
-      <div v-else-if="messages.length === 0" class="empty-state">
-        <div class="empty-message">
+      <div v-else-if="messages.length === 0" class="empty-chat">
+        <div class="icon">
           <i class="fas fa-comments"></i>
+        </div>
+        <div class="text">
           <p>没有消息记录</p>
           <p class="hint">开始发送消息吧</p>
         </div>
@@ -64,7 +66,7 @@
       </div>
     </div>
 
-    <!-- Fixed Simple Input Area -->
+    <!-- Updated chat input styles for desktop and mobile -->
     <div class="chat-input-bar">
       <div class="chat-input-container">
         <input 
@@ -415,11 +417,13 @@ export default {
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px);
-  overflow-y: auto;
-  padding: 15px;
-  padding-bottom: 130px; /* Add space at bottom to prevent messages being hidden under input bar */
-  background-color: #f7f7f7;
+  height: 100vh;
+  background-color: #f6f6f6;
+  position: relative;
+  margin: 0 auto;
+  max-width: 960px;
+  border-left: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
 }
 
 .chat-header {
@@ -429,6 +433,8 @@ export default {
   background-color: #f6f6f6;
   border-bottom: 1px solid #e0e0e0;
   z-index: 10;
+  position: sticky;
+  top: 0;
 }
 
 .back-button, .menu-button {
@@ -459,18 +465,18 @@ export default {
   color: #07c160;
 }
 
-.messages-area {
+.chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  padding-bottom: 55px; /* Adjust to match input bar height */
-  background-color: #ededed;
-  position: relative;
+  padding: 10px 10px 80px 10px;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .message-list {
   display: flex;
   flex-direction: column;
+  padding-bottom: 10px;
 }
 
 .message-wrapper {
@@ -498,17 +504,48 @@ export default {
 }
 
 .message {
-  margin-bottom: 15px;
   display: flex;
-  flex-direction: column;
-}
-
-.message-sent {
-  align-items: flex-end;
-}
-
-.message-received {
+  flex-direction: row;
+  margin-bottom: 15px;
   align-items: flex-start;
+  max-width: 85%;
+}
+
+.message.own-message {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message-bubble {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border-top-left-radius: 4px;
+  padding: 10px 15px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  max-width: calc(100% - 60px);
+  word-break: break-word;
+}
+
+.message-bubble.own-bubble {
+  background-color: #95ec69;
+  border-top-right-radius: 4px;
+  border-top-left-radius: 16px;
 }
 
 .message-content {
@@ -544,80 +581,55 @@ export default {
   align-self: center;
 }
 
-.message-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  margin-right: 10px;
-  background-color: #e0e0e0;
-}
-
-.message-row {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 5px;
-}
-
-.empty-state {
+.empty-chat {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: absolute;
-  top: 40%;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-}
-
-.empty-message {
+  height: 100%;
+  padding: 0 20px;
   text-align: center;
-  color: #999;
-  padding: 20px;
+  color: #8e8e8e;
 }
 
-.empty-message i {
-  font-size: 54px;
+.empty-chat .icon {
+  font-size: 60px;
   margin-bottom: 20px;
-  color: #dadada;
+  color: #d0d0d0;
 }
 
-.empty-message p {
-  margin: 4px 0;
+.empty-chat .text {
+  font-size: 16px;
+  max-width: 300px;
+  line-height: 1.4;
 }
 
-.empty-message .hint {
-  font-size: 14px;
-  color: #aaa;
-}
-
-/* Simple fixed input bar */
+/* Updated chat input styles for desktop and mobile */
 .chat-input-bar {
   position: fixed;
-  bottom: 60px;
+  bottom: 0;
   left: 0;
   right: 0;
   background-color: #f6f6f6;
-  padding: 10px;
+  padding: 10px 12px;
   border-top: 1px solid #e6e6e6;
   display: flex;
   align-items: center;
   z-index: 10;
-  max-width: 800px;
-  margin: 0 auto;
   box-sizing: border-box;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 .chat-input-container {
   display: flex;
   align-items: center;
   background-color: #fff;
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 5px 10px;
   flex: 1;
-  max-width: 90%;
-  margin: 0 auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 0 8px 0 0;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
 }
 
 .chat-input {
@@ -632,45 +644,109 @@ export default {
   resize: none;
 }
 
-.chat-input:focus {
-  outline: none;
-}
-
 .input-actions {
   display: flex;
   align-items: center;
-  margin-left: 5px;
 }
 
 .action-button {
   background: none;
   border: none;
-  color: #07c160;
-  font-size: 22px;
-  padding: 5px;
+  color: #7d7d7d;
+  font-size: 20px;
+  padding: 5px 8px;
   cursor: pointer;
-  margin-left: 8px;
+  margin-left: 0;
 }
 
 .emoji-button, .image-button {
-  color: #7d7d7d;
-  font-size: 20px;
+  margin-right: 0px;
 }
 
 .send-button {
-  color: #07c160;
-  font-weight: bold;
-  font-size: 16px;
-  padding: 5px 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #07c160;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .send-button:disabled {
-  color: #c9c9c9;
+  background-color: #c9c9c9;
 }
 
+/* Empty chat state styling */
+.empty-chat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 20px;
+  text-align: center;
+  color: #8e8e8e;
+}
+
+.empty-chat .icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  color: #d0d0d0;
+}
+
+.empty-chat .text {
+  font-size: 16px;
+  max-width: 300px;
+  line-height: 1.4;
+}
+
+/* Bottom space for mobile browsers to account for navigation bars */
 @media (max-width: 768px) {
   .chat-input-bar {
+    bottom: 56px; /* Ensure it stays just above the navbar on mobile */
+    padding: 8px 10px;
     max-width: 100%;
+  }
+  
+  .chat-body {
+    padding-bottom: 140px; /* Larger padding on mobile to ensure content is visible */
+  }
+  
+  .chat-input {
+    padding: 6px 8px;
+    font-size: 15px;
+  }
+  
+  .chat-container {
+    max-width: 100%;
+    border: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .chat-input-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+  }
+  
+  .chat-body {
+    padding-bottom: 60px;
+  }
+  
+  /* Improve message sizing for desktop */
+  .message {
+    max-width: 70%;
+  }
+  
+  .message-bubble {
+    max-width: calc(100% - 60px);
   }
 }
 
@@ -723,25 +799,6 @@ export default {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-/* Mobile device adjustments */
-@media (max-width: 767px) {
-  .chat-container {
-    padding-bottom: 120px;
-  }
-  
-  .chat-input-bar {
-    bottom: 56px; /* Ensure it stays just above the navbar on mobile */
-    padding: 0 8px;
-    width: 100%; /* Full width on mobile */
-    max-width: 100%;
-  }
-
-  .chat-input {
-    padding: 6px 10px;
-    margin-right: 8px;
-  }
 }
 
 .input-button {
