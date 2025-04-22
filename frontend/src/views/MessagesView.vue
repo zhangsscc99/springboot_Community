@@ -12,49 +12,52 @@
     <div class="notification-categories">
       <div class="category-item" @click="navigateToCategory('likes')">
         <div class="category-icon like-icon">
-          <i class="iconfont icon-like"></i>
-          <div class="badge" v-if="notifications.likes.unreadCount > 0">
-            {{ notifications.likes.unreadCount > 99 ? '99+' : notifications.likes.unreadCount }}
-          </div>
+          <i class="fas fa-heart"></i>
         </div>
         <div class="category-text">赞和收藏</div>
+        <div class="badge-container" v-if="notifications.likes.unreadCount > 0">
+          <div class="badge">{{ notifications.likes.unreadCount > 99 ? '99+' : notifications.likes.unreadCount }}</div>
+        </div>
       </div>
       
       <div class="category-item" @click="navigateToCategory('follows')">
         <div class="category-icon follow-icon">
-          <i class="iconfont icon-user-add"></i>
-          <div class="badge" v-if="notifications.follows.unreadCount > 0">
-            {{ notifications.follows.unreadCount > 99 ? '99+' : notifications.follows.unreadCount }}
-          </div>
+          <i class="fas fa-user"></i>
         </div>
         <div class="category-text">新增关注</div>
+        <div class="badge-container" v-if="notifications.follows.unreadCount > 0">
+          <div class="badge">{{ notifications.follows.unreadCount > 99 ? '99+' : notifications.follows.unreadCount }}</div>
+        </div>
       </div>
       
       <div class="category-item" @click="navigateToCategory('comments')">
         <div class="category-icon comment-icon">
-          <i class="iconfont icon-comment"></i>
-          <div class="badge" v-if="notifications.comments.unreadCount > 0">
-            {{ notifications.comments.unreadCount > 99 ? '99+' : notifications.comments.unreadCount }}
-          </div>
+          <i class="fas fa-comment"></i>
         </div>
         <div class="category-text">评论和@</div>
+        <div class="badge-container" v-if="notifications.comments.unreadCount > 0">
+          <div class="badge">{{ notifications.comments.unreadCount > 99 ? '99+' : notifications.comments.unreadCount }}</div>
+        </div>
       </div>
       
       <div class="category-item" @click="navigateToCategory('system')">
         <div class="category-icon system-icon">
-          <i class="iconfont icon-notification"></i>
-          <div class="badge" v-if="notifications.system.unreadCount > 0">
-            {{ notifications.system.unreadCount > 99 ? '99+' : notifications.system.unreadCount }}
-          </div>
+          <i class="fas fa-bell"></i>
         </div>
         <div class="category-text">系统通知</div>
+        <div class="badge-container" v-if="notifications.system.unreadCount > 0">
+          <div class="badge">{{ notifications.system.unreadCount > 99 ? '99+' : notifications.system.unreadCount }}</div>
+        </div>
       </div>
     </div>
 
     <!-- 消息会话列表 -->
     <div class="message-list-header">
-      <span>聊天</span>
-      <span class="discover-group" @click="navigateToDiscoverGroups">发现群聊</span>
+      <span class="title-text">聊天</span>
+      <span class="discover-group" @click="navigateToDiscoverGroups">
+        <i class="iconfont icon-group"></i>
+        发现群聊
+      </span>
     </div>
 
     <!-- 会话列表 -->
@@ -70,7 +73,11 @@
         />
       </div>
       <div v-if="conversations.length === 0" class="empty-state">
-        暂无聊天会话
+        <div class="empty-icon">
+          <i class="iconfont icon-message"></i>
+        </div>
+        <div class="empty-text">暂无聊天会话</div>
+        <div class="empty-hint">点击右上角加号开始新的对话</div>
       </div>
     </div>
   </div>
@@ -291,6 +298,9 @@ export default {
   padding: 16px;
   background-color: #fff;
   border-bottom: 1px solid #eaeaea;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .title {
@@ -300,9 +310,20 @@ export default {
 }
 
 .action-buttons i {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   font-size: 20px;
   cursor: pointer;
   color: #07c160;
+  transition: background-color 0.2s;
+}
+
+.action-buttons i:active {
+  background-color: #f0f0f0;
 }
 
 .notification-categories {
@@ -319,76 +340,122 @@ export default {
   flex-direction: column;
   align-items: center;
   cursor: pointer;
+  transition: transform 0.2s;
+  padding: 0 8px;
+  position: relative;
+}
+
+.category-item:active {
+  transform: scale(0.95);
 }
 
 .category-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
-  position: relative;
 }
 
 .category-icon i {
-  font-size: 24px;
-  color: #fff;
+  font-size: 26px;
 }
 
 .like-icon {
-  background-color: #f25542;
+  background-color: #ffeeee;
+}
+
+.like-icon i {
+  color: #ff4757;
 }
 
 .follow-icon {
-  background-color: #07c160;
+  background-color: #eef5ff;
+}
+
+.follow-icon i {
+  color: #2e86de;
 }
 
 .comment-icon {
-  background-color: #1989fa;
+  background-color: #e8fff0;
+}
+
+.comment-icon i {
+  color: #2ed573;
 }
 
 .system-icon {
-  background-color: #ff9500;
+  background-color: #fff8ee;
+}
+
+.system-icon i {
+  color: #ff9f43;
 }
 
 .category-text {
   font-size: 12px;
-  color: #333;
+  color: #666;
+  margin-top: 4px;
+}
+
+.badge-container {
+  position: absolute;
+  top: -6px;
+  right: 0px;
 }
 
 .badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
   background-color: #ff3b30;
   color: white;
-  font-size: 12px;
+  font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .message-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 12px 16px;
   background-color: #fff;
   font-size: 14px;
   color: #333;
   border-bottom: 1px solid #eaeaea;
 }
 
+.title-text {
+  font-weight: 500;
+  color: #333;
+}
+
 .discover-group {
+  display: flex;
+  align-items: center;
   color: #07c160;
   font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background-color: #f0f9f0;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.discover-group i {
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.discover-group:active {
+  background-color: #e0f3e0;
 }
 
 .conversation-list {
@@ -403,10 +470,34 @@ export default {
 
 .empty-state {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  height: 100px;
+  justify-content: center;
+  padding: 60px 20px;
   color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #ddd;
+  margin-bottom: 16px;
+  width: 80px;
+  height: 80px;
+  background-color: #f5f5f5;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.empty-hint {
   font-size: 14px;
+  color: #999;
 }
 </style> 

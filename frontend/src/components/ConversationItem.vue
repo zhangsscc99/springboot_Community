@@ -11,7 +11,7 @@
         <div class="name">{{ conversation.name }}</div>
         <div class="time">{{ formatTime(conversation.lastMessageTime) }}</div>
       </div>
-      <div class="message-preview">{{ conversation.lastMessage }}</div>
+      <div class="message-preview">{{ conversation.lastMessage || '点击开始聊天' }}</div>
     </div>
   </div>
 </template>
@@ -70,21 +70,31 @@ export default {
   padding: 12px 16px;
   border-bottom: 1px solid #eaeaea;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .conversation-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f8f8f8;
+}
+
+.conversation-item:active {
+  background-color: #f0f0f0;
 }
 
 .conversation-item.unread .name {
   font-weight: 600;
+  color: #000;
+}
+
+.conversation-item.unread .message-preview {
+  color: #333;
 }
 
 .avatar {
   position: relative;
   width: 48px;
   height: 48px;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-right: 12px;
   overflow: hidden;
 }
@@ -99,16 +109,18 @@ export default {
   position: absolute;
   top: -6px;
   right: -6px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
   background-color: #ff3b30;
   color: white;
-  font-size: 12px;
+  font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .content {
@@ -116,17 +128,19 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  justify-content: center;
 }
 
 .top-row {
   display: flex;
   justify-content: space-between;
   margin-bottom: 4px;
+  align-items: center;
 }
 
 .name {
   font-size: 16px;
-  color: #000;
+  color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -140,7 +154,7 @@ export default {
 
 .message-preview {
   font-size: 14px;
-  color: #888;
+  color: #999;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
