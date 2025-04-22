@@ -80,4 +80,13 @@ public interface PostService {
      * @return 匹配的帖子分页
      */
     Page<Post> searchPosts(String query, Pageable pageable);
+    
+    /**
+     * 获取热门帖子
+     * 使用热度算法：views*1 + likes*3 + favorites*5 + comments*8，并考虑时间衰减因子
+     * 
+     * @param pageable 分页信息
+     * @return 按热度排序的帖子分页
+     */
+    Page<PostResponse> getHotPosts(Pageable pageable);
 } 

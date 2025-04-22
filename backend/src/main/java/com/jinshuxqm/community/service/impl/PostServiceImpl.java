@@ -1,5 +1,6 @@
 package com.jinshuxqm.community.service.impl;
 
+import com.jinshuxqm.community.exception.ResourceNotFoundException;
 import com.jinshuxqm.community.model.Post;
 import com.jinshuxqm.community.model.PostFavorite;
 import com.jinshuxqm.community.model.PostLike;
@@ -34,12 +35,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import com.jinshuxqm.community.exception.ResourceNotFoundException;
 import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
 import java.util.concurrent.CompletableFuture;
 import java.util.ArrayList;
 import org.springframework.data.domain.PageImpl;
+import java.util.Comparator;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -520,5 +521,81 @@ public class PostServiceImpl implements PostService {
         
         // 使用仓库方法执行搜索
         return postRepository.searchByTitleOrContent(query.trim(), pageable);
+    }
+    
+    @Override
+    public Page<PostResponse> getHotPosts(Pageable pageable) {
+        // 获取所有帖子
+        List<Post> allPosts = postRepository.findAll();
+        
+        // 当前时间，用于计算时间衰减因子
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 为每个帖子计算热度分数
+        List<PostWithScore> postsWithScores = allPosts.stream()
+                .map(post -> {
+                    // 获取各项统计数据
+                    int views = post.getStats() != null ? post.getStats().getViewCount() : 0;
+                    int likes = post.getStats() != null ? post.getStats().getLikeCount() : 0;
+                    int favorites = post.getStats() != null ? post.getStats().getFavoriteCount() : 0;
+                    int comments = post.getStats() != null ? post.getStats().getCommentCount() : 0;
+                    
+                    // 计算基础热度分数: views*1 + likes*3 + favorites*5 + comments*8
+                    double baseScore = views + (likes * 3) + (favorites * 5) + (comments * 8);
+                    
+                    // 计算时间衰减因子
+                    // 使用帖子创建时间与当前时间之间的小时差作为衰减基础
+                    double hoursElapsed = 
+                        post.getCreatedAt() != null ?
+                        java.time.Duration.between(post.getCreatedAt(), now).toHours() : 0;
+                    
+                    // 使用对数衰减公式: score / (1 + log(1 + hoursElapsed))
+                    // 这确保新帖子有较高权重，但随时间推移热度逐渐降低
+                    double decayFactor = 1 + Math.log1p(hoursElapsed / 24); // 使用天数，而不是小时
+                    double finalScore = baseScore / decayFactor;
+                    
+                    return new PostWithScore(post, finalScore);
+                })
+                .sorted(Comparator.comparing(PostWithScore::getScore).reversed()) // 按分数从高到低排序
+                .collect(Collectors.toList());
+        
+        // 手动分页
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), postsWithScores.size());
+        
+        if (start > postsWithScores.size()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, postsWithScores.size());
+        }
+        
+        List<Post> pagedPosts = postsWithScores.subList(start, end)
+                .stream()
+                .map(PostWithScore::getPost)
+                .collect(Collectors.toList());
+        
+        // 将Post转换为PostResponse
+        List<PostResponse> postResponses = pagedPosts.stream()
+                .map(post -> convertToDto(post, null))
+                .collect(Collectors.toList());
+        
+        return new PageImpl<>(postResponses, pageable, postsWithScores.size());
+    }
+    
+    // 帮助类：用于存储帖子及其热度分数
+    private static class PostWithScore {
+        private final Post post;
+        private final double score;
+        
+        public PostWithScore(Post post, double score) {
+            this.post = post;
+            this.score = score;
+        }
+        
+        public Post getPost() {
+            return post;
+        }
+        
+        public double getScore() {
+            return score;
+        }
     }
 } 

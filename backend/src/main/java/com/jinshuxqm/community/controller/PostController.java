@@ -69,6 +69,19 @@ public class PostController {
         }
     }
 
+    // 获取热门帖子
+    @GetMapping("/hot")
+    public ResponseEntity<Page<PostResponse>> getHotPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        logger.info("获取热门帖子，页码：{}，大小：{}", page, size);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PostResponse> hotPosts = postService.getHotPosts(pageable);
+        
+        return ResponseEntity.ok(hotPosts);
+    }
+
     // 根据标签获取帖子
     @GetMapping("/tab/{tab}")
     public ResponseEntity<Page<PostResponse>> getPostsByTab(
@@ -77,8 +90,16 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size) {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PostResponse> posts;
         
-        Page<PostResponse> posts = postService.getPostsByTab(tab, pageable);
+        // 如果是热榜标签，使用热门帖子逻辑
+        if ("热榜".equals(tab)) {
+            logger.info("通过热榜标签获取热门帖子");
+            posts = postService.getHotPosts(pageable);
+        } else {
+            posts = postService.getPostsByTab(tab, pageable);
+        }
+        
         return ResponseEntity.ok(posts);
     }
 
