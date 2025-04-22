@@ -647,11 +647,8 @@ export default {
       }
     },
     goToMessages() {
-      // 导航到消息页面，并携带当前查看的用户ID作为参数
-      this.$router.push({
-        path: '/messages',
-        query: { partnerId: this.profileId }
-      });
+      // 直接导航到与该用户的聊天页面，而不是消息列表页面
+      this.$router.push(`/chat/${this.profileId}`);
     }
   },
   // 添加路由导航守卫
