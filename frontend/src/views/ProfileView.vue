@@ -70,6 +70,7 @@
           帖子
         </div>
         <div 
+          v-if="isCurrentUser"
           class="profile-tab" 
           :class="{ active: activeTab === 'likes' }"
           @click="setActiveTab('likes')"
@@ -77,6 +78,7 @@
           喜欢
         </div>
         <div 
+          v-if="isCurrentUser"
           class="profile-tab" 
           :class="{ active: activeTab === 'favorites' }"
           @click="setActiveTab('favorites')"
@@ -389,14 +391,47 @@ export default {
       }
     }
   },
-  created() {
-    this.loading = true;
-    setTimeout(() => {
-      this.profileId = this.$route.params.id || '123';
-      this.loading = false;
+  async created() {
+    // 根据路由参数获取 profileId
+    this.profileId = this.$route.params.id || (this.currentUser ? this.currentUser.id : null);
+    
+    // 如果用户未登录且没有提供ID，则重定向到首页
+    if (!this.profileId) {
+      this.$router.push('/');
+      return;
+    }
+    
+    // 设置默认激活标签为"帖子"
+    this.activeTab = 'posts';
+    
+    try {
+      this.loading = true;
       
-      this.fetchUserPosts();
-    }, 500);
+      // 获取用户信息
+      const response = await apiService.users.getProfile(this.profileId);
+      const userData = response.data;
+      
+      // 更新用户信息
+      this.profileName = userData.username;
+      this.profileBio = userData.bio || '';
+      this.profileAvatar = userData.avatar;
+      
+      // 加载用户帖子
+      await this.fetchUserPosts();
+      
+      // 如果是当前用户查看自己的资料，预加载喜欢和收藏的帖子
+      if (this.isCurrentUser) {
+        // 异步加载其他标签的数据，但不等待完成
+        this.fetchLikedPosts();
+        this.fetchFavoritedPosts();
+      }
+      
+    } catch (error) {
+      console.error('获取用户资料失败:', error);
+      this.error = '加载用户资料失败';
+    } finally {
+      this.loading = false;
+    }
   },
   mounted() {
     // 直接获取用户资料，不需要额外条件判断

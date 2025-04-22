@@ -1,5 +1,7 @@
 <template>
-  <div class="user-avatar-container">
+  <div class="user-avatar-container" 
+       :class="{ 'clickable': clickable && userId }"
+       @click="clickable && userId ? navigateToProfile() : null">
       <img 
         :src="imageSource" 
       :alt="`${username}'s avatar`" 
@@ -25,6 +27,14 @@ export default {
     showUsername: {
       type: Boolean,
       default: false
+    },
+    clickable: {
+      type: Boolean,
+      default: true
+    },
+    userId: {
+      type: [String, Number],
+      default: null
     }
   },
   data() {
@@ -49,6 +59,11 @@ export default {
     handleImageError(e) {
       this.imageError = true;
       e.target.src = this.defaultAvatar;
+    },
+    navigateToProfile() {
+      if (this.userId) {
+        this.$router.push({ name: 'profile', params: { id: this.userId } });
+      }
     }
   }
 }
@@ -61,11 +76,22 @@ export default {
   align-items: center;
 }
 
+.user-avatar-container.clickable {
+  cursor: pointer;
+}
+
+.user-avatar-container.clickable:hover .user-avatar {
+  border: 2px solid var(--primary-color);
+  transform: scale(1.05);
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
 }
 
 .avatar-username {

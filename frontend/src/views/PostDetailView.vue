@@ -21,6 +21,7 @@
         <UserAvatar 
           :src="post.author.avatar" 
           :username="post.author.username"
+          :userId="post.author.id"
         />
         <div class="post-user-info">
           <h4 class="post-username">{{ post.author.username }}</h4>
@@ -100,6 +101,7 @@
               <UserAvatar 
                 :src="comment.author.avatar" 
                 :username="comment.author.username"
+                :userId="comment.author.id"
               />
               <div class="comment-user-info">
                 <h4 class="comment-username">{{ comment.author.username }}</h4>
@@ -126,6 +128,7 @@
                   <UserAvatar 
                     :src="reply.author.avatar" 
                     :username="reply.author.username"
+                    :userId="reply.author.id"
                     :size="28"
                   />
                   <div class="comment-user-info">

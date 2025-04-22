@@ -31,6 +31,7 @@
           <UserAvatar 
             :src="post.author.avatar" 
             :username="post.author.username"
+            :userId="post.author.id"
         />
           <div class="post-user-info">
             <h4 class="post-username">{{ post.author.username }}</h4>
