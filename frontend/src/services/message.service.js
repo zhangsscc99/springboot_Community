@@ -1,49 +1,65 @@
 import axios from 'axios';
 import authHeader from './auth-header';
+import { API_URL } from '@/config/api.config';
 
-const API_URL = '/api/messages';
+// Messages API endpoint
+const MESSAGES_API = `${API_URL}/api/messages`;
 
 class MessageService {
   /**
    * 获取当前用户的所有会话
    */
   getConversations(page = 0, size = 20) {
-    return axios.get(`${API_URL}/conversations?page=${page}&size=${size}`, { headers: authHeader() });
+    console.log('Fetching conversations with URL:', `${MESSAGES_API}/conversations`);
+    return axios.get(`${MESSAGES_API}/conversations?page=${page}&size=${size}`, { headers: authHeader() });
   }
 
   /**
    * 获取特定会话的详情
    */
   getConversationDetails(partnerId) {
-    return axios.get(`${API_URL}/conversations/${partnerId}`, { headers: authHeader() });
+    console.log('Fetching conversation details with URL:', `${MESSAGES_API}/conversations/${partnerId}`);
+    return axios.get(`${MESSAGES_API}/conversations/${partnerId}`, { headers: authHeader() });
   }
 
   /**
    * 获取与特定用户的消息历史
    */
   getMessageHistory(partnerId, page = 0, size = 50) {
-    return axios.get(`${API_URL}/history/${partnerId}?page=${page}&size=${size}`, { headers: authHeader() });
+    console.log('Fetching message history with URL:', `${MESSAGES_API}/history/${partnerId}`);
+    return axios.get(`${MESSAGES_API}/history/${partnerId}?page=${page}&size=${size}`, { headers: authHeader() });
   }
 
   /**
    * 发送私信
    */
   sendMessage(receiverId, content) {
-    return axios.post(API_URL, { receiverId, content }, { headers: authHeader() });
+    console.log('Sending message with URL:', `${MESSAGES_API}`, 'Data:', { receiverId, content });
+    
+    return axios({
+      method: 'post',
+      url: `${MESSAGES_API}`,
+      data: { receiverId, content },
+      headers: authHeader()
+    }).catch(error => {
+      console.error('Error sending message:', error.response || error);
+      throw error;
+    });
   }
 
   /**
    * 标记与特定用户的消息为已读
    */
   markAsRead(partnerId) {
-    return axios.put(`${API_URL}/read/${partnerId}`, {}, { headers: authHeader() });
+    console.log('Marking messages as read with URL:', `${MESSAGES_API}/read/${partnerId}`);
+    return axios.put(`${MESSAGES_API}/read/${partnerId}`, {}, { headers: authHeader() });
   }
 
   /**
    * 获取未读消息数
    */
   getUnreadCount() {
-    return axios.get(`${API_URL}/unread-count`, { headers: authHeader() });
+    return axios.get(`${MESSAGES_API}/unread-count`, { headers: authHeader() });
   }
 
   /**
@@ -68,9 +84,26 @@ class MessageService {
       token = localStorage.getItem('token') || '';
     }
     
-    const eventSource = new EventSource(`${API_URL}/sse-connect?token=${token}`);
+    const sseUrl = `${MESSAGES_API}/sse-connect?token=${encodeURIComponent(token)}`;
+    console.log('Creating SSE connection to:', sseUrl);
     
-    return eventSource;
+    try {
+      const eventSource = new EventSource(sseUrl);
+      
+      // Add event listeners for debugging
+      eventSource.onopen = () => console.log('SSE connection opened successfully');
+      eventSource.onerror = (error) => console.error('SSE connection error:', error);
+      
+      return eventSource;
+    } catch (error) {
+      console.error('Failed to create SSE connection:', error);
+      // Return a mock EventSource that won't cause errors
+      return {
+        addEventListener: () => {},
+        close: () => {},
+        onerror: () => {}
+      };
+    }
   }
 }
 

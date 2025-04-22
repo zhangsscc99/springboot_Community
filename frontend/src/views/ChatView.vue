@@ -47,8 +47,20 @@
             <div class="avatar" v-if="!isOwnMessage(message)">
               <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
             </div>
-            <div class="message-bubble" :class="{ 'own-bubble': isOwnMessage(message) }">
-              <div class="message-content">{{ message.content }}</div>
+            <div class="message-content">
+              <div class="message-bubble" :class="{ 
+                'own-bubble': isOwnMessage(message),
+                'failed': message.sendFailed
+              }">
+                {{ message.content }}
+              </div>
+              <div v-if="isOwnMessage(message)" class="message-status" :class="{ 'failed': message.sendFailed }">
+                <span v-if="message.sendFailed">
+                  发送失败 <button class="retry-button" @click="retryMessage(message)">重试</button>
+                </span>
+                <span v-else-if="message.id.toString().includes('temp')">发送中...</span>
+                <span v-else>已发送</span>
+              </div>
             </div>
             <div class="avatar" v-if="isOwnMessage(message)">
               <img :src="userAvatar || '/default-avatar.png'" alt="You">
@@ -117,8 +129,27 @@ export default {
     };
   },
   created() {
-    // Get partner ID from route params
-    this.partnerId = parseInt(this.$route.params.id);
+    // Get partner ID from route params and validate it
+    const partnerIdParam = this.$route.params.id;
+    console.log('Partner ID from route:', partnerIdParam);
+    
+    if (!partnerIdParam || partnerIdParam === 'undefined') {
+      console.error('Invalid partner ID detected');
+      // Handle invalid ID - redirect to messages page
+      this.$router.push('/messages');
+      return;
+    }
+    
+    this.partnerId = parseInt(partnerIdParam);
+    console.log('Parsed partner ID:', this.partnerId);
+    
+    // Only proceed if we have a valid partner ID
+    if (isNaN(this.partnerId) || this.partnerId <= 0) {
+      console.error('Partner ID could not be parsed as a valid number');
+      this.$router.push('/messages');
+      return;
+    }
+    
     this.loadUserInfo();
     this.fetchConversationDetails();
     this.fetchMessages();
@@ -252,7 +283,13 @@ export default {
         });
         
         // Send to server
+        console.log('Sending message to API...', {
+          receiverId: this.partnerId,
+          content: content
+        });
+        
         const response = await MessageService.sendMessage(this.partnerId, content);
+        console.log('Message sent successfully:', response);
         
         // Replace temp message with actual response if needed
         if (response.data) {
@@ -263,7 +300,17 @@ export default {
         }
       } catch (error) {
         console.error('Failed to send message:', error);
-        alert('发送失败，请重试');
+        // Keep the message in UI but mark it as failed
+        const failedMessage = this.messages.find(m => m.id.toString().includes('temp'));
+        if (failedMessage) {
+          failedMessage.sendFailed = true;
+        }
+        // More user-friendly error message
+        if (error.response && error.response.status === 404) {
+          alert('发送失败: API接口未找到，请检查后端服务');
+        } else {
+          alert('发送失败: ' + (error.message || '未知错误，请稍后重试'));
+        }
       }
     },
     async markAsRead() {
@@ -339,9 +386,10 @@ export default {
       return message.senderId === this.getCurrentUserId();
     },
     scrollToBottom() {
-      if (this.$refs.messagesContainer) {
+      const chatBody = document.querySelector('.chat-body');
+      if (chatBody) {
         this.$nextTick(() => {
-          this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
+          chatBody.scrollTop = chatBody.scrollHeight;
         });
       }
     },
@@ -402,6 +450,19 @@ export default {
     },
     toggleVoiceInput() {
       alert('语音输入功能开发中');
+    },
+    retryMessage(message) {
+      // Remove the failed flag
+      message.sendFailed = false;
+      
+      // Try to send again
+      this.sendMessage(message.content);
+      
+      // Remove the original failed message
+      const index = this.messages.findIndex(m => m.id === message.id);
+      if (index !== -1) {
+        this.messages.splice(index, 1);
+      }
     }
   }
 };
@@ -547,6 +608,34 @@ export default {
   background-color: #95ec69;
   border-top-right-radius: 4px;
   border-top-left-radius: 16px;
+}
+
+/* Failed message styling */
+.message-bubble.own-bubble.failed {
+  background-color: #ffeeee;
+  border: 1px dashed #ff6b6b;
+}
+
+.message-status {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.message-status.failed {
+  color: #ff6b6b;
+}
+
+.retry-button {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 12px;
+  padding: 2px 8px;
+  margin-left: 5px;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .message-content {

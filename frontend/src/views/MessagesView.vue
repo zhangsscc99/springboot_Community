@@ -265,7 +265,24 @@ export default {
     },
     
     navigateToConversation(conversationId) {
-      this.$router.push(`/chat/${conversationId}`);
+      console.log('Navigating to conversation:', conversationId);
+      
+      // Validate conversation ID before navigation
+      if (!conversationId || conversationId === 'undefined' || conversationId <= 0) {
+        console.error('Invalid conversation ID:', conversationId);
+        this.$message.error('无效的会话ID');
+        return;
+      }
+      
+      // Ensure conversationId is a number
+      const parsedId = parseInt(conversationId);
+      if (isNaN(parsedId)) {
+        console.error('Conversation ID is not a number:', conversationId);
+        this.$message.error('无效的会话ID');
+        return;
+      }
+      
+      this.$router.push(`/chat/${parsedId}`);
     },
     
     navigateToCategory(category) {

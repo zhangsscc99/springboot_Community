@@ -11,4 +11,7 @@ const apiConfig = {
   // BASE_URL: '',
 };
 
+// 导出完整的API URL
+export const API_URL = apiConfig.BASE_URL;
+
 export default apiConfig; 
