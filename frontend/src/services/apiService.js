@@ -234,12 +234,18 @@ const apiService = {
   // 评论相关
   comments: {
     getCommentsByPostId(postId) {
-      // 添加验证，确保postId有效
-      if (!postId || postId === 'undefined') {
-        console.error('无效的帖子ID');
+      // 增强验证，确保postId有效，添加详细日志
+      if (!postId) {
+        console.error('无效的帖子ID: ID为空');
         return Promise.reject(new Error('无效的帖子ID'));
       }
       
+      if (postId === 'undefined' || postId === 'null') {
+        console.error(`无效的帖子ID: ID为字符串"${postId}"`);
+        return Promise.reject(new Error('无效的帖子ID'));
+      }
+      
+      console.log(`正在获取帖子 ${postId} 的评论`);
       return apiClient.get(`/api/posts/${postId}/comments`);
     },
     create(postId, commentData) {

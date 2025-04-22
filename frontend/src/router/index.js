@@ -58,9 +58,11 @@ router.beforeEach((to, from, next) => {
       query: { redirect: to.fullPath }
     });
   } else {
-    if (to.name === 'PostDetail') {
+    // 检查帖子详情页的ID有效性
+    if (to.name === 'post-detail') {
       const postId = to.params.id;
       if (!postId || postId === 'undefined' || isNaN(Number(postId))) {
+        console.warn(`导航被拦截：无效的帖子ID [${postId}]`);
         // 帖子ID无效，重定向到首页
         next({ name: 'Home' });
         return;

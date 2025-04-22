@@ -263,6 +263,12 @@ export default {
     async fetchPost() {
       this.loading = true;
       try {
+        // 验证帖子ID
+        if (!this.postId) {
+          console.error('无效的帖子ID: 路由参数中没有找到ID');
+          throw new Error('无效的帖子ID: 请检查URL');
+        }
+
         // 使用store中优化过的fetchPostById方法（带缓存）
         const response = await this.fetchPostById(this.postId);
         
@@ -280,7 +286,7 @@ export default {
         }
         
         // 获取评论 - 可以考虑也为评论添加缓存机制
-        this.comments = await this.fetchComments(this.postId);
+        this.comments = await this.fetchComments({ postId: this.postId });
         
         this.error = null;
       } catch (error) {
@@ -417,16 +423,31 @@ export default {
     
     // 获取评论
     async loadComments() {
+      // 检查当前是否在帖子详情页面
+      if (this.$route.name !== 'post-detail') {
+        console.log('当前不在帖子详情页面，跳过评论加载');
+        return;
+      }
+    
+      // 确保有有效的帖子ID
       if (!this.post || !this.post.id) {
-        console.log('帖子ID不存在，无法加载评论');
-        return; // 确保帖子ID存在再加载评论
+        console.log('帖子ID不存在或无效，无法加载评论');
+        return;
+      }
+      
+      // 防止重复加载
+      if (this.isLoadingComments) {
+        console.log('评论已在加载中，跳过重复请求');
+        return;
       }
       
       this.isLoadingComments = true;
       
       try {
+        console.log(`开始加载帖子 ${this.post.id} 的评论`);
         const response = await apiService.comments.getCommentsByPostId(this.post.id);
         this.comments = response.data;
+        console.log(`成功加载到 ${this.comments.length} 条评论`);
       } catch (error) {
         console.error('加载评论失败:', error);
         if (error.response) {
@@ -630,15 +651,52 @@ export default {
     }
   },
   async mounted() {
-    // 加载帖子详情
-    await this.fetchPost();
+    try {
+      // 首先验证路由参数
+      if (!this.$route.params.id) {
+        console.warn('路由参数中缺少帖子ID，跳过数据加载');
+        this.error = '无效的帖子ID：URL参数缺失';
+        return;
+      }
+
+      // 验证ID格式
+      const postId = this.$route.params.id;
+      if (isNaN(Number(postId))) {
+        console.warn(`无效的帖子ID格式: ${postId}`);
+        this.error = '无效的帖子ID：格式错误';
+        return;
+      }
+
+      // 加载帖子详情
+      await this.fetchPost();
+      
+      // 只有当帖子成功加载后才加载评论
+      if (this.post && this.post.id) {
+        await this.loadComments();
+      } else {
+        console.log('帖子数据未加载，跳过评论加载');
+      }
+      
+      // 检查认证状态
+      console.log('当前认证状态:', this.isAuthenticated);
+      console.log('当前用户:', this.user);
+    } catch (error) {
+      console.error('组件初始化出错:', error);
+      this.error = '加载内容时出错';
+    }
+  },
+  // 添加路由离开钩子，清理状态
+  beforeRouteLeave(to, from, next) {
+    // 清理本地组件状态
+    this.comments = [];
+    this.commentError = null;
+    this.isLoadingComments = false;
     
-    // 加载评论
-    await this.loadComments();
+    // 调用 store 的 resetComments 动作，重置全局状态
+    this.$store.dispatch('resetComments');
     
-    // 检查认证状态
-    console.log('当前认证状态:', this.isAuthenticated);
-    console.log('当前用户:', this.user);
+    // 继续路由导航
+    next();
   }
 }
 </script>

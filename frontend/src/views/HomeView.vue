@@ -238,6 +238,18 @@ export default {
   async created() {
     const currentTab = this.activeTab;
     await this.switchTab(currentTab);
+  },
+  // 添加activated钩子，处理从其他页面返回时的状态重置
+  activated() {
+    // 确保返回主页时不会显示来自详情页的错误
+    this.$store.commit('SET_ERROR', null);
+    
+    // 检查当前激活的标签是否有数据，如果没有则加载
+    if (!this.tabPosts[this.activeTab] || this.tabPosts[this.activeTab].length === 0) {
+      this.switchTab(this.activeTab);
+    }
+
+    console.log('HomeView 组件被激活');
   }
 }
 </script>

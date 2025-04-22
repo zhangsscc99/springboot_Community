@@ -28,7 +28,9 @@ export default createStore({
     tabCacheUpdate: {}, // 记录每个标签页最后更新时间
     cachedPages: {}, // 用于存储各页面数据
     cachedScrollPositions: {}, // 用于存储各页面滚动位置
-    requestCancelTokens: {} // 用于存储取消标记
+    requestCancelTokens: {}, // 用于存储取消标记
+    currentComments: [],
+    commentError: null
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -141,6 +143,12 @@ export default createStore({
         state.requestCancelTokens[tab].cancel(`切换到新标签，取消 ${tab} 请求`);
         delete state.requestCancelTokens[tab];
       }
+    },
+    // 重置评论状态
+    RESET_COMMENTS(state) {
+      // 清空评论相关状态
+      state.currentComments = [];
+      state.commentError = null;
     }
   },
   actions: {
@@ -763,6 +771,12 @@ export default createStore({
         console.error(`预加载 ${tab} 栏目帖子失败:`, error);
         return [];
       }
+    },
+    
+    // 重置评论状态 - 路由切换时调用
+    resetComments({ commit }) {
+      commit('RESET_COMMENTS');
+      commit('SET_ERROR', null); // 同时清除全局错误状态
     }
   },
   modules: {
