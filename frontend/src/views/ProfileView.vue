@@ -56,7 +56,7 @@
             <i v-if="followLoading" class="fas fa-spinner fa-spin"></i>
             <i v-else-if="isFollowing" class="fas fa-check"></i>
             <i v-else class="fas fa-plus"></i>
-            {{ isFollowing ? '（已关注）' : '关注' }}
+            {{ isFollowing ? '已关注' : '关注' }}
           </button>
           <button class="edit-profile-btn" v-if="isCurrentUser" @click="openEditModal">
             <i class="fas fa-pencil-alt"></i> 编辑资料
@@ -248,7 +248,7 @@
                 :class="{ 'following': isUserInFollowingList(user.id) }"
                 @click="toggleFollowUser(user.id)"
               >
-                {{ isUserInFollowingList(user.id) ? '（已关注）' : '关注' }}
+                {{ isUserInFollowingList(user.id) ? '已关注' : '关注' }}
               </button>
             </div>
           </div>
@@ -1082,25 +1082,27 @@ textarea.form-control {
 
 /* New styles for follow features */
 .follow-btn.following {
-  /* 与未关注状态完全相同的样式 */
-  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
-  color: white;
-  border: none;
+  /* 使用明显不同的样式来表示已关注状态 */
+  background-image: none !important;
+  background-color: white !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+  opacity: 1 !important;
 }
 
-/* 只在悬停时改变样式，显示取消关注的视觉效果 */
+/* 只在真正悬停时改变样式，显示取消关注的视觉效果 */
 .follow-btn.following:hover {
-  background-color: #f8d7da;
-  background-image: none; /* 悬停时去掉渐变 */
-  border-color: #f5c6cb;
-  color: #721c24;
+  background-color: #f8d7da !important;
+  background-image: none !important; /* 悬停时去掉渐变 */
+  border: 1px solid #f5c6cb !important;
+  color: #721c24 !important;
 }
 
 .follow-btn.following:hover i {
   display: none;
 }
 
-.follow-btn.following:hover::before {
+.follow-btn.following:hover::after {
   content: '取消关注';
   font-size: 14px;
 }
@@ -1122,10 +1124,26 @@ textarea.form-control {
 }
 
 .follow-btn-sm.following {
-  /* 完全相同的样式，无任何不同 */
-  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
-  color: white;
-  border: none;
+  /* 使用明显不同的样式来表示已关注状态 */
+  background-image: none !important;
+  background-color: white !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+  opacity: 1 !important;
+}
+
+/* 小按钮的hover样式 */
+.follow-btn-sm.following:hover {
+  background-color: #f8d7da !important;
+  background-image: none !important;
+  border: 1px solid #f5c6cb !important;
+  color: #721c24 !important;
+}
+
+.follow-btn-sm.following:hover::after {
+  content: '取消关注';
+  font-size: 12px;
+  margin-left: 2px;
 }
 
 .follow-modal {
