@@ -137,4 +137,30 @@ CREATE TABLE IF NOT EXISTS user_roles (
 INSERT IGNORE INTO roles (id, name) VALUES 
 (1, 'ROLE_USER'),
 (2, 'ROLE_MODERATOR'),
-(3, 'ROLE_ADMIN'); 
+(3, 'ROLE_ADMIN');
+
+-- 私信表
+CREATE TABLE IF NOT EXISTS private_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 私信会话表 (用于分组显示私信列表)
+CREATE TABLE IF NOT EXISTS message_conversations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user1_id BIGINT NOT NULL,
+    user2_id BIGINT NOT NULL,
+    last_message_id BIGINT,
+    last_message_time TIMESTAMP,
+    unread_count INT DEFAULT 0,
+    UNIQUE KEY uk_conversation_users (user1_id, user2_id),
+    FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (last_message_id) REFERENCES private_messages(id) ON DELETE SET NULL
+); 

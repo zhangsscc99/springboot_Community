@@ -34,7 +34,9 @@ export default createStore({
     // 用户关注相关状态
     userFollowState: {}, // 以用户ID为键存储关注状态 {userId: {isFollowing: true/false, followersCount: 0, followingCount: 0}}
     followLoading: false, // 关注操作加载状态
-    followError: null // 关注操作错误信息
+    followError: null, // 关注操作错误信息
+    // 私信相关状态
+    unreadMessageCount: 0 // 未读私信数量
   },
   getters: {
     isAuthenticated: state => state.isAuthenticated,
@@ -59,7 +61,9 @@ export default createStore({
       const lastUpdate = state.tabCacheUpdate[tab];
       if (!lastUpdate) return true;
       return Date.now() - lastUpdate > CACHE_EXPIRATION;
-    }
+    },
+    // 获取未读消息数
+    unreadMessageCount: state => state.unreadMessageCount
   },
   mutations: {
     SET_USER(state, user) {
@@ -169,6 +173,18 @@ export default createStore({
           ...followState
         }
       };
+    },
+    // 设置未读消息数量
+    setUnreadMessageCount(state, count) {
+      state.unreadMessageCount = count;
+    },
+    // 增加未读消息数量
+    incrementUnreadMessageCount(state) {
+      state.unreadMessageCount += 1;
+    },
+    // 清空未读消息数量
+    clearUnreadMessageCount(state) {
+      state.unreadMessageCount = 0;
     }
   },
   actions: {

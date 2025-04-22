@@ -43,6 +43,12 @@ const routes = [
     path: '/profile/:id',
     name: 'profile',
     component: () => import(/* webpackChunkName: "profile" */ '../views/ProfileView.vue')
+  },
+  {
+    path: '/messages',
+    name: 'messages',
+    component: () => import(/* webpackChunkName: "messages" */ '../views/MessagesView.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

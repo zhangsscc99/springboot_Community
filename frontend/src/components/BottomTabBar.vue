@@ -5,6 +5,14 @@
       <span>首页</span>
     </router-link>
     
+    <router-link to="/messages" class="tab-item" active-class="active">
+      <div class="relative">
+        <i class="fas fa-comment"></i>
+        <div v-if="unreadCount > 0" class="unread-badge"></div>
+      </div>
+      <span>消息</span>
+    </router-link>
+    
     <div class="tab-item create-button">
       <div class="create-button-circle" @click="openCreatePost">
         <i class="fas fa-plus"></i>
@@ -19,9 +27,15 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
   name: 'BottomTabBar',
   computed: {
+    ...mapGetters(['unreadMessageCount']),
+    unreadCount() {
+      return this.unreadMessageCount;
+    },
     profileLink() {
       // 用户已登录，前往用户资料页，否则前往登录页
       return this.$store.getters.isAuthenticated 
@@ -44,5 +58,17 @@ export default {
 </script>
 
 <style scoped>
-/* 样式已移至全局CSS文件(main.css) */
+.unread-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff4757;
+}
+
+.relative {
+  position: relative;
+}
 </style> 

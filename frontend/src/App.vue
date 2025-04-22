@@ -25,6 +25,7 @@
       </div>
       
       <div class="user-controls">
+        <NavMessage v-if="isAuthenticated" class="nav-message" />
         <div class="auth-buttons" v-if="!isAuthenticated">
           <button class="btn" @click="goToLogin">登录</button>
           <button class="btn btn-primary" @click="goToRegister">注册</button>
@@ -49,12 +50,14 @@
 
 <script>
 import BottomTabBar from '@/components/BottomTabBar.vue';
+import NavMessage from '@/components/NavMessage.vue';
 import { mapGetters } from 'vuex';
 
 export default {
   name: 'App',
   components: {
-    BottomTabBar
+    BottomTabBar,
+    NavMessage
   },
   data() {
     return {
@@ -94,6 +97,11 @@ export default {
 </script>
 
 <style scoped>
+.nav-message {
+  margin-right: 10px;
+  cursor: pointer;
+}
+
 .logo {
   display: flex;
   flex-direction: column;
@@ -135,6 +143,11 @@ export default {
   display: flex;
   justify-content: center;
   max-width: 320px;
+}
+
+.user-controls {
+  display: flex;
+  align-items: center;
 }
 
 @media (max-width: 576px) {

@@ -61,7 +61,7 @@
           <button class="edit-profile-btn" v-if="isCurrentUser" @click="openEditModal">
             <i class="fas fa-pencil-alt"></i> 编辑资料
           </button>
-          <button class="message-btn" v-if="!isCurrentUser && isAuthenticated">
+          <button class="message-btn" v-if="!isCurrentUser && isAuthenticated" @click="goToMessages">
             <i class="fas fa-comment"></i> 私信
           </button>
           <button class="logout-btn" v-if="isCurrentUser" @click="logout">
@@ -645,6 +645,13 @@ export default {
         console.error('操作关注失败:', error);
         alert('操作失败，请稍后再试');
       }
+    },
+    goToMessages() {
+      // 导航到消息页面，并携带当前查看的用户ID作为参数
+      this.$router.push({
+        path: '/messages',
+        query: { partnerId: this.profileId }
+      });
     }
   },
   // 添加路由导航守卫
