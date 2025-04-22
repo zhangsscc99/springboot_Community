@@ -651,7 +651,7 @@ export default createStore({
       commit('SET_LOADING', true);
       try {
         console.log(`获取帖子 ${postId} 的评论，页码: ${page}, 大小: ${size}`);
-        const response = await apiService.comments.getByPostId(postId, page, size);
+        const response = await apiService.comments.getCommentsByPostId(postId, page, size);
         const comments = response.data;
         commit('SET_ERROR', null);
         return comments;
