@@ -424,6 +424,7 @@ export default {
   max-width: 960px;
   border-left: 1px solid #e0e0e0;
   border-right: 1px solid #e0e0e0;
+  overflow: hidden; /* Prevent container overflow */
 }
 
 .chat-header {
@@ -433,8 +434,7 @@ export default {
   background-color: #f6f6f6;
   border-bottom: 1px solid #e0e0e0;
   z-index: 10;
-  position: sticky;
-  top: 0;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .back-button, .menu-button {
@@ -468,9 +468,10 @@ export default {
 .chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 10px 80px 10px;
+  padding: 10px;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  position: relative; /* Establish positioning context */
 }
 
 .message-list {
@@ -606,19 +607,15 @@ export default {
 
 /* Updated chat input styles for desktop and mobile */
 .chat-input-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #f6f6f6;
   padding: 10px 12px;
   border-top: 1px solid #e6e6e6;
   display: flex;
   align-items: center;
+  background-color: #f6f6f6;
   z-index: 10;
   box-sizing: border-box;
-  max-width: 960px;
-  margin: 0 auto;
+  flex-shrink: 0; /* Prevent input from shrinking */
+  width: 100%; /* Full width */
 }
 
 .chat-input-container {
@@ -707,7 +704,10 @@ export default {
 /* Bottom space for mobile browsers to account for navigation bars */
 @media (max-width: 768px) {
   .chat-input-bar {
+    position: fixed;
     bottom: 56px; /* Ensure it stays just above the navbar on mobile */
+    left: 0;
+    right: 0;
     padding: 8px 10px;
     max-width: 100%;
   }
@@ -728,25 +728,13 @@ export default {
 }
 
 @media (min-width: 769px) {
-  .chat-input-bar {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
+  /* Desktop specific styles */
+  .chat-container {
+    height: calc(100vh - 20px); /* Slightly less than viewport height to prevent scroll */
   }
   
   .chat-body {
-    padding-bottom: 60px;
-  }
-  
-  /* Improve message sizing for desktop */
-  .message {
-    max-width: 70%;
-  }
-  
-  .message-bubble {
-    max-width: calc(100% - 60px);
+    padding-bottom: 10px; /* Reduced padding as we don't need space for fixed input */
   }
 }
 
