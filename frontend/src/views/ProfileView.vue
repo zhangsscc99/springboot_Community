@@ -260,7 +260,60 @@ export default {
       return this.profileId == this.currentUser.id;
     }
   },
+  watch: {
+    // 监听路由参数变化
+    '$route.params.id': {
+      handler(newId, oldId) {
+        if (newId !== oldId) {
+          this.resetData();
+          this.profileId = newId;
+          this.loadUserProfile();
+        }
+      },
+      immediate: false
+    }
+  },
   methods: {
+    resetData() {
+      // 重置所有数据状态
+      this.profileName = '';
+      this.profileBio = '';
+      this.profileAvatar = '';
+      this.activeTab = 'posts';
+      this.userPosts = [];
+      this.likedPosts = [];
+      this.favoritedPosts = [];
+      this.error = null;
+    },
+    async loadUserProfile() {
+      try {
+        this.loading = true;
+        
+        // 获取用户信息
+        const response = await apiService.users.getProfile(this.profileId);
+        const userData = response.data;
+        
+        // 更新用户信息
+        this.profileName = userData.username;
+        this.profileBio = userData.bio || '';
+        this.profileAvatar = userData.avatar;
+        
+        // 加载用户帖子
+        await this.fetchUserPosts();
+        
+        // 如果是当前用户查看自己的资料，预加载喜欢和收藏的帖子
+        if (this.isCurrentUser) {
+          // 异步加载其他标签的数据，但不等待完成
+          this.fetchLikedPosts();
+          this.fetchFavoritedPosts();
+        }
+      } catch (error) {
+        console.error('获取用户资料失败:', error);
+        this.error = '加载用户资料失败';
+      } finally {
+        this.loading = false;
+      }
+    },
     goBack() {
       this.$router.go(-1);
     },
@@ -377,19 +430,17 @@ export default {
       } finally {
         this.saving = false;
       }
-    },
-    async fetchUserProfile() {
-      try {
-        const response = await apiService.users.getProfile(this.profileId);
-        
-        // 更新数据
-        this.profileName = response.data.username;
-        this.profileBio = response.data.bio || '这个人很懒，还没有介绍自己...';
-        this.profileAvatar = response.data.avatar;
-      } catch (error) {
-        console.error('获取用户资料失败:', error);
-      }
     }
+  },
+  // 添加路由导航守卫
+  beforeRouteUpdate(to, from, next) {
+    // 当路由参数变化但组件实例被复用时触发
+    if (to.params.id !== from.params.id) {
+      this.resetData();
+      this.profileId = to.params.id;
+      this.loadUserProfile();
+    }
+    next();
   },
   async created() {
     // 根据路由参数获取 profileId
@@ -401,41 +452,10 @@ export default {
       return;
     }
     
-    // 设置默认激活标签为"帖子"
-    this.activeTab = 'posts';
-    
-    try {
-      this.loading = true;
-      
-      // 获取用户信息
-      const response = await apiService.users.getProfile(this.profileId);
-      const userData = response.data;
-      
-      // 更新用户信息
-      this.profileName = userData.username;
-      this.profileBio = userData.bio || '';
-      this.profileAvatar = userData.avatar;
-      
-      // 加载用户帖子
-      await this.fetchUserPosts();
-      
-      // 如果是当前用户查看自己的资料，预加载喜欢和收藏的帖子
-      if (this.isCurrentUser) {
-        // 异步加载其他标签的数据，但不等待完成
-        this.fetchLikedPosts();
-        this.fetchFavoritedPosts();
-      }
-      
-    } catch (error) {
-      console.error('获取用户资料失败:', error);
-      this.error = '加载用户资料失败';
-    } finally {
-      this.loading = false;
-    }
+    await this.loadUserProfile();
   },
   mounted() {
-    // 直接获取用户资料，不需要额外条件判断
-    this.fetchUserProfile();
+    // 不需要在这里重复调用fetchUserProfile
   }
 }
 </script>

@@ -29,9 +29,9 @@
     
     <div class="main-content">
       <keep-alive>
-        <router-view v-if="$route.meta.keepAlive"/>
+        <router-view v-if="$route.meta.keepAlive" :key="$route.fullPath"/>
       </keep-alive>
-      <router-view v-if="!$route.meta.keepAlive"/>
+      <router-view v-if="!$route.meta.keepAlive" :key="$route.fullPath"/>
     </div>
     
     <BottomTabBar />

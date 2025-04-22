@@ -61,7 +61,23 @@ export default {
       e.target.src = this.defaultAvatar;
     },
     navigateToProfile() {
-      if (this.userId) {
+      if (!this.userId) return;
+
+      // 获取当前用户ID (如果登录)
+      const currentUserId = localStorage.getItem('userId');
+      
+      // 如果当前路径是个人主页，且正在导航到自己的主页，强制刷新路由
+      const isProfilePage = this.$route.name === 'profile';
+      const isNavigatingToSelf = currentUserId && this.userId == currentUserId;
+      const isAlreadyOnSelfProfile = isProfilePage && this.$route.params.id == currentUserId;
+
+      if (isNavigatingToSelf && isProfilePage && !isAlreadyOnSelfProfile) {
+        // 先导航到另一个路由，然后回到个人主页，强制刷新组件
+        this.$router.push({ path: '/' }).then(() => {
+          this.$router.push({ name: 'profile', params: { id: this.userId } });
+        });
+      } else {
+        // 正常导航
         this.$router.push({ name: 'profile', params: { id: this.userId } });
       }
     }
