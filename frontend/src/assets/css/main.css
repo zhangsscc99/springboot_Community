@@ -4,6 +4,8 @@
   --primary-gradient-start: #e74c3c; /* Red */
   --primary-gradient-middle: #ff9966; /* Orange */
   --primary-gradient-end: #ff6b88; /* Pink */
+  --primary-gradient-start-rgb: 231, 76, 60; /* Red in RGB */
+  --primary-gradient-end-rgb: 255, 107, 136; /* Pink in RGB */
   --secondary-color: #f7f7f7;
   --text-color: #333;
   --light-text-color: #666;

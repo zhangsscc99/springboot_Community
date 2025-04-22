@@ -97,8 +97,22 @@ export default {
 }
 
 .user-avatar-container.clickable:hover .user-avatar {
-  border: 2px solid var(--primary-color);
+  /* 创建更加柔和的渐变色边框效果 */
+  border: 2px solid transparent;
+  /* 使用径向渐变背景来创建边框效果 */
+  background-image: 
+    linear-gradient(white, white), 
+    linear-gradient(to right, 
+      rgba(var(--primary-gradient-start-rgb), 0.4), 
+      rgba(var(--primary-gradient-end-rgb), 0.4)
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  /* 添加细微的阴影效果增强立体感 */
+  box-shadow: 0 0 8px rgba(var(--primary-gradient-start-rgb), 0.15);
+  /* 保留原有的缩放效果 */
   transform: scale(1.05);
+  transition: all 0.3s ease;
 }
 
 .user-avatar {
@@ -106,8 +120,16 @@ export default {
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  transition: all 0.2s ease;
+  /* 使用纯色边框作为初始状态 */
   border: 2px solid transparent;
+  /* 设置背景图像以便在悬停时能平滑过渡 */
+  background-image: 
+    linear-gradient(white, white), 
+    linear-gradient(white, white);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  /* 添加平滑过渡效果 */
+  transition: all 0.3s ease;
 }
 
 .avatar-username {
