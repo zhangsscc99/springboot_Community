@@ -30,7 +30,7 @@
         </div>
 
         <div v-else class="message-list">
-          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
+          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper" :data-sender="isOwnMessage(message) ? 'own' : 'other'">
             <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
               {{ formatDate(message.createdAt) }}
             </div>
@@ -433,29 +433,30 @@ export default {
       console.warn('[Debug] Could not determine user ID from localStorage or token');
       return null;
     },
-    isAdminConversation() {
-      return this.partnerName === 'admin' || this.partnerId === 1;
-    },
     isOwnMessage(message) {
-      // For admin conversations, force alternating message positioning
-      if (this.isAdminConversation()) {
-        // For admin chat, let's make every other message appear as sent by current user
-        // This is a visual fix only for demo/test conversations
-        const messageIndex = this.messages.findIndex(m => m.id === message.id);
-        return messageIndex % 2 === 0; // Even index messages will be shown on right side
-      }
+      // TEMPORARY OVERRIDE: Force all messages to display on the right side as requested
+      return true;
+
+      // Original logic preserved for reference (but not used)
+      /*
+      // Get current user ID - this is the sender of our own messages
+      const currentUserId = this.getCurrentUserId();
       
-      // Regular user ID comparison (same as before)
-      const userId = this.getCurrentUserId();
-      console.log('[Debug] Current user ID:', userId, 'type:', typeof userId);
+      // Debug output
+      console.log('[Debug] Message:', message);
+      console.log('[Debug] Current user ID:', currentUserId, 'type:', typeof currentUserId);
       console.log('[Debug] Message sender ID:', message.senderId, 'type:', typeof message.senderId);
       
-      if (!userId || !message.senderId) {
-        console.warn('[Debug] Missing user ID or sender ID');
-        return false;
+      // Message is our own if we are the sender
+      // Simple check: if the message was sent BY the current user (compare senderIds)
+      if (currentUserId && message.senderId) {
+        return String(message.senderId) === String(currentUserId);
       }
       
-      return String(message.senderId) === String(userId);
+      // Fallback if IDs are missing
+      console.warn('[Debug] Missing user ID or sender ID - defaulting to false');
+      return false;
+      */
     },
     scrollToBottom() {
       const chatBody = document.querySelector('.chat-body');
@@ -620,8 +621,40 @@ export default {
 }
 
 .message-wrapper {
-  margin-bottom: 8px;
+  margin-bottom: 15px;
   position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-wrapper[data-sender="own"] .message {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Add clearfix to ensure message container wraps around floated content */
+.message::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Override any styles that might be causing positioning issues */
+.message-sent {
+  float: right;
+  width: auto;
+  max-width: 70%;
+  flex-direction: row-reverse;
+  margin-left: auto !important; 
+  margin-right: 0 !important;
+}
+
+.message-received {
+  flex-direction: row;
+  margin-right: auto;
+  margin-left: 0;
+  justify-content: flex-start;
 }
 
 .date-divider {
@@ -650,25 +683,16 @@ export default {
   align-items: flex-start;
   max-width: 70%;
   clear: both;
-  width: 100%;
-}
-
-.message-sent {
-  flex-direction: row-reverse;
-  margin-left: auto;
-  margin-right: 0;
-}
-
-.message-received {
-  flex-direction: row;
-  margin-right: auto;
-  margin-left: 0;
+  position: relative;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  flex-direction: row-reverse !important;
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
   overflow: hidden;
   margin: 0 10px;
   flex-shrink: 0;
@@ -680,12 +704,14 @@ export default {
   object-fit: cover;
 }
 
+/* Reset all message-specific styles to ensure proper display */
 .message-content {
   padding: 10px 15px;
   border-radius: 16px;
   word-break: break-word;
   position: relative;
   max-width: 100%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .message-sent .message-content {
@@ -694,13 +720,19 @@ export default {
   border-top-right-radius: 4px;
   margin-right: 5px;
   text-align: right;
+  float: right;
+}
+
+/* Ensure proper avatar positioning for sent messages */
+.message-sent .avatar {
+  margin-left: 0;
+  margin-right: 10px;
 }
 
 .message-received .message-content {
   background-color: #E5E5EA; /* Light grey for received messages */
   color: #333;
   border-top-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   margin-left: 5px;
   text-align: left;
 }
@@ -969,11 +1001,12 @@ body {
   background-color: #007AFF;
   color: white;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 </style> 
