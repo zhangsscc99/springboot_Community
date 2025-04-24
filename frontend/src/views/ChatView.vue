@@ -43,6 +43,8 @@
                   :src="message.senderAvatar || partnerAvatar || 'https://via.placeholder.com/35/CCCCCC/666666/?text=?'" 
                   :username="message.senderUsername || partnerName || '对方'" 
                   :size="35"
+                  :clickable="true"
+                  :userId="message.senderId || partnerId"
                 />
               </div>
               <div class="message-content">
@@ -185,6 +187,21 @@ export default {
       const ownMessages = document.querySelectorAll('.message.own');
       console.log('[Debug] 自己发送的消息数量:', ownMessages.length);
     }, 1000);
+    
+    // 检查路由是否存在
+    try {
+      // 尝试解析一个伪用户资料路径，看看它是否能被正确匹配
+      const profileTestPath = `/profile/123`;
+      const matchedRoute = this.$router.resolve(profileTestPath);
+      
+      if (matchedRoute && matchedRoute.name === 'profile') {
+        console.log('[Debug] profile 路由存在且可以正确解析');
+      } else {
+        console.warn('[Debug] profile 路由可能存在问题, matchedRoute:', matchedRoute);
+      }
+    } catch (error) {
+      console.error('[Debug] 检查路由时出错:', error);
+    }
   },
   beforeUnmount() {
     this.closeSseConnection();
@@ -650,6 +667,27 @@ export default {
       if (index !== -1) {
         this.messages.splice(index, 1);
       }
+    },
+    navigateToPartnerProfile(userId) {
+      console.log('[Debug] 导航到用户资料页面, 用户ID:', userId);
+      
+      if (!userId) {
+        console.warn('[Debug] 未能找到有效的用户ID，使用当前会话的伙伴ID:', this.partnerId);
+        userId = this.partnerId;
+      }
+      
+      if (!userId || userId <= 0) {
+        console.error('[Debug] 无效的用户ID，无法导航');
+        return;
+      }
+      
+      // 导航到个人主页
+      this.$router.push({ name: 'profile', params: { id: userId } })
+        .catch(err => {
+          if (err.name !== 'NavigationDuplicated') {
+            console.error('[Debug] 路由导航错误:', err);
+          }
+        });
     }
   }
 };
@@ -1218,5 +1256,16 @@ body {
   width: 100%;
   word-wrap: break-word;
   min-width: 60px;
+}
+
+/* 添加对方头像的悬停样式，表明可点击 */
+.message:not(.own) .avatar {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message:not(.own) .avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 </style> 

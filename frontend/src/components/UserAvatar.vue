@@ -61,10 +61,65 @@ export default {
       e.target.src = this.defaultAvatar;
     },
     navigateToProfile() {
-      if (!this.userId) return;
+      if (!this.userId) {
+        console.log('[Debug] 没有提供用户ID，无法导航到个人主页');
+        return;
+      }
 
-      // 获取当前用户ID (如果登录)
-      const currentUserId = localStorage.getItem('userId');
+      console.log('[Debug] 尝试导航到用户主页，用户ID:', this.userId);
+      
+      // 获取当前用户ID (尝试从多个位置获取)
+      let currentUserId = null;
+      
+      // 首先尝试从 userInfo 获取
+      const userInfoJson = localStorage.getItem('userInfo');
+      if (userInfoJson) {
+        try {
+          const userData = JSON.parse(userInfoJson);
+          if (userData && userData.id) {
+            currentUserId = userData.id;
+            console.log('[Debug] 从 userInfo 获取到当前用户ID:', currentUserId);
+          }
+        } catch (e) {
+          console.error('[Debug] 解析 userInfo 失败:', e);
+        }
+      }
+      
+      // 如果从 userInfo 没有获取到，尝试从 user 获取
+      if (!currentUserId) {
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+          try {
+            const userData = JSON.parse(userJson);
+            if (userData) {
+              if (userData.id) {
+                currentUserId = userData.id;
+                console.log('[Debug] 从 user 获取到当前用户ID:', currentUserId);
+              } else if (userData.userId) {
+                currentUserId = userData.userId;
+                console.log('[Debug] 从 user.userId 获取到当前用户ID:', currentUserId);
+              } else if (userData.user && userData.user.id) {
+                currentUserId = userData.user.id;
+                console.log('[Debug] 从 user.user.id 获取到当前用户ID:', currentUserId);
+              }
+            }
+          } catch (e) {
+            console.error('[Debug] 解析 user 失败:', e);
+          }
+        }
+      }
+      
+      // 如果还没有找到，尝试直接使用 userId
+      if (!currentUserId) {
+        currentUserId = localStorage.getItem('userId');
+        if (currentUserId) {
+          console.log('[Debug] 从 userId 获取到当前用户ID:', currentUserId);
+        }
+      }
+      
+      // 导航到个人主页
+      const targetRoute = { name: 'profile', params: { id: this.userId } };
+      console.log('[Debug] 即将导航到路由:', targetRoute);
       
       // 如果当前路径是个人主页，且正在导航到自己的主页，强制刷新路由
       const isProfilePage = this.$route.name === 'profile';
@@ -73,12 +128,20 @@ export default {
 
       if (isNavigatingToSelf && isProfilePage && !isAlreadyOnSelfProfile) {
         // 先导航到另一个路由，然后回到个人主页，强制刷新组件
+        console.log('[Debug] 需要强制刷新个人主页');
         this.$router.push({ path: '/' }).then(() => {
-          this.$router.push({ name: 'profile', params: { id: this.userId } });
+          this.$router.push(targetRoute);
+        }).catch(err => {
+          console.error('[Debug] 路由导航错误:', err);
         });
       } else {
         // 正常导航
-        this.$router.push({ name: 'profile', params: { id: this.userId } });
+        console.log('[Debug] 正常导航到个人主页');
+        this.$router.push(targetRoute).catch(err => {
+          if (err.name !== 'NavigationDuplicated') {
+            console.error('[Debug] 路由导航错误:', err);
+          }
+        });
       }
     }
   }
