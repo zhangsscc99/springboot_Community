@@ -30,43 +30,35 @@
         </div>
 
         <div v-else class="message-list">
-          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper" :data-sender="isOwnMessage(message) ? 'own' : 'other'">
+          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper" :data-sender="isOwnMessage(message) ? 'own' : 'other'" :data-message-id="message.id">
             <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
               {{ formatDate(message.createdAt) }}
             </div>
             <div v-if="shouldShowTimeDisplay(message, index)" class="time-display">
               {{ formatMessageTime(message.createdAt) }}
             </div>
-            <div class="message" :class="{ 
-              'message-sent': isOwnMessage(message),
-              'message-received': !isOwnMessage(message)
-            }">
+            <div class="message" :class="{ 'own': isOwnMessage(message) }">
               <div class="avatar" v-if="!isOwnMessage(message)">
                 <UserAvatar 
-                  :src="message.senderAvatar" 
-                  :username="message.senderUsername || '对方'"
+                  :src="message.senderAvatar || partnerAvatar || 'https://via.placeholder.com/35/CCCCCC/666666/?text=?'" 
+                  :username="message.senderUsername || partnerName || '对方'" 
+                  :size="35"
                 />
               </div>
-              <div class="message-content" :class="{ 
-                'failed': message.sendFailed
-              }">
-                {{ message.content }}
-                <div v-if="isOwnMessage(message)" class="message-status" :class="{ 'failed': message.sendFailed }">
-                  <span v-if="message.sendFailed">
-                    发送失败 <button class="retry-button" @click="retryMessage(message)">重试</button>
-                  </span>
-                  <span v-else-if="message.id.toString().includes('temp')">发送中...</span>
-                  <span v-else>已发送</span>
-                </div>
+              <div class="message-content">
+                <div v-if="!isOwnMessage(message)" class="message-indicator">{{ message.senderUsername || partnerName || '对方' }}</div>
+                <div v-if="isOwnMessage(message)" class="message-indicator">我</div>
+                <div class="message-text" v-html="formatMessage(message.content)"></div>
+                <div class="message-time">{{ formatTime(message.createdAt || message.timestamp) }}</div>
               </div>
-              <div class="avatar" v-if="isOwnMessage(message)" ref="avatarRef">
+              <div class="avatar" v-if="isOwnMessage(message)">
                 <UserAvatar 
-                  :src="userAvatar" 
-                  :username="'我'"
+                  :src="userAvatar || 'https://via.placeholder.com/35/007AFF/FFFFFF/?text=YOU'" 
+                  username="我" 
+                  :size="35"
                 />
               </div>
             </div>
-            <!-- <div v-if="isOwnMessage(message)" class="message-indicator">我</div> -->
           </div>
           <div v-if="hasMoreMessages && !loadingMore" class="load-more">
             <button @click="loadMoreMessages">加载更多消息</button>
@@ -173,11 +165,29 @@ export default {
     // 检查用户头像
     console.log('[Debug] 界面挂载时的用户头像:', this.userAvatar);
     
-    // 如果未设置头像，尝试重新加载用户信息
+    // 如果未设置头像，尝试重新加载用户信息和设置默认头像
     if (!this.userAvatar) {
       console.log('[Debug] 挂载时未找到头像，重新加载用户信息');
       this.loadUserInfo();
+      
+      // 设置默认头像
+      this.userAvatar = 'https://via.placeholder.com/35/007AFF/FFFFFF/?text=YOU';
+      console.log('[Debug] 设置默认头像:', this.userAvatar);
     }
+    
+    // 在组件挂载后检查头像元素是否正确显示
+    setTimeout(() => {
+      const avatars = document.querySelectorAll('.message .avatar');
+      console.log('[Debug] 页面中发现的头像元素数量:', avatars.length);
+      
+      // 检查 UserAvatar 组件是否正确挂载
+      const userAvatars = document.querySelectorAll('.user-avatar');
+      console.log('[Debug] 页面中发现的 UserAvatar 组件数量:', userAvatars.length);
+      
+      // 检查是否有消息应该显示为自己的
+      const ownMessages = document.querySelectorAll('.message.own');
+      console.log('[Debug] 自己发送的消息数量:', ownMessages.length);
+    }, 1000);
   },
   beforeUnmount() {
     this.closeSseConnection();
@@ -302,10 +312,10 @@ export default {
         // 发送前检查头像
         console.log('[Debug] 发送消息前的头像:', this.userAvatar);
         
-        // 如果没有设置头像，尝试重新加载用户信息
+        // 如果没有设置头像，设置默认头像
         if (!this.userAvatar) {
-          console.log('[Debug] 发送消息前未找到头像，重新加载用户信息');
-          this.loadUserInfo();
+          console.log('[Debug] 发送消息前未找到头像，设置默认头像');
+          this.userAvatar = 'https://via.placeholder.com/35/007AFF/FFFFFF/?text=YOU';
         }
         
         // 创建临时消息，使用与 Profile 相同的头像
@@ -319,10 +329,17 @@ export default {
           senderUsername: '我'
         };
         
-        console.log('[Debug] 创建的临时消息头像:', tempMessage.senderAvatar);
+        console.log('[Debug] 创建的临时消息:', tempMessage);
+        console.log('[Debug] 临时消息头像:', tempMessage.senderAvatar);
         
         // Add temporary message immediately
         this.messages.push(tempMessage);
+        
+        // 检查添加后是否正确标记为自己的消息
+        this.$nextTick(() => {
+          const lastMessage = document.querySelector('.message-wrapper:last-child .message');
+          console.log('[Debug] 新消息添加后是否标记为自己的消息:', lastMessage?.classList.contains('own'));
+        });
         
         // Clear input right away for better UX
         this.newMessage = '';
@@ -428,30 +445,48 @@ export default {
     getCurrentUserId() {
       // Try to get user data from localStorage
       const userJson = localStorage.getItem('user');
+      const userInfoJson = localStorage.getItem('userInfo');
       const token = localStorage.getItem('token');
       
       console.log('[Debug] Looking for user ID in localStorage');
       
+      // 首先尝试从 userInfo 中获取
+      if (userInfoJson) {
+        try {
+          const userData = JSON.parse(userInfoJson);
+          console.log('[Debug] userInfo 数据:', userData);
+          
+          // 检查是否有ID
+          if (userData.id) {
+            console.log('[Debug] 从 userInfo 找到用户 ID:', userData.id);
+            return userData.id;
+          }
+        } catch (e) {
+          console.error('[Debug] 解析 userInfo 失败:', e);
+        }
+      }
+      
+      // 然后尝试从 user 中获取
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-          console.log('[Debug] User data found:', userData);
+          console.log('[Debug] user 数据:', userData);
           
           // Check if id exists directly
           if (userData.id) {
-            console.log('[Debug] Found user ID:', userData.id);
+            console.log('[Debug] 从 user 找到用户 ID:', userData.id);
             return userData.id;
           }
           
           // Some implementations might store user ID in userId field
           if (userData.userId) {
-            console.log('[Debug] Found userId:', userData.userId);
+            console.log('[Debug] 从 user 找到 userId:', userData.userId);
             return userData.userId;
           }
           
           // Or it might be nested in a user object
           if (userData.user && userData.user.id) {
-            console.log('[Debug] Found nested user.id:', userData.user.id);
+            console.log('[Debug] 从 user.user 找到用户 ID:', userData.user.id);
             return userData.user.id;
           }
           
@@ -482,33 +517,35 @@ export default {
         }
       }
       
-      console.warn('[Debug] Could not determine user ID from localStorage or token');
-      return null;
+      // 如果所有方法都失败，返回一个临时ID（这是为了调试目的）
+      const tempId = "temp-user-" + Date.now();
+      console.warn('[Debug] 无法确定用户ID，使用临时ID:', tempId);
+      return tempId;
     },
     isOwnMessage(message) {
-      // TEMPORARY OVERRIDE: Force all messages to display on the right side as requested
-      return true;
-
-      // Original logic preserved for reference (but not used)
-      /*
-      // Get current user ID - this is the sender of our own messages
+      // 获取当前用户 ID
       const currentUserId = this.getCurrentUserId();
       
-      // Debug output
-      console.log('[Debug] Message:', message);
-      console.log('[Debug] Current user ID:', currentUserId, 'type:', typeof currentUserId);
-      console.log('[Debug] Message sender ID:', message.senderId, 'type:', typeof message.senderId);
+      console.log('[Debug] isOwnMessage 检查:', 
+        '消息ID:', message?.id, 
+        '发送者ID:', message?.senderId, 
+        '当前用户ID:', currentUserId,
+        '是否是自己的消息:', message?.senderId === currentUserId
+      );
       
-      // Message is our own if we are the sender
-      // Simple check: if the message was sent BY the current user (compare senderIds)
-      if (currentUserId && message.senderId) {
-        return String(message.senderId) === String(currentUserId);
+      // 如果消息或发送者 ID 不存在，返回 false
+      if (!message || !message.senderId) {
+        return false;
       }
       
-      // Fallback if IDs are missing
-      console.warn('[Debug] Missing user ID or sender ID - defaulting to false');
-      return false;
-      */
+      // 特殊处理临时消息（刚发送的消息）
+      if (message.id && message.id.toString().startsWith('temp-')) {
+        console.log('[Debug] 检测到临时消息，设置为自己的消息');
+        return true;
+      }
+      
+      // 比较消息发送者 ID 与当前用户 ID
+      return String(message.senderId) === String(currentUserId);
     },
     scrollToBottom() {
       const chatBody = document.querySelector('.chat-body');
@@ -557,6 +594,34 @@ export default {
       const minuteFormatted = date.getMinutes().toString().padStart(2, '0');
       
       return `${amPm}${hourFormatted}:${minuteFormatted}`;
+    },
+    formatMessage(content) {
+      // 处理消息内容，例如将链接转换为可点击的 HTML
+      if (!content) return '';
+      
+      // 简单的链接检测和转换
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      return content.replace(urlRegex, url => `<a href="${url}" target="_blank">${url}</a>`);
+    },
+    formatTime(timestamp) {
+      if (!timestamp) return '';
+      
+      const date = new Date(timestamp);
+      const now = new Date();
+      
+      // 如果是当天的消息，只显示时间
+      if (date.toDateString() === now.toDateString()) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+      }
+      
+      // 否则显示日期和时间
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${month}-${day} ${hours}:${minutes}`;
     },
     goBack() {
       this.$router.push('/messages');
@@ -741,11 +806,7 @@ export default {
   max-width: 75%;
   clear: both;
   position: relative;
-  margin-left: auto !important;
-  margin-right: 5px !important;
   margin-bottom: 20px;
-  flex-direction: row !important;
-  justify-content: flex-end;
   padding-bottom: 10px;
 }
 
@@ -1058,5 +1119,96 @@ body {
   color: var(--light-text-color);
   margin-top: 5px;
   text-align: right;
+}
+
+/* 调整自己发送的消息样式 */
+.message.own {
+  flex-direction: row !important;
+  justify-content: flex-end;
+  margin-left: auto !important;
+  margin-right: 5px !important;
+}
+
+/* 调整对方发送的消息样式 */
+.message:not(.own) {
+  flex-direction: row !important;
+  justify-content: flex-start;
+  margin-left: 5px !important;
+  margin-right: auto !important;
+}
+
+.message:not(.own) .message-content {
+  order: 2;
+  background-color: #E5E5EA; /* 灰色背景 */
+  color: #333;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 16px;
+  margin-left: 10px;
+  margin-right: 0;
+}
+
+.message.own .message-content {
+  order: 1;
+  background-color: #007AFF;
+  color: white;
+  border-top-right-radius: 4px;
+  border-top-left-radius: 16px;
+  margin-right: 10px;
+  margin-left: 0;
+}
+
+.message:not(.own) .avatar {
+  order: 1;
+  margin: 0 0 0 0;
+}
+
+.message.own .avatar {
+  order: 2;
+  margin: 0 0 0 8px;
+}
+
+.message .avatar {
+  min-width: 35px;
+  min-height: 35px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: 0;
+  flex-shrink: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.message-content {
+  padding: 10px 15px;
+  border-radius: 16px;
+  word-break: break-word;
+  position: relative;
+  max-width: calc(100% - 55px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 修复消息指示器位置 */
+.message.own .message-indicator {
+  right: 0px;
+  left: auto;
+}
+
+.message:not(.own) .message-indicator {
+  left: 0px;
+  right: auto;
 }
 </style> 
