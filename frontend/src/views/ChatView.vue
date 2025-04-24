@@ -1140,12 +1140,26 @@ body {
 
 .message.own .message-content {
   order: 1;
-  background-color: #007AFF;
+  /* 将单一蓝色背景替换为渐变色背景 */
+  background-color: transparent; /* 移除原来的背景色 */
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
   color: white;
   border-top-right-radius: 4px;
   border-top-left-radius: 16px;
   margin-right: 10px;
   margin-left: 0;
+}
+
+/* 为消息添加悬停效果，增强用户体验 */
+.message.own .message-content:hover {
+  background-image: linear-gradient(to right, var(--hover-color), var(--primary-gradient-middle), var(--hover-color));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* 消息发送失败时的样式调整，以适应渐变背景 */
+.message.own .message-content.failed {
+  background-image: linear-gradient(to right, #ff6b6b, #ffa5a5, #ffcece);
+  border: 1px dashed #ff3333;
 }
 
 .message:not(.own) .avatar {
