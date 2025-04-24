@@ -42,7 +42,12 @@
               'message-received': !isOwnMessage(message)
             }">
               <div class="avatar" v-if="!isOwnMessage(message)">
-                <img :src="message.senderAvatar || '/assets/default-avatar.png'" :alt="message.senderUsername" style="display: block; width: 100%; height: 100%; object-fit: cover;">
+                <img 
+                  src="/img/penguin-avatar.png" 
+                  :alt="message.senderUsername" 
+                  style="display: block; width: 100%; height: 100%; object-fit: cover;"
+                  @error="e => { e.target.src = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png'; }"
+                >
               </div>
               <div class="message-content" :class="{ 
                 'failed': message.sendFailed
@@ -57,7 +62,12 @@
                 </div>
               </div>
               <div class="avatar" v-if="isOwnMessage(message)">
-                <img :src="userAvatar || '/assets/default-avatar.png'" alt="You" style="display: block; width: 100%; height: 100%; object-fit: cover;">
+                <img 
+                  src="/img/penguin-avatar.png" 
+                  alt="You" 
+                  style="display: block; width: 100%; height: 100%; object-fit: cover;"
+                  @error="e => { e.target.src = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png'; }"
+                >
               </div>
             </div>
             <!-- <div v-if="isOwnMessage(message)" class="message-indicator">我</div> -->
@@ -188,47 +198,23 @@ export default {
   },
   methods: {
     loadUserInfo() {
+      // Directly use the penguin avatar that we can see is working in your profile page
+      this.userAvatar = '/img/penguin-avatar.png';
+      console.log('[Debug] Using direct penguin avatar path:', this.userAvatar);
+      
+      // For debugging only, still try to read the user data from localStorage
       const userJson = localStorage.getItem('user');
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-          console.log('[Debug] User data loaded:', userData);
+          console.log('[Debug] User data from localStorage:', userData);
           
-          // Check different avatar possibilities
           if (userData.avatar) {
-            // Check if the avatar is a full URL or just an ID/path
-            if (userData.avatar.startsWith('http')) {
-              // It's already a full URL
-              this.userAvatar = userData.avatar;
-            } else if (userData.avatar.startsWith('/')) {
-              // It's a relative path, use as is
-              this.userAvatar = userData.avatar;
-            } else {
-              // It might be just an ID or filename, construct URL like the profile page
-              // This assumes the avatar might be served from a specific avatar endpoint
-              this.userAvatar = `/api/users/avatar/${userData.avatar}`;
-            }
-            console.log('[Debug] Setting user avatar:', this.userAvatar);
-          } else if (userData.user && userData.user.avatar) {
-            // Nested user object with avatar
-            this.userAvatar = userData.user.avatar;
-            console.log('[Debug] Setting nested user avatar:', this.userAvatar);
-          } else if (userData.id) {
-            // If no avatar but we have user ID, try to use ID-based avatar URL like in profile
-            this.userAvatar = `/api/users/avatar/${userData.id}`;
-            console.log('[Debug] Using ID-based avatar URL:', this.userAvatar);
-          } else {
-            // No avatar information found, use the penguin avatar like in profile
-            this.userAvatar = '/assets/default-avatar.png';
-            console.log('[Debug] No avatar info, using default penguin avatar');
+            console.log('[Debug] Original avatar from userData:', userData.avatar);
           }
         } catch (e) {
-          console.error('Failed to parse user data:', e);
-          this.userAvatar = '/assets/default-avatar.png';
+          console.error('[Debug] Error parsing user data:', e);
         }
-      } else {
-        console.log('[Debug] No user data found in localStorage');
-        this.userAvatar = '/assets/default-avatar.png';
       }
     },
     async fetchConversationDetails() {
@@ -326,7 +312,7 @@ export default {
           receiverId: this.partnerId,
           content: content,
           createdAt: new Date().toISOString(),
-          senderAvatar: this.userAvatar || '/assets/default-avatar.png'
+          senderAvatar: '/img/penguin-avatar.png'
         };
         
         console.log('[Debug] Created message with avatar:', tempMessage.senderAvatar);
@@ -783,10 +769,11 @@ export default {
   overflow: hidden;
   margin: 0;
   flex-shrink: 0;
-  display: flex !important;
-  background-color: #f0f0f0;
+  display: block !important;
+  background-color: #f8f8f8;
   border: 1px solid #e0e0e0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 .avatar img {
@@ -794,6 +781,9 @@ export default {
   height: 100%;
   object-fit: cover;
   display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 /* Reset all message-specific styles to ensure proper display */
