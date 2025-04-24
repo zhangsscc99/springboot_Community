@@ -186,8 +186,8 @@ export default {
   },
   methods: {
     loadUserInfo() {
-      // 获取用户数据，方式与 Profile 页面相同
-      const userJson = localStorage.getItem('user');
+      // 获取用户数据 - 使用正确的键名 'userInfo'
+      const userJson = localStorage.getItem('userInfo');
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
@@ -202,7 +202,20 @@ export default {
           console.error('[Debug] 解析用户数据失败:', e);
         }
       } else {
-        console.log('[Debug] localStorage 中未找到用户数据');
+        console.log('[Debug] localStorage 中未找到用户数据，尝试使用 user 键');
+        // 尝试使用旧键名 'user' 作为兼容性处理
+        const oldUserJson = localStorage.getItem('user');
+        if (oldUserJson) {
+          try {
+            const userData = JSON.parse(oldUserJson);
+            this.userAvatar = userData.avatar || '';
+            console.log('[Debug] 从旧键获取用户头像:', this.userAvatar);
+          } catch (e) {
+            console.error('[Debug] 解析旧用户数据失败:', e);
+          }
+        } else {
+          console.log('[Debug] localStorage 中未找到任何用户数据');
+        }
       }
     },
     async fetchConversationDetails() {
