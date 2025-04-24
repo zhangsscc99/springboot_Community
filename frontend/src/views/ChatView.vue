@@ -42,12 +42,10 @@
               'message-received': !isOwnMessage(message)
             }">
               <div class="avatar" v-if="!isOwnMessage(message)">
-                <img 
-                  src="/img/penguin-avatar.png" 
-                  :alt="message.senderUsername" 
-                  style="display: block; width: 100%; height: 100%; object-fit: cover;"
-                  @error="e => { e.target.src = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png'; }"
-                >
+                <UserAvatar 
+                  :src="message.senderAvatar" 
+                  :username="message.senderUsername || '对方'"
+                />
               </div>
               <div class="message-content" :class="{ 
                 'failed': message.sendFailed
@@ -62,12 +60,10 @@
                 </div>
               </div>
               <div class="avatar" v-if="isOwnMessage(message)" ref="avatarRef">
-                <img 
+                <UserAvatar 
                   :src="userAvatar" 
-                  alt="You" 
-                  style="display: block; width: 100%; height: 100%; object-fit: cover;"
-                  @error="handleAvatarError"
-                >
+                  :username="'我'"
+                />
               </div>
             </div>
             <!-- <div v-if="isOwnMessage(message)" class="message-indicator">我</div> -->
@@ -111,9 +107,13 @@
 import MessageService from '@/services/message.service';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import UserAvatar from '@/components/UserAvatar.vue';
 
 export default {
   name: 'ChatView',
+  components: {
+    UserAvatar
+  },
   data() {
     return {
       partnerId: null,
@@ -162,29 +162,6 @@ export default {
     // Force scroll to bottom on mount
     this.$nextTick(() => {
       this.scrollToBottom();
-      
-      // Enhanced avatar debugging
-      console.log('[Debug] Avatar elements after mount:');
-      const avatarContainers = document.querySelectorAll('.avatar');
-      console.log('[Debug] Avatar containers found:', avatarContainers.length);
-      
-      const avatarImages = document.querySelectorAll('.avatar img');
-      console.log('[Debug] Avatar images found:', avatarImages.length);
-      
-      avatarImages.forEach((img, i) => {
-        console.log(`[Debug] Avatar image ${i} src:`, img.src);
-        console.log(`[Debug] Avatar image ${i} display:`, window.getComputedStyle(img).display);
-        console.log(`[Debug] Avatar image ${i} visibility:`, window.getComputedStyle(img).visibility);
-      });
-      
-      // Force avatar on first message if any exist
-      if (this.messages.length > 0 && this.userAvatar) {
-        const firstMessageAvatar = document.querySelector('.message-sent .avatar img');
-        if (firstMessageAvatar) {
-          console.log('[Debug] Found first message avatar, forcing src');
-          firstMessageAvatar.src = this.userAvatar;
-        }
-      }
     });
     
     // Focus on input field
@@ -193,26 +170,12 @@ export default {
       input.focus();
     }
     
-    // Debug avatar
-    console.log('[Debug] Current avatar on mount:', this.userAvatar);
-    // Log user data from localStorage directly to see what's available
-    try {
-      const userJson = localStorage.getItem('user');
-      if (userJson) {
-        const userData = JSON.parse(userJson);
-        console.log('[Debug] User data on mount:', userData);
-        if (userData.avatar) {
-          console.log('[Debug] Raw avatar value in userData:', userData.avatar);
-          // Force the avatar value no matter what
-          this.userAvatar = userData.avatar;
-        }
-      }
-    } catch (e) {
-      console.error('[Debug] Error checking localStorage in mounted:', e);
-    }
+    // 检查用户头像
+    console.log('[Debug] 界面挂载时的用户头像:', this.userAvatar);
     
+    // 如果未设置头像，尝试重新加载用户信息
     if (!this.userAvatar) {
-      console.log('[Debug] No avatar set on mount, refreshing user info');
+      console.log('[Debug] 挂载时未找到头像，重新加载用户信息');
       this.loadUserInfo();
     }
   },
@@ -223,50 +186,24 @@ export default {
   },
   methods: {
     loadUserInfo() {
-      // Try to get the user info from localStorage
+      // 获取用户数据，方式与 Profile 页面相同
       const userJson = localStorage.getItem('user');
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-          console.log('[Debug] User data from localStorage:', userData);
+          console.log('[Debug] 用户数据:', userData);
           
-          // Use the avatar link directly from userData if it exists
-          if (userData.avatar) {
-            this.userAvatar = userData.avatar; // Use the avatar URL exactly as stored
-            console.log('[Debug] Using avatar URL directly from userData:', this.userAvatar);
-          } else if (userData.user && userData.user.avatar) {
-            this.userAvatar = userData.user.avatar;
-            console.log('[Debug] Using avatar from nested user object:', this.userAvatar);
-          } else {
-            // Fallback if no avatar found
-            this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
-            console.log('[Debug] No avatar found in userData, using fallback');
-          }
+          // 直接使用用户数据中的 avatar 字段
+          this.userAvatar = userData.avatar || '';
+          console.log('[Debug] 设置用户头像:', this.userAvatar);
+          
+          // 如果用户没有设置头像，UserAvatar 组件会使用默认头像
         } catch (e) {
-          console.error('[Debug] Error parsing user data:', e);
-          this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
+          console.error('[Debug] 解析用户数据失败:', e);
         }
       } else {
-        console.log('[Debug] No user data found in localStorage');
-        this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
+        console.log('[Debug] localStorage 中未找到用户数据');
       }
-      
-      // Log the avatar value and attempt to manually set it on DOM elements for testing
-      console.log('[Debug] Final avatar value:', this.userAvatar);
-      
-      // After setting the avatar, check the DOM in the next tick
-      this.$nextTick(() => {
-        const avatarElements = document.querySelectorAll('.message .avatar img');
-        console.log('[Debug] Found avatar elements:', avatarElements.length);
-        avatarElements.forEach((img, index) => {
-          console.log(`[Debug] Avatar element ${index}:`, img.src);
-          // Try to force the src attribute
-          if (this.userAvatar && img.getAttribute('alt') === 'You') {
-            img.src = this.userAvatar;
-            console.log(`[Debug] Forced avatar src for element ${index}`);
-          }
-        });
-      });
     },
     async fetchConversationDetails() {
       try {
@@ -349,24 +286,27 @@ export default {
       if (!content) return;
       
       try {
-        // Debug avatar before sending
-        console.log('[Debug] Current avatar before sending:', this.userAvatar);
+        // 发送前检查头像
+        console.log('[Debug] 发送消息前的头像:', this.userAvatar);
+        
+        // 如果没有设置头像，尝试重新加载用户信息
         if (!this.userAvatar) {
-          console.log('[Debug] No avatar set before sending, refreshing user info');
+          console.log('[Debug] 发送消息前未找到头像，重新加载用户信息');
           this.loadUserInfo();
         }
         
-        // Show optimistic update
+        // 创建临时消息，使用与 Profile 相同的头像
         const tempMessage = {
           id: 'temp-' + Date.now(),
           senderId: this.getCurrentUserId(),
           receiverId: this.partnerId,
           content: content,
           createdAt: new Date().toISOString(),
-          senderAvatar: this.userAvatar
+          senderAvatar: this.userAvatar,
+          senderUsername: '我'
         };
         
-        console.log('[Debug] Created message with avatar:', tempMessage.senderAvatar);
+        console.log('[Debug] 创建的临时消息头像:', tempMessage.senderAvatar);
         
         // Add temporary message immediately
         this.messages.push(tempMessage);
@@ -635,11 +575,6 @@ export default {
       if (index !== -1) {
         this.messages.splice(index, 1);
       }
-    },
-    handleAvatarError(event) {
-      console.error('Avatar error:', event);
-      // Handle the error - you might want to set a default avatar or notify the user
-      this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
     }
   }
 };
@@ -816,34 +751,17 @@ export default {
 }
 
 .message .avatar {
-  order: 2 !important;
-  min-width: 35px !important;
-  min-height: 35px !important;
-  width: 35px !important;
-  height: 35px !important;
-  border-radius: 50% !important;
-  overflow: hidden !important;
-  margin: 0 0 0 8px !important;
-  flex-shrink: 0 !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  background-color: #f0f0f0 !important;
-  border: 2px solid #007AFF !important;
-  position: relative !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  order: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 0 8px;
+  flex-shrink: 0;
 }
 
+/* 移除不再需要的样式 */
 .avatar img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
+  /* 这些样式现在由 UserAvatar 组件提供 */
 }
 
 /* Reset all message-specific styles to ensure proper display */
