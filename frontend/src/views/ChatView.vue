@@ -42,7 +42,7 @@
               'message-received': !isOwnMessage(message)
             }">
               <div class="avatar" v-if="!isOwnMessage(message)">
-                <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
+                <img :src="message.senderAvatar || '/assets/default-avatar.png'" :alt="message.senderUsername" style="display: block; width: 100%; height: 100%; object-fit: cover;">
               </div>
               <div class="message-content" :class="{ 
                 'failed': message.sendFailed
@@ -57,7 +57,7 @@
                 </div>
               </div>
               <div class="avatar" v-if="isOwnMessage(message)">
-                <img :src="userAvatar || '/default-avatar.png'" alt="You">
+                <img :src="userAvatar || '/assets/default-avatar.png'" alt="You" style="display: block; width: 100%; height: 100%; object-fit: cover;">
               </div>
             </div>
             <!-- <div v-if="isOwnMessage(message)" class="message-indicator">我</div> -->
@@ -159,6 +159,27 @@ export default {
     if (input) {
       input.focus();
     }
+    
+    // Debug avatar
+    console.log('[Debug] Current avatar on mount:', this.userAvatar);
+    // Log user data from localStorage directly to see what's available
+    try {
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        const userData = JSON.parse(userJson);
+        console.log('[Debug] User data on mount:', userData);
+        if (userData.avatar) {
+          console.log('[Debug] Raw avatar value in userData:', userData.avatar);
+        }
+      }
+    } catch (e) {
+      console.error('[Debug] Error checking localStorage in mounted:', e);
+    }
+    
+    if (!this.userAvatar) {
+      console.log('[Debug] No avatar set on mount, refreshing user info');
+      this.loadUserInfo();
+    }
   },
   beforeUnmount() {
     this.closeSseConnection();
@@ -171,10 +192,43 @@ export default {
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-            this.userAvatar = userData.avatar;
+          console.log('[Debug] User data loaded:', userData);
+          
+          // Check different avatar possibilities
+          if (userData.avatar) {
+            // Check if the avatar is a full URL or just an ID/path
+            if (userData.avatar.startsWith('http')) {
+              // It's already a full URL
+              this.userAvatar = userData.avatar;
+            } else if (userData.avatar.startsWith('/')) {
+              // It's a relative path, use as is
+              this.userAvatar = userData.avatar;
+            } else {
+              // It might be just an ID or filename, construct URL like the profile page
+              // This assumes the avatar might be served from a specific avatar endpoint
+              this.userAvatar = `/api/users/avatar/${userData.avatar}`;
+            }
+            console.log('[Debug] Setting user avatar:', this.userAvatar);
+          } else if (userData.user && userData.user.avatar) {
+            // Nested user object with avatar
+            this.userAvatar = userData.user.avatar;
+            console.log('[Debug] Setting nested user avatar:', this.userAvatar);
+          } else if (userData.id) {
+            // If no avatar but we have user ID, try to use ID-based avatar URL like in profile
+            this.userAvatar = `/api/users/avatar/${userData.id}`;
+            console.log('[Debug] Using ID-based avatar URL:', this.userAvatar);
+          } else {
+            // No avatar information found, use the penguin avatar like in profile
+            this.userAvatar = '/assets/default-avatar.png';
+            console.log('[Debug] No avatar info, using default penguin avatar');
+          }
         } catch (e) {
           console.error('Failed to parse user data:', e);
+          this.userAvatar = '/assets/default-avatar.png';
         }
+      } else {
+        console.log('[Debug] No user data found in localStorage');
+        this.userAvatar = '/assets/default-avatar.png';
       }
     },
     async fetchConversationDetails() {
@@ -258,6 +312,13 @@ export default {
       if (!content) return;
       
       try {
+        // Debug avatar before sending
+        console.log('[Debug] Current avatar before sending:', this.userAvatar);
+        if (!this.userAvatar) {
+          console.log('[Debug] No avatar set before sending, refreshing user info');
+          this.loadUserInfo();
+        }
+        
         // Show optimistic update
         const tempMessage = {
           id: 'temp-' + Date.now(),
@@ -265,8 +326,10 @@ export default {
           receiverId: this.partnerId,
           content: content,
           createdAt: new Date().toISOString(),
-          senderAvatar: this.userAvatar
+          senderAvatar: this.userAvatar || '/assets/default-avatar.png'
         };
+        
+        console.log('[Debug] Created message with avatar:', tempMessage.senderAvatar);
         
         // Add temporary message immediately
         this.messages.push(tempMessage);
@@ -712,18 +775,25 @@ export default {
 
 .message .avatar {
   order: 2;
+  min-width: 35px;
+  min-height: 35px;
   width: 35px;
   height: 35px;
   border-radius: 50%;
   overflow: hidden;
   margin: 0;
   flex-shrink: 0;
+  display: flex !important;
+  background-color: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 /* Reset all message-specific styles to ensure proper display */
