@@ -47,7 +47,6 @@
               </div>
               <div class="message-content">
                 <div class="message-text" v-html="formatMessage(message.content)"></div>
-                <div class="message-time">{{ formatTime(message.createdAt || message.timestamp) }}</div>
               </div>
               <div class="avatar" v-if="isOwnMessage(message)">
                 <UserAvatar 
@@ -884,10 +883,7 @@ export default {
 }
 
 .message-time {
-  font-size: 11px;
-  color: var(--light-text-color);
-  margin-top: 5px;
-  align-self: center;
+  display: none;
 }
 
 .empty-chat {
