@@ -1,5 +1,5 @@
 <template>
-  <div class="bottom-tab-bar">
+  <div class="bottom-tab-bar" v-if="!isChatView">
     <router-link to="/" class="tab-item" active-class="active">
       <i class="fas fa-home"></i>
       <span>首页</span>
@@ -41,6 +41,9 @@ export default {
       return this.$store.getters.isAuthenticated 
         ? `/profile/${this.$store.getters.currentUser?.id || '123'}`
         : '/login';
+    },
+    isChatView() {
+      return this.$route.name === 'chat';
     }
   },
   methods: {

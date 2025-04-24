@@ -1,6 +1,5 @@
 <template>
-  <div class="chat-container">
-    <!-- Header -->
+  <div class="chat-page">
     <div class="chat-header">
       <div class="back-button" @click="goBack">
         <i class="fas fa-chevron-left"></i>
@@ -14,72 +13,65 @@
       </div>
     </div>
 
-    <!-- Messages Area -->
-    <div class="chat-body">
-      <div class="loading-indicator" v-if="loading">
-        <div class="loader"></div>
-      </div>
-
-      <div v-else-if="messages.length === 0" class="empty-chat">
-        <div class="icon">
-          <i class="fas fa-comments"></i>
+    <div class="chat-content">
+      <div class="chat-body">
+        <div class="loading-indicator" v-if="loading">
+          <div class="loader"></div>
         </div>
-        <div class="text">
-          <p>没有消息记录</p>
-          <p class="hint">开始发送消息吧</p>
+
+        <div v-else-if="messages.length === 0" class="empty-chat">
+          <div class="icon">
+            <i class="fas fa-comments"></i>
+          </div>
+          <div class="text">
+            <p>没有消息记录</p>
+            <p class="hint">开始发送消息吧</p>
+          </div>
         </div>
-      </div>
 
-      <div v-else class="message-list">
-        <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
-          <!-- Date divider -->
-          <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
-            {{ formatDate(message.createdAt) }}
-          </div>
-          
-          <!-- Time display -->
-          <div v-if="shouldShowTimeDisplay(message, index)" class="time-display">
-            {{ formatMessageTime(message.createdAt) }}
-          </div>
-
-          <!-- Message bubble -->
-          <div class="message" :class="{ 
-            'message-sent': isOwnMessage(message),
-            'message-received': !isOwnMessage(message)
-          }">
-            <div class="avatar" v-if="!isOwnMessage(message)">
-              <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
+        <div v-else class="message-list">
+          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
+            <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
+              {{ formatDate(message.createdAt) }}
             </div>
-            <div class="message-content" :class="{ 
-              'own-bubble': isOwnMessage(message),
-              'failed': message.sendFailed
+            <div v-if="shouldShowTimeDisplay(message, index)" class="time-display">
+              {{ formatMessageTime(message.createdAt) }}
+            </div>
+            <div class="message" :class="{ 
+              'message-sent': isOwnMessage(message),
+              'message-received': !isOwnMessage(message)
             }">
-              {{ message.content }}
-              <div v-if="isOwnMessage(message)" class="message-status" :class="{ 'failed': message.sendFailed }">
-                <span v-if="message.sendFailed">
-                  发送失败 <button class="retry-button" @click="retryMessage(message)">重试</button>
-                </span>
-                <span v-else-if="message.id.toString().includes('temp')">发送中...</span>
-                <span v-else>已发送</span>
+              <div class="avatar" v-if="!isOwnMessage(message)">
+                <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
+              </div>
+              <div class="message-content" :class="{ 
+                'own-bubble': isOwnMessage(message),
+                'failed': message.sendFailed
+              }">
+                {{ message.content }}
+                <div v-if="isOwnMessage(message)" class="message-status" :class="{ 'failed': message.sendFailed }">
+                  <span v-if="message.sendFailed">
+                    发送失败 <button class="retry-button" @click="retryMessage(message)">重试</button>
+                  </span>
+                  <span v-else-if="message.id.toString().includes('temp')">发送中...</span>
+                  <span v-else>已发送</span>
+                </div>
+              </div>
+              <div class="avatar" v-if="isOwnMessage(message)">
+                <img :src="userAvatar || '/default-avatar.png'" alt="You">
               </div>
             </div>
-            <div class="avatar" v-if="isOwnMessage(message)">
-              <img :src="userAvatar || '/default-avatar.png'" alt="You">
-            </div>
           </div>
-        </div>
-        
-        <!-- Load more messages button -->
-        <div v-if="hasMoreMessages && !loadingMore" class="load-more">
-          <button @click="loadMoreMessages">加载更多消息</button>
-        </div>
-        <div v-if="loadingMore" class="loading-more">
-          <div class="small-loader"></div>
+          <div v-if="hasMoreMessages && !loadingMore" class="load-more">
+            <button @click="loadMoreMessages">加载更多消息</button>
+          </div>
+          <div v-if="loadingMore" class="loading-more">
+            <div class="small-loader"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Updated chat input styles for desktop and mobile -->
     <div class="chat-input-bar">
       <div class="chat-input-container">
         <input 
@@ -479,24 +471,11 @@ export default {
 </script>
 
 <style scoped>
-.main-content {
-  flex: 1;
-  position: relative;
-  height: 100%;
-}
-
-.chat-container {
+.chat-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  max-height: 100vh;
-  background-color: #f6f6f6;
-  position: relative;
-  margin: 0 auto;
-  max-width: 960px;
-  border-left: 1px solid #e0e0e0;
-  border-right: 1px solid #e0e0e0;
-  overflow: hidden; /* Prevent container overflow */
+  overflow: hidden;
 }
 
 .chat-header {
@@ -505,9 +484,26 @@ export default {
   padding: 8px 16px;
   background-color: #f6f6f6;
   border-bottom: 1px solid #e0e0e0;
-  z-index: 10;
-  flex-shrink: 0; /* Prevent header from shrinking */
-  height: 50px; /* Fixed height */
+  height: 60px;
+  flex-shrink: 0;
+}
+
+.chat-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.chat-input-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid #e6e6e6;
+  background-color: #f6f6f6;
+  height: 70px;
+  flex-shrink: 0;
 }
 
 .back-button, .menu-button {
@@ -536,16 +532,6 @@ export default {
 .online-status {
   font-size: 12px;
   color: #07c160;
-}
-
-.chat-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  position: relative;
-  height: calc(100vh - 110px); /* Adjusted height: viewport height minus header and input */
 }
 
 .message-list {
@@ -649,7 +635,6 @@ export default {
   border-top-left-radius: 16px;
 }
 
-/* Failed message styling */
 .message-bubble.own-bubble.failed {
   background-color: #ffeeee;
   border: 1px dashed #ff6b6b;
@@ -713,22 +698,6 @@ export default {
   line-height: 1.4;
 }
 
-/* Updated chat input styles for desktop and mobile */
-.chat-input-bar {
-  position: relative; /* Change from sticky to relative */
-  bottom: 0;
-  padding: 8px;
-  border-top: 1px solid #e6e6e6;
-  display: flex;
-  align-items: center;
-  background-color: #f6f6f6;
-  z-index: 10;
-  box-sizing: border-box;
-  flex-shrink: 0; /* Prevent input from shrinking */
-  width: 100%; /* Full width */
-  height: 60px; /* Fixed height */
-}
-
 .chat-input-container {
   display: flex;
   align-items: center;
@@ -786,61 +755,6 @@ export default {
 
 .send-button:disabled {
   background-color: #c9c9c9;
-}
-
-/* Empty chat state styling */
-.empty-chat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 0 20px;
-  text-align: center;
-  color: #8e8e8e;
-}
-
-.empty-chat .icon {
-  font-size: 60px;
-  margin-bottom: 20px;
-  color: #d0d0d0;
-}
-
-.empty-chat .text {
-  font-size: 16px;
-  max-width: 300px;
-  line-height: 1.4;
-}
-
-/* Remove fixed positioning on mobile */
-@media (max-width: 768px) {
-  .chat-input-bar {
-    position: relative;
-    bottom: auto;
-    padding: 8px;
-  }
-  
-  .chat-body {
-    padding-bottom: 8px; /* Reduced padding */
-    height: calc(100vh - 110px); /* Adjusted height calculation */
-  }
-  
-  .chat-container {
-    height: 100vh;
-    max-height: 100vh;
-  }
-}
-
-@media (min-width: 769px) {
-  /* Desktop specific styles */
-  .chat-container {
-    height: 100vh;
-    max-height: 100vh;
-  }
-  
-  .chat-body {
-    height: calc(100vh - 110px); /* Adjusted height */
-  }
 }
 
 .loading-indicator {
@@ -912,7 +826,6 @@ export default {
   color: #07C160;
 }
 
-/* Send button - make it more prominent */
 .send-button {
   width: 30px;
   height: 30px;

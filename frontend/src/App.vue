@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <header class="app-header">
+    <header class="app-header" v-if="!isChatView">
       <div class="logo">
         <div class="main-title">锦书情感社区</div>
         <div class="subtitle">
@@ -69,7 +69,10 @@ export default {
       isAuthenticated: 'isAuthenticated',
       currentUser: 'currentUser',
       actionLoading: 'isActionLoading'
-    })
+    }),
+    isChatView() {
+      return this.$route.name === 'chat';
+    }
   },
   methods: {
     logout() {
