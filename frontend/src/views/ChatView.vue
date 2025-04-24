@@ -171,7 +171,7 @@ export default {
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
-          this.userAvatar = userData.avatar;
+            this.userAvatar = userData.avatar;
         } catch (e) {
           console.error('Failed to parse user data:', e);
         }
