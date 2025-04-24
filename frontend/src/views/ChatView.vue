@@ -781,12 +781,10 @@ export default {
 .loader {
   border: 4px solid transparent;
   border-radius: 50%;
-  border-top: 4px solid;
-  border-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
-  border-image-slice: 1;
+  border-top: 4px solid var(--primary-color);
   width: 30px;
   height: 30px;
-  animation: spin 1.5s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
 .load-more {
