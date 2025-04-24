@@ -60,7 +60,7 @@
                 <img :src="userAvatar || '/default-avatar.png'" alt="You">
               </div>
             </div>
-            <div v-if="isOwnMessage(message)" class="message-indicator">我</div>
+            <!-- <div v-if="isOwnMessage(message)" class="message-indicator">我</div> -->
           </div>
           <div v-if="hasMoreMessages && !loadingMore" class="load-more">
             <button @click="loadMoreMessages">加载更多消息</button>
