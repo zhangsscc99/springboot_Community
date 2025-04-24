@@ -471,19 +471,22 @@ export default {
 </script>
 
 <style scoped>
+@import '@/assets/css/main.css';
+
 .chat-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background-color: var(--background-color);
 }
 
 .chat-header {
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  background-color: #f6f6f6;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--secondary-color);
+  border-bottom: 1px solid var(--border-color);
   height: 60px;
   flex-shrink: 0;
 }
@@ -500,8 +503,8 @@ export default {
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  border-top: 1px solid #e6e6e6;
-  background-color: #f6f6f6;
+  background-color: var(--secondary-color);
+  border-top: 1px solid var(--border-color);
   height: 70px;
   flex-shrink: 0;
 }
@@ -513,7 +516,13 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #07c160;
+  color: var(--primary-color);
+}
+
+.back-button i {
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .partner-info {
@@ -526,12 +535,12 @@ export default {
 .partner-name {
   font-size: 17px;
   font-weight: 500;
-  color: #000;
+  color: var(--text-color);
 }
 
 .online-status {
   font-size: 12px;
-  color: #07c160;
+  color: var(--primary-color);
 }
 
 .message-list {
@@ -547,9 +556,9 @@ export default {
 .date-divider {
   text-align: center;
   margin: 10px 0;
-  color: #999;
+  color: var(--light-text-color);
   font-size: 12px;
-  background: #cecece;
+  background: var(--border-color);
   padding: 4px 10px;
   border-radius: 10px;
   display: inline-block;
@@ -560,7 +569,7 @@ export default {
 .time-display {
   text-align: center;
   margin: 10px 0;
-  color: #999;
+  color: var(--light-text-color);
   font-size: 13px;
 }
 
@@ -604,15 +613,15 @@ export default {
 }
 
 .message-sent .message-content {
-  background-color: #95ec69;
-  color: #000;
+  background-color: var(--primary-color);
+  color: var(--text-color);
   border-top-right-radius: 4px;
   margin-right: 5px;
 }
 
 .message-received .message-content {
-  background-color: #ffffff;
-  color: #000;
+  background-color: var(--background-color);
+  color: var(--text-color);
   border-top-left-radius: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   margin-left: 5px;
@@ -642,19 +651,19 @@ export default {
 
 .message-status {
   font-size: 12px;
-  color: #999;
+  color: var(--light-text-color);
   margin-top: 5px;
   text-align: right;
 }
 
 .message-status.failed {
-  color: #ff6b6b;
+  color: var(--error-color);
 }
 
 .retry-button {
   background: none;
   border: none;
-  color: #ff6b6b;
+  color: var(--error-color);
   font-size: 12px;
   padding: 2px 8px;
   margin-left: 5px;
@@ -664,13 +673,13 @@ export default {
 
 .message-sender {
   font-size: 12px;
-  color: #999;
+  color: var(--light-text-color);
   margin-bottom: 5px;
 }
 
 .message-time {
   font-size: 11px;
-  color: #999;
+  color: var(--light-text-color);
   margin-top: 5px;
   align-self: center;
 }
@@ -744,7 +753,7 @@ export default {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: #07c160;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   display: flex;
@@ -765,9 +774,14 @@ export default {
 }
 
 .loader {
-  border: 4px solid #f3f3f3;
+  border: 4px solid transparent;
   border-radius: 50%;
-  border-top: 4px solid #07c160;
+  border-top: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
+  border-image-slice: 1;
   width: 30px;
   height: 30px;
   animation: spin 1.5s linear infinite;
@@ -794,10 +808,14 @@ export default {
 }
 
 .small-loader {
-  display: inline-block;
-  border: 2px solid #f3f3f3;
+  border: 2px solid transparent;
   border-radius: 50%;
-  border-top: 2px solid #07c160;
+  border-top: 2px solid transparent;
+  border-right: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-left: 2px solid transparent;
+  border-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
+  border-image-slice: 1;
   width: 20px;
   height: 20px;
   animation: spin 1.5s linear infinite;
@@ -823,21 +841,7 @@ export default {
 
 .input-button i {
   font-size: 20px;
-  color: #07C160;
-}
-
-.send-button {
-  width: 30px;
-  height: 30px;
-  border: none;
-  background-color: #07C160;
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 5px;
-  cursor: pointer;
+  color: var(--primary-color);
 }
 
 .message-input {
@@ -858,5 +862,21 @@ export default {
 .message-input::placeholder {
   color: #999;
   font-size: 14px;
+}
+
+/* Apply global font and line-height */
+body {
+  font-family: 'Helvetica Neue', 'Arial', sans-serif;
+  line-height: 1.6;
+}
+
+/* Ensure responsive design */
+@media (max-width: 576px) {
+  .chat-header {
+    padding: 6px 12px;
+  }
+  .chat-input-bar {
+    padding: 8px 12px;
+  }
 }
 </style> 
