@@ -45,7 +45,6 @@
                 <img :src="message.senderAvatar || '/default-avatar.png'" :alt="message.senderUsername">
               </div>
               <div class="message-content" :class="{ 
-                'own-bubble': isOwnMessage(message),
                 'failed': message.sendFailed
               }">
                 {{ message.content }}
@@ -642,19 +641,25 @@ export default {
 
 /* Override any styles that might be causing positioning issues */
 .message-sent {
-  float: right;
-  width: auto;
-  max-width: 70%;
-  flex-direction: row-reverse;
-  margin-left: auto !important; 
-  margin-right: 0 !important;
+  /* Placeholder - keep this class for backwards compatibility */
 }
 
 .message-received {
-  flex-direction: row;
-  margin-right: auto;
-  margin-left: 0;
-  justify-content: flex-start;
+  /* Placeholder - keep this class for backwards compatibility */
+}
+
+/* Remove redundant styling */
+.message-sent .message-content {
+  /* Already handled in the main message-content style */
+}
+
+/* Remove redundant styling */
+.message-bubble {
+  /* Styles are covered by message-content */
+}
+
+.message-bubble.own-bubble {
+  /* No longer needed with our new styling */
 }
 
 .date-divider {
@@ -679,22 +684,39 @@ export default {
 
 .message {
   display: flex;
-  margin-bottom: 12px;
   align-items: flex-start;
-  max-width: 70%;
+  max-width: 75%;
   clear: both;
   position: relative;
   margin-left: auto !important;
-  margin-right: 0 !important;
-  flex-direction: row-reverse !important;
+  margin-right: 5px !important;
+  margin-bottom: 20px;
+  flex-direction: row !important;
+  justify-content: flex-end;
+  padding-bottom: 10px;
 }
 
-.avatar {
+.message-content {
+  order: 1;
+  padding: 10px 15px;
+  border-radius: 16px;
+  border-top-right-radius: 4px;
+  word-break: break-word;
+  position: relative;
+  max-width: calc(100% - 45px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin-right: 10px;
+  background-color: #007AFF;
+  color: white;
+}
+
+.message .avatar {
+  order: 2;
   width: 35px;
   height: 35px;
   border-radius: 50%;
   overflow: hidden;
-  margin: 0 10px;
+  margin: 0;
   flex-shrink: 0;
 }
 
@@ -714,19 +736,29 @@ export default {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.message-sent .message-content {
-  background-color: #007AFF; /* iOS blue for sent messages */
-  color: white;
-  border-top-right-radius: 4px;
-  margin-right: 5px;
+.message-status {
+  font-size: 12px;
+  color: var(--light-text-color);
+  margin-top: 5px;
   text-align: right;
-  float: right;
 }
 
-/* Ensure proper avatar positioning for sent messages */
-.message-sent .avatar {
-  margin-left: 0;
-  margin-right: 10px;
+/* Fix indicator position */
+.message-indicator {
+  position: absolute;
+  right: 0px;
+  top: -10px;
+  font-size: 10px;
+  background-color: #007AFF;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .message-received .message-content {
@@ -735,39 +767,6 @@ export default {
   border-top-left-radius: 4px;
   margin-left: 5px;
   text-align: left;
-}
-
-.message-bubble {
-  background-color: #ffffff;
-  border-radius: 16px;
-  border-top-left-radius: 4px;
-  padding: 10px 15px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  position: relative;
-  max-width: calc(100% - 60px);
-  word-break: break-word;
-}
-
-.message-bubble.own-bubble {
-  background-color: #95ec69;
-  border-top-right-radius: 4px;
-  border-top-left-radius: 16px;
-}
-
-.message-bubble.own-bubble.failed {
-  background-color: #ffeeee;
-  border: 1px dashed #ff6b6b;
-}
-
-.message-status {
-  font-size: 12px;
-  color: var(--light-text-color);
-  margin-top: 5px;
-  text-align: right;
-}
-
-.message-status.failed {
-  color: var(--error-color);
 }
 
 .retry-button {
@@ -993,20 +992,20 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.message-indicator {
-  position: absolute;
-  right: 15px;
-  top: -10px;
-  font-size: 10px;
-  background-color: #007AFF;
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.message-content.failed {
+  background-color: #ffeeee;
+  border: 1px dashed #ff6b6b;
+}
+
+.message-status.failed {
+  color: var(--error-color);
+}
+
+/* Fix status position */
+.message-status {
+  font-size: 12px;
+  color: var(--light-text-color);
+  margin-top: 5px;
+  text-align: right;
 }
 </style> 
