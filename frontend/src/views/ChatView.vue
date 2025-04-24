@@ -753,13 +753,18 @@ export default {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: var(--primary-color);
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
   color: white;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+}
+
+.send-button:hover {
+  background-image: linear-gradient(to right, var(--hover-color), var(--primary-gradient-middle), var(--hover-color));
+  cursor: pointer;
 }
 
 .send-button:disabled {
@@ -776,10 +781,7 @@ export default {
 .loader {
   border: 4px solid transparent;
   border-radius: 50%;
-  border-top: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 4px solid transparent;
+  border-top: 4px solid;
   border-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
   border-image-slice: 1;
   width: 30px;
@@ -810,10 +812,7 @@ export default {
 .small-loader {
   border: 2px solid transparent;
   border-radius: 50%;
-  border-top: 2px solid transparent;
-  border-right: 2px solid transparent;
-  border-bottom: 2px solid transparent;
-  border-left: 2px solid transparent;
+  border-top: 2px solid;
   border-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
   border-image-slice: 1;
   width: 20px;
