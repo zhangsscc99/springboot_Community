@@ -781,7 +781,7 @@ export default {
 .loader {
   border: 4px solid transparent;
   border-radius: 50%;
-  border-top: 4px solid var(--primary-color);
+  border-top: 4px solid var(--primary-gradient-middle);
   width: 30px;
   height: 30px;
   animation: spin 1s linear infinite;
