@@ -65,7 +65,7 @@
       <div 
         v-for="conversation in conversations" 
         :key="conversation.id" 
-        @click="navigateToConversation(conversation.id)"
+        @click="navigateToConversation(conversation)"
         class="conversation-wrapper"
       >
         <conversation-item 
@@ -145,15 +145,19 @@ export default {
         this.loading = true;
         const response = await MessageService.getConversations();
         if (response.data && response.data.content) {
-          // Transform backend data to match our component structure
+          // Transform backend data to match our component structure and include partnerId
           this.conversations = response.data.content.map(conv => ({
             id: conv.id,
+            partnerId: conv.partnerId,  // 确保包含伙伴ID
             name: conv.partnerUsername,
             avatar: conv.partnerAvatar,
             lastMessage: conv.lastMessageContent,
             lastMessageTime: conv.lastMessageTime,
             unreadCount: conv.unreadCount
           }));
+          
+          // Debug: 打印会话列表，帮助调试
+          console.log('Conversations loaded:', this.conversations);
         }
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
@@ -264,24 +268,28 @@ export default {
       return null;
     },
     
-    navigateToConversation(conversationId) {
-      console.log('Navigating to conversation:', conversationId);
+    navigateToConversation(conversation) {
+      console.log('Navigating to conversation with partner:', conversation);
       
-      // Validate conversation ID before navigation
-      if (!conversationId || conversationId === 'undefined' || conversationId <= 0) {
-        console.error('Invalid conversation ID:', conversationId);
-        this.$message.error('无效的会话ID');
+      // 获取伙伴ID (partnerId)
+      const partnerId = conversation.partnerId || conversation.id;
+      
+      // 验证伙伴ID
+      if (!partnerId || partnerId === 'undefined' || partnerId <= 0) {
+        console.error('Invalid partner ID:', partnerId);
+        this.$message.error('无效的用户ID');
         return;
       }
       
-      // Ensure conversationId is a number
-      const parsedId = parseInt(conversationId);
+      // 确保伙伴ID是数字
+      const parsedId = parseInt(partnerId);
       if (isNaN(parsedId)) {
-        console.error('Conversation ID is not a number:', conversationId);
-        this.$message.error('无效的会话ID');
+        console.error('Partner ID is not a number:', partnerId);
+        this.$message.error('无效的用户ID');
         return;
       }
       
+      // 使用伙伴ID导航到聊天页面
       this.$router.push(`/chat/${parsedId}`);
     },
     
