@@ -801,7 +801,7 @@ export default {
 .message {
   display: flex;
   align-items: flex-start;
-  max-width: 75%;
+  max-width: 85%;
   clear: both;
   position: relative;
   margin-bottom: 20px;
@@ -815,7 +815,7 @@ export default {
   border-top-right-radius: 4px;
   word-break: break-word;
   position: relative;
-  max-width: calc(100% - 45px);
+  max-width: calc(100% - 55px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   margin-right: 10px;
   background-color: #007AFF;
@@ -1081,6 +1081,12 @@ body {
   .chat-input-bar {
     padding: 8px 12px;
   }
+  .message {
+    max-width: 90%;
+  }
+  .chat-content {
+    padding: 8px 10px;
+  }
 }
 
 .menu-button i {
@@ -1195,5 +1201,12 @@ body {
 .message:not(.own) .message-indicator {
   left: 0px;
   right: auto;
+}
+
+/* 增加消息文本区域的样式 */
+.message-text {
+  width: 100%;
+  word-wrap: break-word;
+  min-width: 60px;
 }
 </style> 
