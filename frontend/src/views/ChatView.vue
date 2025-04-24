@@ -61,12 +61,12 @@
                   <span v-else>已发送</span>
                 </div>
               </div>
-              <div class="avatar" v-if="isOwnMessage(message)">
+              <div class="avatar" v-if="isOwnMessage(message)" ref="avatarRef">
                 <img 
-                  src="/img/penguin-avatar.png" 
+                  :src="userAvatar" 
                   alt="You" 
                   style="display: block; width: 100%; height: 100%; object-fit: cover;"
-                  @error="e => { e.target.src = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png'; }"
+                  @error="handleAvatarError"
                 >
               </div>
             </div>
@@ -162,6 +162,29 @@ export default {
     // Force scroll to bottom on mount
     this.$nextTick(() => {
       this.scrollToBottom();
+      
+      // Enhanced avatar debugging
+      console.log('[Debug] Avatar elements after mount:');
+      const avatarContainers = document.querySelectorAll('.avatar');
+      console.log('[Debug] Avatar containers found:', avatarContainers.length);
+      
+      const avatarImages = document.querySelectorAll('.avatar img');
+      console.log('[Debug] Avatar images found:', avatarImages.length);
+      
+      avatarImages.forEach((img, i) => {
+        console.log(`[Debug] Avatar image ${i} src:`, img.src);
+        console.log(`[Debug] Avatar image ${i} display:`, window.getComputedStyle(img).display);
+        console.log(`[Debug] Avatar image ${i} visibility:`, window.getComputedStyle(img).visibility);
+      });
+      
+      // Force avatar on first message if any exist
+      if (this.messages.length > 0 && this.userAvatar) {
+        const firstMessageAvatar = document.querySelector('.message-sent .avatar img');
+        if (firstMessageAvatar) {
+          console.log('[Debug] Found first message avatar, forcing src');
+          firstMessageAvatar.src = this.userAvatar;
+        }
+      }
     });
     
     // Focus on input field
@@ -180,6 +203,8 @@ export default {
         console.log('[Debug] User data on mount:', userData);
         if (userData.avatar) {
           console.log('[Debug] Raw avatar value in userData:', userData.avatar);
+          // Force the avatar value no matter what
+          this.userAvatar = userData.avatar;
         }
       }
     } catch (e) {
@@ -198,24 +223,50 @@ export default {
   },
   methods: {
     loadUserInfo() {
-      // Directly use the penguin avatar that we can see is working in your profile page
-      this.userAvatar = '/img/penguin-avatar.png';
-      console.log('[Debug] Using direct penguin avatar path:', this.userAvatar);
-      
-      // For debugging only, still try to read the user data from localStorage
+      // Try to get the user info from localStorage
       const userJson = localStorage.getItem('user');
       if (userJson) {
         try {
           const userData = JSON.parse(userJson);
           console.log('[Debug] User data from localStorage:', userData);
           
+          // Use the avatar link directly from userData if it exists
           if (userData.avatar) {
-            console.log('[Debug] Original avatar from userData:', userData.avatar);
+            this.userAvatar = userData.avatar; // Use the avatar URL exactly as stored
+            console.log('[Debug] Using avatar URL directly from userData:', this.userAvatar);
+          } else if (userData.user && userData.user.avatar) {
+            this.userAvatar = userData.user.avatar;
+            console.log('[Debug] Using avatar from nested user object:', this.userAvatar);
+          } else {
+            // Fallback if no avatar found
+            this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
+            console.log('[Debug] No avatar found in userData, using fallback');
           }
         } catch (e) {
           console.error('[Debug] Error parsing user data:', e);
+          this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
         }
+      } else {
+        console.log('[Debug] No user data found in localStorage');
+        this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
       }
+      
+      // Log the avatar value and attempt to manually set it on DOM elements for testing
+      console.log('[Debug] Final avatar value:', this.userAvatar);
+      
+      // After setting the avatar, check the DOM in the next tick
+      this.$nextTick(() => {
+        const avatarElements = document.querySelectorAll('.message .avatar img');
+        console.log('[Debug] Found avatar elements:', avatarElements.length);
+        avatarElements.forEach((img, index) => {
+          console.log(`[Debug] Avatar element ${index}:`, img.src);
+          // Try to force the src attribute
+          if (this.userAvatar && img.getAttribute('alt') === 'You') {
+            img.src = this.userAvatar;
+            console.log(`[Debug] Forced avatar src for element ${index}`);
+          }
+        });
+      });
     },
     async fetchConversationDetails() {
       try {
@@ -312,7 +363,7 @@ export default {
           receiverId: this.partnerId,
           content: content,
           createdAt: new Date().toISOString(),
-          senderAvatar: '/img/penguin-avatar.png'
+          senderAvatar: this.userAvatar
         };
         
         console.log('[Debug] Created message with avatar:', tempMessage.senderAvatar);
@@ -584,6 +635,11 @@ export default {
       if (index !== -1) {
         this.messages.splice(index, 1);
       }
+    },
+    handleAvatarError(event) {
+      console.error('Avatar error:', event);
+      // Handle the error - you might want to set a default avatar or notify the user
+      this.userAvatar = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f427.png';
     }
   }
 };
@@ -760,30 +816,34 @@ export default {
 }
 
 .message .avatar {
-  order: 2;
-  min-width: 35px;
-  min-height: 35px;
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  overflow: hidden;
-  margin: 0;
-  flex-shrink: 0;
+  order: 2 !important;
+  min-width: 35px !important;
+  min-height: 35px !important;
+  width: 35px !important;
+  height: 35px !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  margin: 0 0 0 8px !important;
+  flex-shrink: 0 !important;
   display: block !important;
-  background-color: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #f0f0f0 !important;
+  border: 2px solid #007AFF !important;
+  position: relative !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 .avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 /* Reset all message-specific styles to ensure proper display */
