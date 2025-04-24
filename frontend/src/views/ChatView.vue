@@ -46,8 +46,6 @@
                 />
               </div>
               <div class="message-content">
-                <div v-if="!isOwnMessage(message)" class="message-indicator">{{ message.senderUsername || partnerName || '对方' }}</div>
-                <div v-if="isOwnMessage(message)" class="message-indicator">我</div>
                 <div class="message-text" v-html="formatMessage(message.content)"></div>
                 <div class="message-time">{{ formatTime(message.createdAt || message.timestamp) }}</div>
               </div>
@@ -857,20 +855,7 @@ export default {
 
 /* Fix indicator position */
 .message-indicator {
-  position: absolute;
-  right: 0px;
-  top: -10px;
-  font-size: 10px;
-  background-color: #007AFF;
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: none; /* 隐藏所有消息指示器 */
 }
 
 .message-received .message-content {
