@@ -878,4 +878,10 @@ body {
     padding: 8px 12px;
   }
 }
+
+.menu-button i {
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-middle), var(--primary-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 </style> 
