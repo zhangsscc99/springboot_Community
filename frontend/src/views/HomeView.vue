@@ -35,8 +35,8 @@
         />
           <div class="post-user-info">
             <h4 class="post-username">{{ post.author.username }}</h4>
-            <span class="post-time">{{ formatDate(post.created_at) }}</span>
-      </div>
+            <span class="post-bio">{{ post.author.bio || '这个用户很懒，还没有写简介' }}</span>
+          </div>
         </div>
         <p class="post-content">{{ post.content }}</p>
         <div class="post-tags" v-if="post.tags">
@@ -61,6 +61,8 @@
           </div>
           <div class="post-info">
             <i class="fas fa-eye"></i> {{ post.views || 0 }}
+            <span class="post-time-separator">•</span>
+            <span class="post-time">{{ formatDate(post.created_at) }}</span>
           </div>
         </div>
       </div>
@@ -222,20 +224,35 @@ export default {
       }
     },
     formatDate(dateString) {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffInSeconds = Math.floor((now - date) / 1000);
-    
-      if (diffInSeconds < 60) {
-        return '刚刚';
-      } else if (diffInSeconds < 3600) {
-        return Math.floor(diffInSeconds / 60) + '分钟前';
-      } else if (diffInSeconds < 86400) {
-        return Math.floor(diffInSeconds / 3600) + '小时前';
-      } else if (diffInSeconds < 604800) {
-        return Math.floor(diffInSeconds / 86400) + '天前';
-      } else {
-        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      if (!dateString) return '未知时间';
+      
+      try {
+        const date = new Date(dateString);
+        // 检查日期是否有效
+        if (isNaN(date.getTime())) {
+          return '未知时间';
+        }
+        
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+      
+        if (diffInSeconds < 60) {
+          return '刚刚';
+        } else if (diffInSeconds < 3600) {
+          return Math.floor(diffInSeconds / 60) + '分钟前';
+        } else if (diffInSeconds < 86400) {
+          return Math.floor(diffInSeconds / 3600) + '小时前';
+        } else if (diffInSeconds < 604800) {
+          return Math.floor(diffInSeconds / 86400) + '天前';
+        } else {
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          const day = date.getDate();
+          return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
+        }
+      } catch (error) {
+        console.error('日期格式化错误:', error);
+        return '未知时间';
       }
     },
     goToPostDetail(postId) {
@@ -432,9 +449,14 @@ export default {
   margin: 0;
 }
 
-.post-time {
-  font-size: 11px;
+.post-bio {
+  font-size: 12px;
   color: var(--light-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  opacity: 0.9;
 }
 
 .post-content {
@@ -502,6 +524,17 @@ export default {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.post-time {
+  font-size: 12px;
+  color: var(--light-text-color);
+}
+
+.post-time-separator {
+  margin: 0 2px;
+  color: var(--light-text-color);
+  opacity: 0.8;
 }
 
 .loading-indicator,
