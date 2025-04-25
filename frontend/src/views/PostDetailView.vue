@@ -69,13 +69,6 @@
           <i class="fas fa-eye"></i>
           <span>{{ post.views || 0 }}</span>
         </div>
-        <div class="post-action" 
-          :class="{ 'share-action': true, 'active': isUrlCopied }" 
-          @click="copyPostUrl"
-          :title="'复制帖子标题、内容摘要和链接'">
-          <i class="fas" :class="isUrlCopied ? 'fa-check' : 'fa-share'"></i>
-          <span>{{ isUrlCopied ? '已复制详情' : '转载' }}</span>
-        </div>
       </div>
       
       <div class="comments-section" ref="commentsSection">

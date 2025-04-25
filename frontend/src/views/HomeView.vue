@@ -46,18 +46,21 @@
         </div>
         <div class="post-footer">
           <div class="post-actions">
-            <div class="post-action" :class="{ active: post.likedByCurrentUser }">
-              <i class="fas fa-heart"></i> {{ post.likes || 0 }}
+            <div class="post-action" 
+                 :class="{ active: post.likedByCurrentUser, 'processing': isProcessingLike[post.id] }" 
+                 @click.stop="handleLike(post)"
+            >
+              <i class="fas" :class="isProcessingLike[post.id] ? 'fa-spinner fa-spin' : 'fa-heart'"></i> {{ post.likes || 0 }}
             </div>
-            <div class="post-action">
-              <i class="fas fa-comment-dots"></i> {{ post.comments || 0 }}
-            </div>
-            <div class="post-action" :class="{ active: post.favoritedByCurrentUser }">
-              <i class="fas fa-star"></i> {{ post.favorites || 0 }}
+            <div class="post-action" 
+                 :class="{ active: post.favoritedByCurrentUser, 'processing': isProcessingFavorite[post.id] }" 
+                 @click.stop="handleFavorite(post)"
+            >
+              <i class="fas" :class="isProcessingFavorite[post.id] ? 'fa-spinner fa-spin' : 'fa-star'"></i> {{ post.favorites || 0 }}
             </div>
           </div>
-          <div class="post-action">
-            <i class="fas fa-share-alt"></i> {{ post.views || 0 }}
+          <div class="post-info">
+            <i class="fas fa-eye"></i> {{ post.views || 0 }}
           </div>
         </div>
       </div>
@@ -70,7 +73,7 @@
 </template>
 
 <script>
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters, mapState, mapActions } from 'vuex';
 import UserAvatar from '@/components/UserAvatar.vue';
 import axios from 'axios';
 
@@ -92,7 +95,9 @@ export default {
         '故事': false,
         '情感知识': false
       },
-      requestingTab: null
+      requestingTab: null,
+      isProcessingLike: {},   // 存储每个帖子的点赞处理状态
+      isProcessingFavorite: {} // 存储每个帖子的收藏处理状态
     };
   },
   computed: {
@@ -105,7 +110,8 @@ export default {
       error: 'error',
       activeTab: 'activeTab',
       currentTabPosts: 'currentTabPosts',
-      isTabCacheExpired: 'isTabCacheExpired'
+      isTabCacheExpired: 'isTabCacheExpired',
+      isAuthenticated: 'isAuthenticated'
     }),
     hasAnyTabPosts() {
       return Object.values(this.tabPosts).some(posts => posts && posts.length > 0);
@@ -115,6 +121,13 @@ export default {
     }
   },
   methods: {
+    ...mapActions([
+      'fetchPostsByTab', 
+      'likePost', 
+      'unlikePost', 
+      'favoritePost', 
+      'unfavoritePost'
+    ]),
     async switchTab(tab) {
       // 取消所有进行中的加载和预加载
       this.cancelPreloading();
@@ -227,6 +240,99 @@ export default {
     },
     goToPostDetail(postId) {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
+    },
+    // 处理点赞
+    async handleLike(post) {
+      // 检查用户登录状态
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
+      
+      // 防重复操作 - 如果正在处理请求，则忽略此次点击
+      if (this.isProcessingLike[post.id]) {
+        console.log('正在处理点赞操作，请稍后再试');
+        return;
+      }
+      
+      // 保存初始状态，以便操作失败时恢复
+      const originalLikeStatus = post.likedByCurrentUser;
+      const originalLikeCount = post.likes || 0;
+      
+      try {
+        // 设置处理中状态，防止重复点击 - 使用Vue兼容的赋值方式
+        this.isProcessingLike = { ...this.isProcessingLike, [post.id]: true };
+        
+        // 立即乐观更新界面状态（不等待API响应）
+        post.likedByCurrentUser = !originalLikeStatus;
+        post.likes = post.likedByCurrentUser 
+          ? (originalLikeCount + 1) 
+          : Math.max(0, originalLikeCount - 1);
+        
+        // 异步发送API请求
+        if (post.likedByCurrentUser) {
+          // 点赞
+          await this.likePost(post.id);
+        } else {
+          // 取消点赞
+          await this.unlikePost(post.id);
+        }
+      } catch (error) {
+        console.error('点赞操作失败:', error);
+        // 操作失败时，恢复原始状态
+        post.likedByCurrentUser = originalLikeStatus;
+        post.likes = originalLikeCount;
+      } finally {
+        // 无论成功失败，都要重置处理中状态 - 使用Vue兼容的赋值方式
+        this.isProcessingLike = { ...this.isProcessingLike, [post.id]: false };
+      }
+    },
+    
+    // 处理收藏
+    async handleFavorite(post) {
+      // 检查用户登录状态
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
+      
+      // 防重复操作 - 如果正在处理请求，则忽略此次点击
+      if (this.isProcessingFavorite[post.id]) {
+        console.log('正在处理收藏操作，请稍后再试');
+        return;
+      }
+      
+      // 保存初始状态，以便操作失败时恢复
+      const originalFavoriteStatus = post.favoritedByCurrentUser;
+      const originalFavoriteCount = post.favorites || 0;
+      
+      try {
+        // 设置处理中状态，防止重复点击 - 使用Vue兼容的赋值方式
+        this.isProcessingFavorite = { ...this.isProcessingFavorite, [post.id]: true };
+        
+        // 立即乐观更新界面状态（不等待API响应）
+        post.favoritedByCurrentUser = !originalFavoriteStatus;
+        post.favorites = post.favoritedByCurrentUser 
+          ? (originalFavoriteCount + 1) 
+          : Math.max(0, originalFavoriteCount - 1);
+        
+        // 异步发送API请求
+        if (post.favoritedByCurrentUser) {
+          // 收藏
+          await this.favoritePost(post.id);
+        } else {
+          // 取消收藏
+          await this.unfavoritePost(post.id);
+        }
+      } catch (error) {
+        console.error('收藏操作失败:', error);
+        // 操作失败时，恢复原始状态
+        post.favoritedByCurrentUser = originalFavoriteStatus;
+        post.favorites = originalFavoriteCount;
+      } finally {
+        // 无论成功失败，都要重置处理中状态 - 使用Vue兼容的赋值方式
+        this.isProcessingFavorite = { ...this.isProcessingFavorite, [post.id]: false };
+      }
     }
   },
   beforeUnmount() {
@@ -376,6 +482,9 @@ export default {
   gap: 4px;
   cursor: pointer;
   font-size: 14px;
+  border-radius: 18px;
+  padding: 5px 10px;
+  transition: all 0.2s ease;
 }
 
 .post-action i {
@@ -384,6 +493,15 @@ export default {
 
 .post-action:hover {
   color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.post-info {
+  font-size: 14px;
+  color: var(--light-text-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .loading-indicator,
@@ -425,8 +543,18 @@ export default {
   color: var(--primary-color);
 }
 
+.post-action.processing {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .post-card {
   animation: fade-in 0.3s ease-in-out;
+  background-color: white;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes fade-in {
