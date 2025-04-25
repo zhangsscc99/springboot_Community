@@ -69,6 +69,12 @@
           <i class="fas fa-eye"></i>
           <span>{{ post.views || 0 }}</span>
         </div>
+        <div class="post-action" 
+          :class="{ 'share-action': true, 'active': isUrlCopied }" 
+          @click="copyPostUrl">
+          <i class="fas" :class="isUrlCopied ? 'fa-check' : 'fa-share'"></i>
+          <span>{{ isUrlCopied ? '已复制' : '转载' }}</span>
+        </div>
       </div>
       
       <div class="comments-section" ref="commentsSection">
@@ -225,7 +231,8 @@ export default {
       hasMoreComments: false,
       loadingMoreComments: false,
       isLoadingComments: false,
-      commentError: null
+      commentError: null,
+      isUrlCopied: false
     };
   },
   computed: {
@@ -650,6 +657,84 @@ export default {
       // 帖子加载完成后再加载评论
       if (this.post && this.post.id) {
         this.loadComments();
+      }
+    },
+    copyPostUrl() {
+      const url = window.location.href;
+      
+      // 检查Clipboard API是否可用
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        // 现代浏览器 - 使用Clipboard API
+        navigator.clipboard.writeText(url)
+          .then(() => {
+            this.isUrlCopied = true;
+            // 2秒后重置状态
+            setTimeout(() => {
+              this.isUrlCopied = false;
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('无法使用Clipboard API复制链接: ', err);
+            // 使用备用方法
+            this.fallbackCopyTextToClipboard(url);
+          });
+      } else {
+        // 不支持Clipboard API的浏览器 - 直接使用备用方法
+        console.log('Clipboard API不可用，使用备用复制方法');
+        this.fallbackCopyTextToClipboard(url);
+      }
+    },
+    
+    fallbackCopyTextToClipboard(text) {
+      let textArea = null;
+      
+      try {
+        textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // 使元素不可见但仍可以选择
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        textArea.style.opacity = "0";
+        
+        document.body.appendChild(textArea);
+        
+        // 处理iOS设备
+        if (navigator.userAgent.match(/ipad|ipod|iphone/i)) {
+          // 创建一个选择范围并选择文本区域
+          const range = document.createRange();
+          range.selectNodeContents(textArea);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          textArea.setSelectionRange(0, 999999);
+        } else {
+          // 其他设备
+          textArea.select();
+        }
+        
+        // 执行复制命令
+        const successful = document.execCommand('copy');
+        
+        if (successful) {
+          console.log('使用execCommand成功复制了URL');
+          this.isUrlCopied = true;
+          setTimeout(() => {
+            this.isUrlCopied = false;
+          }, 2000);
+        } else {
+          console.warn('execCommand复制命令执行但可能失败');
+          alert('复制链接失败，请手动复制地址栏中的URL');
+        }
+      } catch (err) {
+        console.error('回退复制方法失败', err);
+        alert('复制链接失败，请手动复制地址栏中的URL');
+      } finally {
+        // 移除临时元素
+        if (textArea && document.body.contains(textArea)) {
+          document.body.removeChild(textArea);
+        }
       }
     }
   },
@@ -1125,5 +1210,59 @@ export default {
 .load-more-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* 转载按钮样式 */
+.post-action.share-action {
+  position: relative;
+}
+
+.post-action.share-action:hover {
+  color: var(--primary-color);
+}
+
+.post-action.share-action.active {
+  color: #2ecc71; /* 绿色，表示复制成功 */
+  font-weight: 500;
+}
+
+.post-action.share-action.active i {
+  animation: bounceIn 0.5s;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 可能需要确保其他按钮样式保持一致 */
+.post-action {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.post-action i {
+  margin-right: 5px;
+  font-size: 16px;
+}
+
+.post-action:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.post-action.active {
+  color: var(--primary-color);
 }
 </style> 
