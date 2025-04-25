@@ -71,9 +71,10 @@
         </div>
         <div class="post-action" 
           :class="{ 'share-action': true, 'active': isUrlCopied }" 
-          @click="copyPostUrl">
+          @click="copyPostUrl"
+          :title="'复制帖子标题、内容摘要和链接'">
           <i class="fas" :class="isUrlCopied ? 'fa-check' : 'fa-share'"></i>
-          <span>{{ isUrlCopied ? '已复制' : '转载' }}</span>
+          <span>{{ isUrlCopied ? '已复制详情' : '转载' }}</span>
         </div>
       </div>
       
@@ -660,12 +661,50 @@ export default {
       }
     },
     copyPostUrl() {
+      // 构建包含说明文字和帖子信息的分享文本
+      const postTitle = this.post ? this.post.title : '帖子';
+      const authorName = this.post && this.post.author ? this.post.author.username : '匿名用户';
       const url = window.location.href;
+      
+      // 获取更多帖子信息
+      let likesCount = this.post && this.post.likes ? this.post.likes : 0;
+      let commentsCount = this.post && this.post.comments ? this.post.comments : 0;
+      let views = this.post && this.post.views ? this.post.views : 0;
+      
+      // 格式化日期
+      let publishDate = '';
+      if (this.post && this.post.createdAt) {
+        const date = new Date(this.post.createdAt);
+        publishDate = date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+      }
+      
+      // 截取帖子内容前100个字符作为预览
+      let contentPreview = '';
+      if (this.post && this.post.content) {
+        contentPreview = this.post.content.substring(0, 100);
+        if (this.post.content.length > 100) {
+          contentPreview += '...';
+        }
+      }
+      
+      // 格式化分享文本，美化排版
+      const shareText = 
+      `【锦书情感社区】${postTitle}\n` +
+      `—————————————————\n` +
+      `作者：${authorName}${publishDate ? ` | 发布于：${publishDate}` : ''}\n` +
+      `点赞：${likesCount} | 评论：${commentsCount} | 浏览：${views}\n` +
+      `—————————————————\n` +
+      (contentPreview ? `${contentPreview}\n\n` : '') +
+      `来自锦书旗下的情感社区，欢迎访问查看完整内容：\n${url}`;
       
       // 检查Clipboard API是否可用
       if (navigator.clipboard && navigator.clipboard.writeText) {
         // 现代浏览器 - 使用Clipboard API
-        navigator.clipboard.writeText(url)
+        navigator.clipboard.writeText(shareText)
           .then(() => {
             this.isUrlCopied = true;
             // 2秒后重置状态
@@ -676,12 +715,12 @@ export default {
           .catch(err => {
             console.error('无法使用Clipboard API复制链接: ', err);
             // 使用备用方法
-            this.fallbackCopyTextToClipboard(url);
+            this.fallbackCopyTextToClipboard(shareText);
           });
       } else {
         // 不支持Clipboard API的浏览器 - 直接使用备用方法
         console.log('Clipboard API不可用，使用备用复制方法');
-        this.fallbackCopyTextToClipboard(url);
+        this.fallbackCopyTextToClipboard(shareText);
       }
     },
     
@@ -718,7 +757,7 @@ export default {
         const successful = document.execCommand('copy');
         
         if (successful) {
-          console.log('使用execCommand成功复制了URL');
+          console.log('使用execCommand成功复制了分享文本');
           this.isUrlCopied = true;
           setTimeout(() => {
             this.isUrlCopied = false;
@@ -1212,7 +1251,7 @@ export default {
   cursor: not-allowed;
 }
 
-/* 转载按钮样式 */
+/* 转载按钮样式修改 */
 .post-action.share-action {
   position: relative;
 }
@@ -1228,6 +1267,31 @@ export default {
 
 .post-action.share-action.active i {
   animation: bounceIn 0.5s;
+}
+
+/* 增加转载提示样式 */
+.post-action.share-action:hover::before {
+  content: "复制帖子详情和链接";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  margin-bottom: 5px;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeIn 0.3s forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes bounceIn {
