@@ -50,13 +50,13 @@
                  :class="{ active: post.likedByCurrentUser, 'processing': isProcessingLike[post.id] }" 
                  @click.stop="handleLike(post)"
             >
-              <i class="fas" :class="isProcessingLike[post.id] ? 'fa-spinner fa-spin' : 'fa-heart'"></i> {{ post.likes || 0 }}
+              <i class="fas fa-heart"></i> {{ post.likes || 0 }}
             </div>
             <div class="post-action" 
                  :class="{ active: post.favoritedByCurrentUser, 'processing': isProcessingFavorite[post.id] }" 
                  @click.stop="handleFavorite(post)"
             >
-              <i class="fas" :class="isProcessingFavorite[post.id] ? 'fa-spinner fa-spin' : 'fa-star'"></i> {{ post.favorites || 0 }}
+              <i class="fas fa-star"></i> {{ post.favorites || 0 }}
             </div>
           </div>
           <div class="post-info">
@@ -541,11 +541,23 @@ export default {
 
 .post-action.active {
   color: var(--primary-color);
+  font-weight: 500;
 }
 
 .post-action.processing {
-  opacity: 0.7;
-  cursor: wait;
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* 添加点赞和收藏动效 */
+.post-action i.fas.fa-heart,
+.post-action i.fas.fa-star {
+  transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.post-action:active i.fas {
+  transform: scale(1.3);
 }
 
 .post-card {
