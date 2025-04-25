@@ -32,10 +32,14 @@
             :src="post.author.avatar" 
             :username="post.author.username"
             :userId="post.author.id"
-        />
+            class="user-avatar-in-post"
+          />
           <div class="post-user-info">
             <h4 class="post-username">{{ post.author.username }}</h4>
-            <span class="post-bio">{{ post.author.bio || '这个用户很懒，还没有写简介' }}</span>
+            <span class="post-bio">
+              <i class="fas fa-info-circle bio-icon"></i> 
+              {{ getUserBio(post.author) }}
+            </span>
           </div>
         </div>
         <p class="post-content">{{ post.content }}</p>
@@ -251,7 +255,7 @@ export default {
           return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
         }
       } catch (error) {
-        console.error('日期格式化错误:', error);
+        console.error('日期格式化错误:', error, '原始日期字符串:', dateString);
         return '未知时间';
       }
     },
@@ -350,6 +354,52 @@ export default {
         // 无论成功失败，都要重置处理中状态 - 使用Vue兼容的赋值方式
         this.isProcessingFavorite = { ...this.isProcessingFavorite, [post.id]: false };
       }
+    },
+    getUserBio(author) {
+      if (!author) {
+        console.log('[Debug] 作者数据缺失');
+        return '这个用户很懒，还没有写简介';
+      }
+      
+      // 检查各种可能的简介字段名并添加调试信息
+      if (author.bio) {
+        console.log('[Debug] 使用 author.bio:', author.bio);
+        return this.formatBio(author.bio);
+      }
+      if (author.profile && author.profile.bio) {
+        console.log('[Debug] 使用 author.profile.bio:', author.profile.bio);
+        return this.formatBio(author.profile.bio);
+      }
+      if (author.introduction) {
+        console.log('[Debug] 使用 author.introduction:', author.introduction);
+        return this.formatBio(author.introduction);
+      }
+      if (author.description) {
+        console.log('[Debug] 使用 author.description:', author.description);
+        return this.formatBio(author.description);
+      }
+      if (author.about) {
+        console.log('[Debug] 使用 author.about:', author.about);
+        return this.formatBio(author.about);
+      }
+      if (author.personalIntro) {
+        console.log('[Debug] 使用 author.personalIntro:', author.personalIntro);
+        return this.formatBio(author.personalIntro);
+      }
+      
+      // 输出完整的作者数据以帮助调试
+      console.log('[Debug] 用户简介字段缺失，用户完整数据:', JSON.stringify(author));
+      
+      return '这个用户很懒，还没有写简介';
+    },
+    formatBio(bio) {
+      if (!bio) return '这个用户很懒，还没有写简介';
+      
+      // 移除多余的空格和换行符
+      bio = bio.trim().replace(/\s+/g, ' ');
+      
+      // 如果简介太长，截断并添加省略号
+      return bio.length > 50 ? bio.substring(0, 50) + '...' : bio;
     }
   },
   beforeUnmount() {
@@ -435,12 +485,18 @@ export default {
 .post-header {
   padding: 0 16px 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.user-avatar-in-post {
+  flex-shrink: 0;
 }
 
 .post-user-info {
   flex: 1;
+  overflow: hidden;
+  padding-top: 3px;
 }
 
 .post-username {
@@ -457,6 +513,12 @@ export default {
   white-space: nowrap;
   max-width: 100%;
   opacity: 0.9;
+  padding-top: 2px;
+  min-height: 14px; /* 确保即使没有内容也会占据空间 */
+  display: block;
+  margin-top: 2px;
+  font-style: italic;
+  letter-spacing: 0.2px;
 }
 
 .post-content {
@@ -605,5 +667,12 @@ export default {
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.bio-icon {
+  font-size: 10px;
+  margin-right: 4px;
+  color: var(--light-text-color);
+  opacity: 0.8;
 }
 </style> 
