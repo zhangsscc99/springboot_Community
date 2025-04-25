@@ -14,7 +14,7 @@
     <name>Jinshu Community</name>
     <description>Jinshu Emotional Community Backend</description>
     <properties>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
     </properties>
     <dependencies>
         <!-- Spring Boot 核心依赖 -->

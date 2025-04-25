@@ -62,31 +62,33 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors().and().csrf().disable()
-            .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
-            .authorizeRequests()
-            .antMatchers("/auth/**").permitAll()
-            .antMatchers("/api/test/**").permitAll()
-            .antMatchers(HttpMethod.GET, "/posts/**").permitAll()
-            .antMatchers(HttpMethod.GET, "/posts/search").permitAll()
-            .antMatchers(HttpMethod.GET, "/users/**").permitAll()
-            .antMatchers(HttpMethod.GET, "/users/*/follow/count").permitAll()
-            .antMatchers(HttpMethod.GET, "/users/*/followers").permitAll()
-            .antMatchers(HttpMethod.GET, "/users/*/following").permitAll()
-            .antMatchers(HttpMethod.POST, "/users/*/follow").authenticated()
-            .antMatchers(HttpMethod.DELETE, "/users/*/follow").authenticated()
-            .antMatchers(HttpMethod.GET, "/users/*/follow/check").authenticated()
-            .antMatchers(HttpMethod.POST, "/api/posts/*/comments").authenticated()
-            .antMatchers(HttpMethod.POST, "/api/comments/**").authenticated()
-            .antMatchers(HttpMethod.DELETE, "/api/comments/**").authenticated()
-            .antMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
-            .antMatchers(HttpMethod.PUT, "/api/posts/**").authenticated()
-            .antMatchers(HttpMethod.DELETE, "/api/posts/**").authenticated()
-            .anyRequest().authenticated();
+        http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .antMatchers("/auth/**").permitAll()
+                .antMatchers("/api/test/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/posts/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/posts/search").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/*/follow/count").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/*/followers").permitAll()
+                .antMatchers(HttpMethod.GET, "/users/*/following").permitAll()
+                .antMatchers(HttpMethod.POST, "/users/*/follow").authenticated()
+                .antMatchers(HttpMethod.DELETE, "/users/*/follow").authenticated()
+                .antMatchers(HttpMethod.GET, "/users/*/follow/check").authenticated()
+                .antMatchers(HttpMethod.POST, "/api/posts/*/comments").authenticated()
+                .antMatchers(HttpMethod.POST, "/api/comments/**").authenticated()
+                .antMatchers(HttpMethod.DELETE, "/api/comments/**").authenticated()
+                .antMatchers(HttpMethod.POST, "/api/posts/**").authenticated()
+                .antMatchers(HttpMethod.PUT, "/api/posts/**").authenticated()
+                .antMatchers(HttpMethod.DELETE, "/api/posts/**").authenticated()
+                .anyRequest().authenticated()
+            );
         
         http.authenticationProvider(authenticationProvider());
-
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         
         return http.build();

@@ -400,7 +400,8 @@ public class PostServiceImpl implements PostService {
         PostResponse.UserSummary authorSummary = new PostResponse.UserSummary(
             author.getId(),
             author.getUsername(),
-            author.getAvatar()
+            author.getAvatar(),
+            author.getBio()
         );
         dto.setAuthor(authorSummary);
         

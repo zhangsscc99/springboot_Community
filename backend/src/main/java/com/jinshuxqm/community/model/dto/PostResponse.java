@@ -26,11 +26,19 @@ public class PostResponse {
         private Long id;
         private String username;
         private String avatar;
+        private String bio;
 
         public UserSummary(Long id, String username, String avatar) {
             this.id = id;
             this.username = username;
             this.avatar = avatar;
+        }
+        
+        public UserSummary(Long id, String username, String avatar, String bio) {
+            this.id = id;
+            this.username = username;
+            this.avatar = avatar;
+            this.bio = bio;
         }
 
         public Long getId() {
@@ -55,6 +63,14 @@ public class PostResponse {
 
         public void setAvatar(String avatar) {
             this.avatar = avatar;
+        }
+        
+        public String getBio() {
+            return bio;
+        }
+        
+        public void setBio(String bio) {
+            this.bio = bio;
         }
     }
 

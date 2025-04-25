@@ -356,103 +356,48 @@ export default {
       }
     },
     getUserBio(author) {
-      // 检查作者对象是否存在
+      // 如果作者不存在
       if (!author) {
-        console.log('[Debug] 作者数据完全缺失');
-        return '加载用户信息中...';
+        return '这个人很懒，还没有写简介';
       }
-      
-      // 输出完整的作者对象，仅作调试之用
-      console.log('[Debug] 作者完整数据:', author);
-      
-      // 1. 首先检查直接路径
-      if (typeof author.bio === 'string' && author.bio.trim()) {
-        return this.formatBio(author.bio);
-      }
-      
-      // 2. 检查其他常见字段名
-      const possibleFields = ['introduction', 'description', 'about', 'personalIntro', 'signature', 'summary'];
-      for (const field of possibleFields) {
-        if (typeof author[field] === 'string' && author[field].trim()) {
-          console.log(`[Debug] 使用替代字段 ${field}:`, author[field]);
-          return this.formatBio(author[field]);
+
+      // 尝试最简单的方法获取bio
+      try {
+        // 首先直接尝试从JSON格式获取
+        const rawAuthor = JSON.parse(JSON.stringify(author));
+        if (rawAuthor && rawAuthor.bio) {
+          return rawAuthor.bio;
         }
-      }
-      
-      // 3. 深度搜索嵌套对象中的字段
-      const nestedPaths = [
-        'user.bio',
-        'userData.bio',
-        'profile.bio',
-        'info.bio',
-        'data.bio',
-        'userProfile.bio',
-        'authorData.bio',
-        'user.profile.bio',
-        'user.introduction',
-        'user.description'
-      ];
-      
-      for (const path of nestedPaths) {
-        const value = this.getNestedProperty(author, path);
-        if (typeof value === 'string' && value.trim()) {
-          console.log(`[Debug] 在嵌套路径 ${path} 找到简介:`, value);
-          return this.formatBio(value);
-        }
-      }
-      
-      // 4. 没有直接的简介，但有用户名 - 构建个性化消息
-      if (author.username) {
-        // 个性化的默认消息
-        return `${author.username} 这个人很懒，什么都没留下`;
-      }
-      
-      // 最后的兜底默认值
-      return '这个用户还没有填写简介';
-    },
-    formatBio(bio) {
-      // 处理空值或非字符串值
-      if (!bio) return '';
-      
-      // 如果是对象，尝试提取常见键
-      if (typeof bio === 'object') {
-        console.log('[Debug] bio 是对象类型:', bio);
-        // 尝试几个常见字段
-        if (bio.text) return this.formatBio(bio.text);
-        if (bio.content) return this.formatBio(bio.content);
-        if (bio.value) return this.formatBio(bio.value);
         
-        // 如果没有能识别的字段，转为字符串
-        bio = JSON.stringify(bio);
-      }
-      
-      // 确保是字符串
-      bio = String(bio).trim();
-      
-      // 如果是空字符串，返回空
-      if (!bio) return '';
-      
-      // 移除多余的空格和换行符
-      bio = bio.replace(/\s+/g, ' ');
-      
-      // 如果简介太长，截断并添加省略号
-      return bio.length > 50 ? bio.substring(0, 50) + '...' : bio;
-    },
-    // 辅助方法：安全地获取嵌套属性
-    getNestedProperty(obj, path) {
-      if (!obj || !path) return null;
-      
-      const parts = path.split('.');
-      let current = obj;
-      
-      for (const part of parts) {
-        if (current == null || typeof current !== 'object') {
-          return null;
+        // 尝试从原始对象获取
+        if (author.bio) {
+          return author.bio;
         }
-        current = current[part];
+        
+        // 检查其他可能的字段
+        const possibleFields = ['introduction', 'description', 'about', 'personalIntro'];
+        for (const field of possibleFields) {
+          if (author[field]) {
+            return author[field];
+          }
+        }
+      } catch (e) {
+        console.error('获取用户简介时出错:', e);
       }
       
-      return current;
+      // 最终后备方案
+      return '这个人很懒，还没有写简介';
+    },
+    
+    // 保留getNestedValue方法，作为工具方法
+    getNestedValue(obj, path) {
+      try {
+        return path.split('.').reduce((prev, curr) => {
+          return prev && prev[curr] ? prev[curr] : null;
+        }, obj);
+      } catch (e) {
+        return null;
+      }
     },
     debugFirstPostAuthor() {
       if (!this.currentTabPosts || this.currentTabPosts.length === 0) {
@@ -520,7 +465,7 @@ export default {
           this.findPotentialBioFields(value, path, keywords, depth + 1, maxDepth);
         }
       }
-    }
+    },
   },
   beforeUnmount() {
     this.cancelPreloading();
@@ -533,8 +478,10 @@ export default {
     const currentTab = this.activeTab;
     await this.switchTab(currentTab);
     
-    // 添加高级调试代码，分析第一篇帖子的作者信息
+    // 保留基础的作者信息调试，但移除可能导致错误的代码
     this.debugFirstPostAuthor();
+    
+    // 移除额外的验证代码
   },
   // 添加activated钩子，处理从其他页面返回时的状态重置
   activated() {
@@ -797,5 +744,10 @@ export default {
   margin-right: 4px;
   color: var(--light-text-color);
   opacity: 0.8;
+}
+
+/* 移除调试按钮样式 */
+.debug-button {
+  display: none; /* 先隐藏，之后可以完全删除 */
 }
 </style> 

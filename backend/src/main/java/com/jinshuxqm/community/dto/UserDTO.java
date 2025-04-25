@@ -15,6 +15,7 @@ public class UserDTO {
     private String username;
     private String avatar;
     private String email;
+    private String bio;
     
     public static UserDTO fromEntity(User user) {
         if (user == null) return null;
@@ -24,6 +25,7 @@ public class UserDTO {
             .username(user.getUsername())
             .avatar(user.getAvatar())
             .email(user.getEmail())
+            .bio(user.getBio())
             .build();
     }
 } 

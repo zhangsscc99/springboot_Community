@@ -438,6 +438,20 @@ export default createStore({
         const response = await apiService.posts.getByTab(tab, { cancelToken: source.token });
         const posts = response.data.content || response.data;
         
+        // 添加调试信息 - 检查后端返回数据中是否有bio字段
+        console.log(`[API Debug] Response received for tab ${tab}:`, response.data);
+        if (posts && posts.length > 0) {
+          const firstPost = posts[0];
+          console.log(`[API Debug] First post:`, firstPost);
+          if (firstPost.author) {
+            console.log(`[API Debug] First post author:`, firstPost.author);
+            console.log(`[API Debug] Bio field exists: ${firstPost.author.bio !== undefined}`);
+            if (firstPost.author.bio !== undefined) {
+              console.log(`[API Debug] Bio value: "${firstPost.author.bio}"`);
+            }
+          }
+        }
+        
         // 检查当前激活标签是否仍然是发起请求时的标签
         if (state.activeTab !== tab) {
           console.log(`标签已切换，丢弃 ${tab} 的响应数据`);

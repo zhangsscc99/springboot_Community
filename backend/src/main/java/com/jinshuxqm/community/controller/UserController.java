@@ -1,16 +1,20 @@
 package com.jinshuxqm.community.controller;
 
-import com.jinshuxqm.community.model.User;
-import com.jinshuxqm.community.repository.UserRepository;
 import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
+import com.jinshuxqm.community.dto.UserDTO;
+import com.jinshuxqm.community.exception.ResourceNotFoundException;
+import com.jinshuxqm.community.model.User;
+import com.jinshuxqm.community.repository.UserRepository;
 import com.jinshuxqm.community.service.PostService;
+import com.jinshuxqm.community.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
-import com.jinshuxqm.community.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
@@ -22,10 +26,13 @@ import java.util.Optional;
 @RequestMapping("/users")
 public class UserController {
     @Autowired
-    UserRepository userRepository;
+    private UserRepository userRepository;
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
