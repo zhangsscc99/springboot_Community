@@ -332,13 +332,31 @@ const apiService = {
       const formattedData = {
         content: commentData.content,
         parentId: commentData.parentId || null,
-        // 其他必要的字段
+        replyToUserId: commentData.replyToUserId || null,
+        postId: postId // 确保包含帖子ID
       };
     
       return apiClient.post(`/api/posts/${postId}/comments`, formattedData);
     },
+    // 创建对评论的回复 - 使用通用的评论创建接口，只是添加parentId
     createReply(commentId, replyData) {
-      return apiClient.post(`/api/comments/${commentId}/replies`, replyData);
+      console.log(`创建对评论 ${commentId} 的回复`, replyData);
+      
+      // 确保有帖子ID
+      if (!replyData.postId) {
+        console.error('回复中缺少帖子ID');
+        return Promise.reject(new Error('回复中缺少帖子ID'));
+      }
+      
+      // 使用常规的评论创建API，但增加parentId
+      const formattedData = {
+        content: replyData.content,
+        parentId: commentId,
+        replyToUserId: replyData.replyToUserId,
+        postId: replyData.postId
+      };
+      
+      return apiClient.post(`/api/posts/${replyData.postId}/comments`, formattedData);
     },
     delete(commentId) {
       return apiClient.delete(`/api/comments/${commentId}`);

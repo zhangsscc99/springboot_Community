@@ -144,6 +144,14 @@
                   <span class="reply-to" v-if="reply.replyToUser">@{{ reply.replyToUser.username }} </span>
                   {{ reply.content }}
                 </div>
+                <div class="reply-actions">
+                  <div class="comment-action" @click="replyToReply(comment.id, reply)" v-if="isAuthenticated">
+                    <i class="fas fa-reply"></i> 回复
+                  </div>
+                  <div class="comment-action delete" v-if="canDeleteComment(reply)" @click="deleteComment(reply.id)">
+                    <i class="fas fa-trash-alt"></i> 删除
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -230,7 +238,8 @@ export default {
       loadingMoreComments: false,
       isLoadingComments: false,
       commentError: null,
-      isUrlCopied: false
+      isUrlCopied: false,
+      replyingToUser: null
     };
   },
   computed: {
@@ -468,9 +477,6 @@ export default {
       }
     },
 
-
-    
-    
     // 回复评论相关方法
     async replyToComment(comment) {
       if (!this.isAuthenticated) {
@@ -480,11 +486,38 @@ export default {
       
       this.replyingTo = comment.id;
       this.replyContent = '';
+      this.replyingToUser = comment.author;
+    },
+    
+    // 回复评论的回复
+    async replyToReply(commentId, reply) {
+      if (!this.isAuthenticated) {
+        alert('请先登录再回复');
+        return;
+      }
+      
+      // 设置正在回复的评论ID为原始评论
+      this.replyingTo = commentId;
+      // 清空回复内容
+      this.replyContent = '';
+      // 设置被回复用户为回复的作者
+      this.replyingToUser = reply.author;
+      
+      // 在回复框中预填@用户名
+      this.$nextTick(() => {
+        this.replyContent = `@${reply.author.username} `;
+        // 聚焦到回复输入框
+        const replyTextarea = document.querySelector('.reply-input textarea');
+        if (replyTextarea) {
+          replyTextarea.focus();
+        }
+      });
     },
     
     cancelReply() {
       this.replyingTo = null;
       this.replyContent = '';
+      this.replyingToUser = null;
     },
     
     async submitReply(commentId) {
@@ -496,43 +529,67 @@ export default {
         if (!commentId) {
           throw new Error('无效的评论ID');
         }
+
+        // 找到要回复的评论
+        const parentComment = this.comments.find(c => c.id === commentId);
+        if (!parentComment) {
+          throw new Error('找不到要回复的评论');
+        }
         
         // 创建回复数据
         const replyData = {
           content: this.replyContent,
-          parentId: commentId,
-          // 如果需要回复特定用户
-          replyToUserId: this.currentUser?.id
+          postId: this.postId,  // 确保包含帖子ID
+          parentId: commentId,  // 父评论ID
+          // 设置回复给谁（评论作者或指定的回复对象）
+          replyToUserId: this.replyingToUser ? this.replyingToUser.id : parentComment.author.id
         };
         
-        // 调用API创建回复
-        const response = await apiService.comments.createReply(commentId, replyData);
+        console.log('提交回复:', replyData);
+        
+        // 直接使用 apiService 发送请求
+        const response = await apiService.comments.create(this.postId, replyData);
         const newReply = response.data;
+        
+        console.log('回复创建成功:', newReply);
         
         // 确保回复对象有效
         if (newReply) {
-          // 找到要回复的评论
-          const parentComment = this.comments.find(c => c.id === commentId);
-          if (parentComment) {
-            // 初始化回复数组（如果不存在）
-            if (!parentComment.replies) {
-              parentComment.replies = [];
-            }
-            // 添加新回复
-            parentComment.replies.push(newReply);
+          // 初始化回复数组（如果不存在）
+          if (!parentComment.replies) {
+            parentComment.replies = [];
           }
+          
+          // 添加新回复到UI
+          parentComment.replies.push({
+            id: newReply.id,
+            content: newReply.content,
+            author: this.user,  // 使用当前用户作为作者
+            created_at: new Date().toISOString(),
+            replyToUser: this.replyingToUser || parentComment.author
+          });
           
           // 清除回复状态
           this.replyingTo = null;
           this.replyContent = '';
+          this.replyingToUser = null;
           
           // 更新帖子评论计数
           if (this.post) {
             this.post.comments = (this.post.comments || 0) + 1;
           }
+          
+          // 可选：滚动到新回复
+          this.$nextTick(() => {
+            const replyElements = document.querySelectorAll('.reply-item');
+            if (replyElements.length > 0) {
+              replyElements[replyElements.length - 1].scrollIntoView({ behavior: 'smooth' });
+            }
+          });
         }
       } catch (error) {
         console.error('提交回复失败:', error);
+        alert('回复发送失败: ' + (error.message || '未知错误'));
       } finally {
         this.replyLoading = false;
       }
