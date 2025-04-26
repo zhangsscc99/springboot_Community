@@ -102,10 +102,7 @@
           <span v-else>注册</span>
         </button>
         
-        <div v-if="backendStatus === 'error'" class="auth-warning">
-          <i class="fas fa-exclamation-triangle"></i>
-          无法连接到后端服务器，请确保服务器正在运行
-        </div>
+        
         
         <div v-if="error" class="auth-error">
           {{ error }}
