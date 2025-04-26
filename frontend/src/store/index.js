@@ -301,20 +301,20 @@ export default createStore({
       commit('SET_ERROR', null);
       
       try {
-        console.log('Attempting registration with:', {
+        console.log('准备注册用户:', {
           username: userData.username,
           email: userData.email,
-          password: userData.password ? '[REDACTED]' : 'empty'
+          password: userData.password ? '[已隐藏]' : '空'
         });
         
         // 调用API进行注册
         const response = await apiService.auth.register(userData);
-        console.log('Registration successful, response:', response.data);
+        console.log('注册成功，响应数据:', response.data);
         
         commit('SET_ERROR', null);
         return response.data;
       } catch (error) {
-        console.error('Registration error in store:', error);
+        console.error('注册过程中发生错误:', error);
         
         let errorMessage = '注册失败，请稍后再试';
         
@@ -332,16 +332,16 @@ export default createStore({
             }
           }
           
-          console.error('API error response:', {
+          console.error('API错误响应:', {
             status,
             data: responseData
           });
         } else if (error.request) {
           errorMessage = '服务器无响应，请检查网络连接';
-          console.error('No response received:', error.request);
+          console.error('未收到响应:', error.request);
         } else {
           errorMessage = `请求错误: ${error.message}`;
-          console.error('Request error:', error.message);
+          console.error('请求错误:', error.message);
         }
         
         commit('SET_ERROR', errorMessage);

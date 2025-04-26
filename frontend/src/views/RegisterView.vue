@@ -230,18 +230,6 @@ export default {
           password: this.password
         };
         
-        // 先检查后端服务是否可用
-        try {
-          const statusCheck = await apiService.checkBackendStatus();
-          if (statusCheck.status === 'error') {
-            throw new Error('后端服务不可用，请稍后再试');
-          }
-        } catch (statusError) {
-          console.error('后端服务检查失败:', statusError);
-          this.$store.commit('SET_ERROR', '无法连接到服务器，请确保后端服务正在运行');
-          return;
-        }
-        
         await this.$store.dispatch('register', userData);
         
         // 注册成功，跳转到登录页面
