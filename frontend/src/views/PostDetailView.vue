@@ -49,7 +49,7 @@
             'processing': isProcessingLike 
           }" 
           @click="handleLike">
-          <i class="fas" :class="isProcessingLike ? 'fa-spinner fa-spin' : 'fa-heart'"></i>
+          <i class="fas fa-heart"></i>
           <span>{{ post.likes || 0 }}</span>
         </div>
         <div class="post-action" @click="scrollToComments">
@@ -62,7 +62,7 @@
             'processing': isProcessingFavorite 
           }" 
           @click="handleFavorite">
-          <i class="fas" :class="isProcessingFavorite ? 'fa-spinner fa-spin' : 'fa-star'"></i>
+          <i class="fas fa-star"></i>
           <span>{{ post.favorites || 0 }}</span>
         </div>
         <div class="post-action">
@@ -314,49 +314,37 @@ export default {
         return;
       }
       
-      // 清除之前的防抖定时器
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-      
       // 保存初始状态，以便操作失败时恢复
       const originalLikeStatus = this.isLiked;
       const originalLikeCount = this.post.likes || 0;
       
-      // 设置防抖定时器
-      this.debounceTimer = setTimeout(async () => {
-        try {
-          // 设置处理中状态，防止重复点击
-          this.isProcessingLike = true;
-          
-          // 立即乐观更新界面状态（不等待API响应）
-          this.isLiked = !originalLikeStatus;
-          this.post.likes = this.isLiked 
-            ? (originalLikeCount + 1) 
-            : Math.max(0, originalLikeCount - 1);
-          
-          // 异步发送API请求
-          if (this.isLiked) {
-            // 点赞 - Vuex已处理缓存更新
-            await this.likePost(this.postId);
-          } else {
-            // 取消点赞 - Vuex已处理缓存更新
-            await this.unlikePost(this.postId);
-          }
-          
-          // 不再需要重新获取帖子详情
-          // 缓存和状态已在Vuex中更新
-          
-        } catch (error) {
-          console.error('点赞操作失败:', error);
-          // 操作失败时，恢复原始状态
-          this.isLiked = originalLikeStatus;
-          this.post.likes = originalLikeCount;
-        } finally {
-          // 无论成功失败，都要重置处理中状态
-          this.isProcessingLike = false;
+      try {
+        // 设置处理中状态，防止重复点击
+        this.isProcessingLike = true;
+        
+        // 立即乐观更新界面状态（不等待API响应）
+        this.isLiked = !originalLikeStatus;
+        this.post.likes = this.isLiked 
+          ? (originalLikeCount + 1) 
+          : Math.max(0, originalLikeCount - 1);
+        
+        // 异步发送API请求
+        if (this.isLiked) {
+          // 点赞 - Vuex已处理缓存更新
+          await this.likePost(this.postId);
+        } else {
+          // 取消点赞 - Vuex已处理缓存更新
+          await this.unlikePost(this.postId);
         }
-      }, 300); // 300毫秒的防抖延迟
+      } catch (error) {
+        console.error('点赞操作失败:', error);
+        // 操作失败时，恢复原始状态
+        this.isLiked = originalLikeStatus;
+        this.post.likes = originalLikeCount;
+      } finally {
+        // 无论成功失败，都要重置处理中状态
+        this.isProcessingLike = false;
+      }
     },
     
     // 处理收藏
@@ -373,49 +361,37 @@ export default {
         return;
       }
       
-      // 清除之前的防抖定时器
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-      
       // 保存初始状态，以便操作失败时恢复
       const originalFavoriteStatus = this.isFavorited;
       const originalFavoriteCount = this.post.favorites || 0;
       
-      // 设置防抖定时器
-      this.debounceTimer = setTimeout(async () => {
-        try {
-          // 设置处理中状态，防止重复点击
-          this.isProcessingFavorite = true;
-          
-          // 立即乐观更新界面状态（不等待API响应）
-          this.isFavorited = !originalFavoriteStatus;
-          this.post.favorites = this.isFavorited 
-            ? (originalFavoriteCount + 1) 
-            : Math.max(0, originalFavoriteCount - 1);
-          
-          // 异步发送API请求
-          if (this.isFavorited) {
-            // 收藏
-            await this.favoritePost(this.postId);
-          } else {
-            // 取消收藏
-            await this.unfavoritePost(this.postId);
-          }
-          
-          // 成功操作后，不再重新获取整个帖子详情
-          // 注意：我们移除了fetchPost()调用，避免重新加载整个页面
-          
-        } catch (error) {
-          console.error('收藏操作失败:', error);
-          // 操作失败时，恢复原始状态
-          this.isFavorited = originalFavoriteStatus;
-          this.post.favorites = originalFavoriteCount;
-        } finally {
-          // 无论成功失败，都要重置处理中状态
-          this.isProcessingFavorite = false;
+      try {
+        // 设置处理中状态，防止重复点击
+        this.isProcessingFavorite = true;
+        
+        // 立即乐观更新界面状态（不等待API响应）
+        this.isFavorited = !originalFavoriteStatus;
+        this.post.favorites = this.isFavorited 
+          ? (originalFavoriteCount + 1) 
+          : Math.max(0, originalFavoriteCount - 1);
+        
+        // 异步发送API请求
+        if (this.isFavorited) {
+          // 收藏
+          await this.favoritePost(this.postId);
+        } else {
+          // 取消收藏
+          await this.unfavoritePost(this.postId);
         }
-      }, 300); // 300毫秒的防抖延迟
+      } catch (error) {
+        console.error('收藏操作失败:', error);
+        // 操作失败时，恢复原始状态
+        this.isFavorited = originalFavoriteStatus;
+        this.post.favorites = originalFavoriteCount;
+      } finally {
+        // 无论成功失败，都要重置处理中状态
+        this.isProcessingFavorite = false;
+      }
     },
     
     // 滚动到评论区
@@ -1321,5 +1297,27 @@ export default {
 
 .post-action.active {
   color: var(--primary-color);
+}
+
+/* 添加与主页相同的动效样式 */
+.post-action.active {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.post-action.processing {
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* 添加点赞和收藏动效 */
+.post-action i.fas.fa-heart,
+.post-action i.fas.fa-star {
+  transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.post-action:active i.fas {
+  transform: scale(1.3);
 }
 </style> 
