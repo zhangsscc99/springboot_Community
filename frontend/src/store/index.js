@@ -764,9 +764,9 @@ export default createStore({
         const response = await apiService.posts.delete(postId);
         console.log('帖子删除成功:', response);
         
-        // 从缓存中移除帖子
+        // 从缓存中移除帖子 - 使用Vue 3兼容的方式
         if (state.postCache[postId]) {
-          Vue.delete(state.postCache, postId);
+          delete state.postCache[postId];
         }
         
         // 从标签页中移除帖子
@@ -798,9 +798,9 @@ export default createStore({
         if (err?.status === 500) {
           console.warn("服务器返回500错误，但帖子可能已被删除。尝试从本地缓存移除...");
           
-          // 尝试从本地缓存中移除
+          // 尝试从本地缓存中移除 - 使用Vue 3兼容的方式
           if (state.postCache[postId]) {
-            Vue.delete(state.postCache, postId);
+            delete state.postCache[postId];
           }
           
           // 尝试从标签页中移除

@@ -616,7 +616,7 @@ export default {
       // this.$router.push('/');
     },
     goHome() {
-      this.$router.push({ name: 'home' });
+      this.$router.push({ name: 'Home' });
     },
     formatDate(dateString) {
       if (!dateString) return '';
@@ -768,7 +768,7 @@ export default {
         
         await this.$store.dispatch('deletePost', this.postId);
         alert('帖子已成功删除');
-        this.$router.push({ name: 'home' });
+        this.$router.push({ name: 'Home' });
       } catch (error) {
         console.error('删除帖子失败:', error);
         console.error('删除帖子详细信息:', {
