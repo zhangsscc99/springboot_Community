@@ -757,11 +757,12 @@ export default createStore({
     },
     
     // 删除帖子
-    async deletePost({ commit }, postId) {
+    async deletePost({ commit, state }, postId) {
       commit('SET_ACTION_LOADING', true);
       try {
         console.log(`删除帖子 ${postId}`);
-        await apiService.posts.delete(postId);
+        const response = await apiService.posts.delete(postId);
+        console.log('帖子删除成功:', response);
         
         // 从缓存中移除帖子
         if (state.postCache[postId]) {
@@ -780,10 +781,40 @@ export default createStore({
         
         commit('SET_ERROR', null);
         return true;
-      } catch (error) {
-        console.error(`删除帖子失败:`, error);
-        commit('SET_ERROR', error.message || '删除帖子失败');
-        throw error;
+      } catch (err) {
+        // 使用可选链操作符安全地访问错误对象属性
+        const errorMessage = err?.message || '删除帖子失败';
+        console.error(`删除帖子失败:`, {
+          error: err,
+          postId: postId,
+          message: errorMessage,
+          status: err?.status,
+          responseData: err?.data
+        });
+        commit('SET_ERROR', errorMessage);
+        
+        // 即使发生错误，帖子可能已经被删除
+        // 有时服务器会返回500错误但仍然执行了删除操作
+        if (err?.status === 500) {
+          console.warn("服务器返回500错误，但帖子可能已被删除。尝试从本地缓存移除...");
+          
+          // 尝试从本地缓存中移除
+          if (state.postCache[postId]) {
+            Vue.delete(state.postCache, postId);
+          }
+          
+          // 尝试从标签页中移除
+          Object.keys(state.tabPosts).forEach(tab => {
+            if (state.tabPosts[tab]) {
+              commit('SET_TAB_POSTS', { 
+                tab, 
+                posts: state.tabPosts[tab].filter(post => post.id !== postId) 
+              });
+            }
+          });
+        }
+        
+        throw err;
       } finally {
         commit('SET_ACTION_LOADING', false);
       }

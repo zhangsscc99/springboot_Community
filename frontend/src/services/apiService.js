@@ -73,18 +73,53 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   response => response,
   error => {
+    // 安全地记录错误
+    console.error('API 请求失败:', {
+      url: error?.config?.url || 'unknown',
+      method: error?.config?.method || 'unknown',
+      statusCode: error?.response?.status || 'unknown',
+      statusText: error?.response?.statusText || 'unknown',
+      data: error?.response?.data || {}
+    });
+
     // 401错误 - 未授权/Token过期
-    if (error.response && error.response.status === 401) {
+    if (error?.response?.status === 401) {
+      console.error('认证失败：401 Unauthorized', error?.response?.data);
       localStorage.removeItem('token');
       // 如果需要，这里可以触发重定向到登录页面
     }
+    
     // 处理500错误
-    if (error.response && error.response.status === 500) {
-      console.error('服务器错误:', error.response.data);
-      // 可以显示通知或执行其他错误处理逻辑
-      alert('服务器出现错误，请稍后再试');
+    if (error?.response?.status === 500) {
+      console.error('服务器错误:', error?.response?.data);
+      console.error('请求URL:', error?.config?.url);
+      console.error('请求方法:', error?.config?.method);
+      console.error('请求数据:', error?.config?.data);
+      
+      // 特定处理帖子删除错误
+      if (error?.config?.url?.includes('/posts/') && error?.config?.method === 'delete') {
+        console.error('删除帖子失败:', {
+          url: error?.config?.url,
+          userId: localStorage.getItem('userId'),
+          token: localStorage.getItem('token') ? '已设置' : '未设置'
+        });
+      }
     }
-    return Promise.reject(error);
+    
+    // 确保返回一个格式化的错误，而不是原始错误对象
+    // 这样可以防止未定义属性的问题
+    const formattedError = new Error(
+      error?.response?.data?.message || 
+      error?.message || 
+      '服务器连接错误'
+    );
+    
+    // 附加额外信息以便调试
+    formattedError.status = error?.response?.status;
+    formattedError.data = error?.response?.data;
+    formattedError.originalError = error;
+    
+    return Promise.reject(formattedError);
   }
 );
 
