@@ -190,22 +190,56 @@ export default createStore({
   actions: {
     // 初始化应用 - 检查存储的令牌并恢复会话
     initializeApp({ commit }) {
+      console.log('初始化应用，检查登录状态...');
       const token = localStorage.getItem('token');
+      
       if (token) {
         try {
-          // 这里可以添加验证令牌的逻辑
-          // 理想情况下，应该调用后端API验证令牌是否有效
+          console.log('找到本地存储的令牌，尝试恢复会话');
+          // 从localStorage恢复用户信息
+          const userInfoStr = localStorage.getItem('userInfo');
           
-          // 从localStorage恢复用户信息（如果有的话）
-          const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-          if (userInfo) {
-            commit('SET_USER', userInfo);
+          if (!userInfoStr) {
+            console.warn('找到令牌但未找到用户信息，清除令牌');
+            localStorage.removeItem('token');
+            commit('SET_USER', null);
+            return;
+          }
+          
+          try {
+            const userInfo = JSON.parse(userInfoStr);
+            if (userInfo && userInfo.id && userInfo.username) {
+              console.log('成功恢复用户会话:', userInfo.username);
+              commit('SET_USER', userInfo);
+              
+              // 可以添加令牌验证逻辑
+              // apiService.auth.validateToken().catch(() => {
+              //   console.warn('令牌验证失败，清除会话');
+              //   localStorage.removeItem('token');
+              //   localStorage.removeItem('userInfo');
+              //   commit('SET_USER', null);
+              // });
+            } else {
+              console.warn('用户信息格式不正确，清除会话');
+              localStorage.removeItem('token');
+              localStorage.removeItem('userInfo');
+              commit('SET_USER', null);
+            }
+          } catch (parseError) {
+            console.error('解析用户信息失败:', parseError);
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
+            commit('SET_USER', null);
           }
         } catch (error) {
-          console.error('Failed to initialize app:', error);
+          console.error('应用初始化失败:', error);
           localStorage.removeItem('token');
           localStorage.removeItem('userInfo');
+          commit('SET_USER', null);
         }
+      } else {
+        console.log('未找到存储的令牌，用户未登录');
+        commit('SET_USER', null);
       }
     },
   
@@ -215,96 +249,49 @@ export default createStore({
       commit('SET_ERROR', null);
       
       try {
-        // 使用apiService进行登录
-        console.log('Attempting login with:', {
-          username: credentials.username || credentials.email,
-          password: credentials.password ? '[REDACTED]' : 'empty'
-        });
+        console.log(`尝试登录用户: ${credentials.username || credentials.email}`);
         
-        const response = await apiService.auth.login({
-          username: credentials.username || credentials.email,
-          password: credentials.password
-        });
+        // 调用登录API
+        const response = await apiService.auth.login(credentials);
+        console.log('登录API响应:', response);
         
-        console.log('Login response received:', {
-          status: response.status,
-          headers: response.headers,
-          data: response.data
-        });
+        // 从响应中获取数据
+        const { data } = response;
+        console.log('后端返回数据:', data);
         
-        // 检查响应格式
-        const data = response.data;
-        if (!data || !data.token && !data.accessToken) {
-          console.error('API返回的数据缺少token字段:', data);
-          throw new Error('服务器返回的数据格式不正确');
-        }
-        
-        console.log('Login successful, response data:', data);
-        
-        // 获取token - 适应不同的返回格式
+        // 获取令牌 - 针对实际的API响应格式调整
         const token = data.token || data.accessToken;
+        
         if (!token) {
-          throw new Error('无法获取认证令牌');
+          throw new Error('登录成功但未获取到令牌');
         }
         
-        // 构建用户信息对象 - 确保字段名与后端返回一致
+        console.log('成功获取到令牌');
+        
+        // 构建用户信息对象
         const userInfo = {
           id: data.id,
           username: data.username,
           email: data.email,
-          avatar: data.avatar || 'https://via.placeholder.com/40',
+          avatar: data.avatar,
           token: token,
-          roles: data.roles || []
+          roles: data.roles
         };
         
-        // 保存token和用户信息到localStorage
+        // 存储令牌和用户信息
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
         
         // 更新状态
         commit('SET_USER', userInfo);
-        commit('SET_ERROR', null);
+        commit('SET_LOADING', false);
+        
         return userInfo;
       } catch (error) {
-        console.error('Login error in store:', error);
-        
-        let errorMessage = '登录失败，请稍后再试';
-        
-        if (error.response) {
-          const status = error.response.status;
-          const responseData = error.response.data;
-          
-          console.error('API error response:', {
-            status,
-            data: responseData,
-            headers: error.response.headers
-          });
-          
-          if (status === 401) {
-            errorMessage = '用户名或密码错误，请检查后重试';
-          } else if (status === 403) {
-            errorMessage = '账号没有登录权限';
-          } else if (status === 500) {
-            errorMessage = `服务器内部错误: ${responseData.message || '请联系管理员'}`;
-            console.error('服务器内部错误详情:', responseData);
-          } else if (responseData && responseData.message) {
-            errorMessage = responseData.message;
-          }
-        } else if (error.request) {
-          // 请求已发出，但没有收到响应
-          errorMessage = '服务器无响应，请检查网络连接';
-          console.error('No response received:', error.request);
-        } else {
-          // 请求设置时出现了错误
-          errorMessage = `请求错误: ${error.message}`;
-          console.error('Request error:', error.message);
-        }
-        
-        commit('SET_ERROR', errorMessage);
-        throw error;
-      } finally {
-        // 确保无论成功还是失败都会设置loading为false
+        console.error('登录失败:', error);
+        commit('SET_ERROR', error.message || '登录失败，请检查您的凭据');
         commit('SET_LOADING', false);
+        throw error;
       }
     },
     

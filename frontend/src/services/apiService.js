@@ -134,17 +134,17 @@ const apiService = {
   checkBackendStatus() {
     return apiClient.get('/api/test/all')
       .then(response => {
-        console.log('Backend server is running:', response);
+        console.log('后端服务正常运行:', response.status);
         return { status: 'ok' };
       })
       .catch(error => {
         // 如果收到401或任何响应，说明服务器在运行
         if (error.response) {
-          console.log('Backend is running but returned an error:', error.response.status);
+          console.log('后端服务运行中但返回错误:', error.response.status);
           return { status: 'running', code: error.response.status };
         }
         // 否则可能是连接问题
-        console.error('Backend connection error:', error.message);
+        console.error('后端连接错误:', error.message);
         return { status: 'error', message: error.message };
       });
   },
@@ -152,7 +152,7 @@ const apiService = {
   // 认证相关
   auth: {
     login(credentials) {
-      // 将表单的username值发送给后端
+      // 使用正确的API路径 - 已确认/api/auth/login是工作的
       console.log('发送登录请求到 /api/auth/login:', credentials);
       return apiClient.post('/api/auth/login', {
         username: credentials.username || credentials.email,

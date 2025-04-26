@@ -83,15 +83,17 @@
           {{ localError }}
         </div>
         
-        <div class="backend-test" v-if="backendStatus === 'error'">
-          <button class="test-button" @click="testBackendConnection">测试后端连接</button>
-          <div v-if="testResult" class="test-result" :class="{ 'test-success': testSuccess, 'test-error': !testSuccess }">
-            {{ testResult }}
-          </div>
-        </div>
-        
         <div class="form-actions">
-          <button type="submit" class="auth-btn" :disabled="!isFormValid">登录</button>
+          <button 
+            type="submit" 
+            class="auth-btn"
+            :disabled="loading || !isFormValid"
+          >
+            <span v-if="loading">
+              <i class="fas fa-spinner fa-spin"></i> 登录中...
+            </span>
+            <span v-else>登录</span>
+          </button>
           <div class="auth-links">
             <router-link to="/register">没有账号？注册</router-link>
           </div>
@@ -99,10 +101,6 @@
           <div class="diagnostic-toggle" @click="toggleDiagnosticMode">
             <i class="fas fa-tools"></i> {{ diagnosticMode ? '关闭诊断' : '系统诊断' }}
           </div>
-        </div>
-        
-        <div v-if="error && !localError" class="auth-error">
-          {{ error }}
         </div>
       </form>
       
@@ -211,110 +209,40 @@ export default {
       if (!this.isFormValid) return;
       
       try {
-        this.$store.commit('SET_LOADING', true);
-        this.$store.commit('SET_ERROR', null);
-        
-        // 开始请求前检查backendStatus
-        if (this.backendStatus === 'error') {
-          throw new Error('无法连接到后端服务器，请确保服务器正在运行');
-        }
+        this.localError = '';
         
         const credentials = {
           username: this.username,
           password: this.password
         };
         
-        console.log('发送登录请求:', {
-          username: credentials.username,
-          password: '***隐藏***'
-        });
+        console.log('准备登录用户:', this.username);
         
-        // 使用apiService进行登录
-        const response = await apiService.auth.login(credentials);
-        console.log('登录响应:', response);
+        // 使用store的login方法
+        await this.$store.dispatch('login', credentials);
         
-        if (response.data) {
-          const data = response.data;
-          // 获取token
-          const token = data.token || data.accessToken;
-          if (!token) {
-            throw new Error('服务器没有返回有效的令牌');
-          }
-          
-          // 将token保存到localStorage中
-          localStorage.setItem('token', token);
-          console.log('Token已保存到localStorage');
-          
-          // 保存用户信息
-          const userInfo = {
-            id: data.id,
-            username: data.username,
-            email: data.email,
-            avatar: data.avatar || 'https://via.placeholder.com/40',
-            roles: data.roles || []
-          };
-          
-          // 保存用户信息到localStorage
-          localStorage.setItem('userInfo', JSON.stringify(userInfo));
-          console.log('用户信息已保存到localStorage');
-          
-          // 测试是否能获取token
-          const savedToken = localStorage.getItem('token');
-          if (savedToken) {
-            console.log('验证token已正确保存:', !!savedToken);
-            this.diagnosticResult = `登录成功：Token已保存 (${token.substring(0, 10)}...)`;
-            this.diagnosticSuccess = true;
-          } else {
-            console.warn('警告：Token保存后无法获取');
-            this.diagnosticResult = '警告：Token保存后无法获取';
-            this.diagnosticSuccess = false;
-          }
-          
-          // 更新Vuex状态
-          this.$store.commit('SET_USER', userInfo);
-          
-          // 登录成功，根据重定向信息进行页面跳转
-          const redirectPath = this.$route.query.redirect || '/';
-          
-          setTimeout(() => {
-            this.$router.push(redirectPath);
-          }, 500); // 短暂延迟确保状态更新
-          
-        } else {
-          throw new Error('登录响应格式不正确');
-        }
+        console.log('登录成功');
+        
+        // 登录成功，根据重定向信息进行页面跳转
+        const redirectPath = this.$route.query.redirect || '/';
+        this.$router.push(redirectPath);
+        
       } catch (error) {
-        console.error('Login failed:', error);
+        console.error('登录失败:', error);
         
-        // 设置本地错误信息以便显示
+        // 设置本地错误信息
         if (error.response) {
-          // 根据后端返回的错误状态码处理不同情况
           const status = error.response.status;
-          const data = error.response.data;
-          
-          console.log('服务器错误响应:', { status, data });
-          
           if (status === 401) {
             this.localError = '用户名或密码错误，请重试';
           } else if (status === 403) {
             this.localError = '账户被锁定或没有权限';
-          } else if (status === 500) {
-            this.localError = `服务器内部错误: ${data.message || '请联系管理员'}`;
-            console.error('服务器内部错误详情:', data);
           } else {
-            this.localError = `登录失败 (${status}): ${data?.message || '请稍后再试'}`;
+            this.localError = `登录失败: ${error.response.data?.message || '请稍后再试'}`;
           }
-        } else if (error.request) {
-          // 请求发送但没有收到响应
-          this.localError = '无法连接到服务器，请检查网络连接';
-          console.log('请求已发送但无响应:', error.request);
         } else {
-          // 其他错误
-          this.localError = `登录过程中发生错误: ${error.message}`;
-          console.log('登录请求构建错误:', error.message);
+          this.localError = error.message || '登录失败，请稍后再试';
         }
-      } finally {
-        this.$store.commit('SET_LOADING', false);
       }
     },
     validateForm() {
@@ -334,29 +262,6 @@ export default {
         this.errors.password = '密码不能为空';
       } else if (this.password.length < 6) {
         this.errors.password = '密码长度至少为6个字符';
-      }
-    },
-    async testBackendConnection() {
-      this.testResult = '测试中...';
-      this.testSuccess = false;
-      
-      try {
-        // 使用 apiService 代替直接的 fetch 调用
-        const result = await apiService.checkBackendStatus();
-        
-        if (result.status === 'ok' || result.status === 'running') {
-          this.testSuccess = true;
-          this.testResult = `连接成功! 服务器响应: ${result.status}`;
-          this.backendStatus = 'running';
-          this.localError = '';
-        } else {
-          this.testSuccess = false;
-          this.testResult = `连接失败: ${result.message || '未知错误'}`;
-        }
-      } catch (error) {
-        this.testSuccess = false;
-        this.testResult = `连接错误: ${error.message}`;
-        console.error('Connection test failed:', error);
       }
     },
     toggleDiagnosticMode() {
