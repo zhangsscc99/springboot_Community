@@ -756,6 +756,39 @@ export default createStore({
       }
     },
     
+    // 删除帖子
+    async deletePost({ commit }, postId) {
+      commit('SET_ACTION_LOADING', true);
+      try {
+        console.log(`删除帖子 ${postId}`);
+        await apiService.posts.delete(postId);
+        
+        // 从缓存中移除帖子
+        if (state.postCache[postId]) {
+          Vue.delete(state.postCache, postId);
+        }
+        
+        // 从标签页中移除帖子
+        Object.keys(state.tabPosts).forEach(tab => {
+          if (state.tabPosts[tab]) {
+            commit('SET_TAB_POSTS', { 
+              tab, 
+              posts: state.tabPosts[tab].filter(post => post.id !== postId) 
+            });
+          }
+        });
+        
+        commit('SET_ERROR', null);
+        return true;
+      } catch (error) {
+        console.error(`删除帖子失败:`, error);
+        commit('SET_ERROR', error.message || '删除帖子失败');
+        throw error;
+      } finally {
+        commit('SET_ACTION_LOADING', false);
+      }
+    },
+    
     // 点赞评论
     async likeComment({ commit }, commentId) {
       commit('SET_ACTION_LOADING', true);

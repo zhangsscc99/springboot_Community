@@ -271,12 +271,12 @@ const apiService = {
         console.error('无效的帖子ID: ID为空');
         return Promise.reject(new Error('无效的帖子ID'));
       }
-      
+    
       if (postId === 'undefined' || postId === 'null') {
         console.error(`无效的帖子ID: ID为字符串"${postId}"`);
         return Promise.reject(new Error('无效的帖子ID'));
       }
-      
+    
       console.log(`正在获取帖子 ${postId} 的评论`);
       return apiClient.get(`/api/posts/${postId}/comments`);
     },
@@ -299,7 +299,7 @@ const apiService = {
         parentId: commentData.parentId || null,
         // 其他必要的字段
       };
-      
+    
       return apiClient.post(`/api/posts/${postId}/comments`, formattedData);
     },
     createReply(commentId, replyData) {

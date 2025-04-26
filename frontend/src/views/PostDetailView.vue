@@ -69,6 +69,10 @@
           <i class="fas fa-eye"></i>
           <span>{{ post.views || 0 }}</span>
         </div>
+        <div v-if="isAuthor" class="post-action delete-action" @click="confirmDeletePost">
+          <i class="fas fa-trash-alt"></i>
+          <span>删除</span>
+        </div>
       </div>
       
       <div class="comments-section" ref="commentsSection">
@@ -250,6 +254,9 @@ export default {
     },
     contentParagraphs() {
       return this.post ? this.post.content.split('\n\n') : [];
+    },
+    isAuthor() {
+      return this.post && this.post.author && this.post.author.id === this.user.id;
     }
   },
   methods: {
@@ -744,6 +751,34 @@ export default {
           document.body.removeChild(textArea);
         }
       }
+    },
+    async confirmDeletePost() {
+      if (!confirm('确定要删除这个帖子吗？')) return;
+      
+      try {
+        console.log(`正在尝试删除帖子 ID: ${this.postId}`);
+        console.log(`当前用户 ID: ${this.user.id}, 帖子作者 ID: ${this.post.author.id}`);
+        
+        // 添加前端额外验证
+        if (this.user.id !== this.post.author.id) {
+          console.error('权限错误: 当前用户不是帖子作者');
+          this.$message.error('您没有权限删除这个帖子');
+          return;
+        }
+        
+        await this.$store.dispatch('deletePost', this.postId);
+        this.$message.success('帖子已成功删除');
+        this.$router.push({ name: 'home' });
+      } catch (error) {
+        console.error('删除帖子失败:', error);
+        console.error('删除帖子详细信息:', {
+          postId: this.postId,
+          userId: this.user.id,
+          authorId: this.post.author.id,
+          errorMessage: error.message || '未知错误'
+        });
+        this.$message.error(`删除失败: ${error.message || '服务器错误，请稍后再试'}`);
+      }
     }
   },
   async mounted() {
@@ -973,6 +1008,10 @@ export default {
 
 .post-action.active {
   color: var(--primary-color);
+}
+
+.post-action.delete-action {
+  color: #e74c3c;
 }
 
 .comments-section {
