@@ -665,8 +665,8 @@ export default {
     openEditModal() {
       this.editForm = {
         username: this.profileName,
-        avatar: '',
-        bio: this.formattedProfileBio,
+        avatar: this.profileAvatar,
+        bio: this.profileBio,
         email: ''
       };
       this.showEditModal = true;
