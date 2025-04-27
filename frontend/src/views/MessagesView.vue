@@ -158,6 +158,11 @@ export default {
           
           // Debug: 打印会话列表，帮助调试
           console.log('Conversations loaded:', this.conversations);
+          
+          // 如果是从缓存加载的数据，添加日志
+          if (response.cached) {
+            console.log('Data loaded from cache, expiry time: 5 minutes');
+          }
         }
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
@@ -205,6 +210,13 @@ export default {
           }
         });
         
+        // Listen for conversation updates (new method)
+        this.eventSource.addEventListener('conversationUpdate', event => {
+          // 收到会话更新事件时，清除缓存
+          MessageService.clearConversationsCache();
+          this.fetchConversations();
+        });
+        
         // Handle SSE connection errors
         this.eventSource.onerror = error => {
           console.error('SSE connection error:', error);
@@ -240,11 +252,21 @@ export default {
         // Move conversation to top
         this.conversations.splice(conversationIndex, 1);
         this.conversations.unshift(conversation);
+        
+        // 更新缓存中的会话
+        if (conversation.partnerId) {
+          MessageService.updateConversationInCache(conversation.partnerId, {
+            lastMessageContent: message.content,
+            lastMessageTime: message.createdAt,
+            unreadCount: conversation.unreadCount
+          });
+        }
       } else {
         // Add new conversation
         const isIncoming = message.receiverId !== this.getCurrentUserId();
         const newConversation = {
           id: Date.now(), // Temporary ID, will be replaced when fetching full list
+          partnerId: isIncoming ? message.senderId : message.receiverId,
           name: isIncoming ? message.senderUsername : message.receiverUsername,
           avatar: isIncoming ? message.senderAvatar : message.receiverAvatar,
           lastMessage: message.content,
@@ -252,6 +274,9 @@ export default {
           unreadCount: 1
         };
         this.conversations.unshift(newConversation);
+        
+        // 收到新会话时，清除缓存以便下次重新获取完整列表
+        MessageService.clearConversationsCache();
       }
     },
     

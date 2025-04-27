@@ -256,7 +256,7 @@ export default {
     async fetchMessages() {
       try {
         this.loading = true;
-        const response = await MessageService.getMessageHistory(this.partnerId, this.page, this.size);
+        const response = await MessageService.getMessageHistory(this.partnerId, this.page, this.size, true);
         
         if (response.data && response.data.content) {
           // Sort messages by date (oldest first)
@@ -276,6 +276,11 @@ export default {
               this.scrollToBottom();
             });
           }
+          
+          // 如果是从缓存加载的数据，添加日志
+          if (response.cached) {
+            console.log('聊天记录从缓存加载，过期时间: 2分钟');
+          }
         }
       } catch (error) {
         console.error('Failed to fetch messages:', error);
@@ -290,7 +295,8 @@ export default {
       this.page += 1;
       
       try {
-        const response = await MessageService.getMessageHistory(this.partnerId, this.page, this.size);
+        // 加载更多历史消息时不使用缓存，确保数据最新
+        const response = await MessageService.getMessageHistory(this.partnerId, this.page, this.size, false);
         
         if (response.data && response.data.content) {
           // Sort messages by date (oldest first)
@@ -454,6 +460,9 @@ export default {
         this.$nextTick(() => {
           this.scrollToBottom();
         });
+        
+        // 更新该用户的消息历史缓存
+        MessageService.clearMessageHistoryCache(this.partnerId);
       }
     },
     getCurrentUserId() {
