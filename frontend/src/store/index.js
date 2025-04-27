@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { createStore } from 'vuex'
 import apiService from '@/services/apiService'
+import cacheService, { CACHE_TYPES } from '@/services/cacheService'
 
 // 缓存有效期（毫秒）- 2分钟
 const CACHE_EXPIRATION = 2 * 60 * 1000;
@@ -353,10 +354,22 @@ export default createStore({
     },
     
     logout({ commit }) {
-      // 清除localStorage中的token和用户信息
+      // 获取当前用户ID（如果有）
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = currentUser?.id;
+      
+      // 清除本地存储中的所有用户数据
+      localStorage.removeItem('user');
       localStorage.removeItem('token');
-      localStorage.removeItem('userInfo');
-      commit('SET_USER', null);
+      localStorage.removeItem('userId');
+      
+      // 如果有用户ID，清除该用户的缓存
+      if (userId) {
+        cacheService.clearUserCache(userId);
+      }
+      
+      // 提交mutation
+      commit('LOGOUT');
     },
     
     setActiveTab({ commit, dispatch }, tab) {
@@ -553,33 +566,30 @@ export default createStore({
     
     // 点赞帖子
     async likePost({ commit, state }, postId) {
-      commit('SET_ACTION_LOADING', true);
       try {
-        console.log(`给帖子 ${postId} 点赞`);
-        await apiService.posts.like(postId);
+        commit('SET_ACTION_LOADING', true);
         
-        // 在缓存和UI中更新点赞状态
-        if (state.postCache[postId]) {
-          commit('UPDATE_POST_FIELD', { 
-            postId, 
-            field: 'likedByCurrentUser', 
-            value: true 
-          });
-          
-          // 更新点赞数
-          const currentLikes = state.postCache[postId].likes || 0;
-          commit('UPDATE_POST_FIELD', {
-            postId,
-            field: 'likes',
-            value: currentLikes + 1
-          });
+        // 乐观更新UI
+        commit('UPDATE_POST_FIELD', { postId, field: 'likedByCurrentUser', value: true });
+        commit('UPDATE_POST_FIELD', { postId, field: 'likes', value: post => post.likes + 1 });
+        
+        // 调用API
+        await apiService.posts.like(postId);
+        console.log('帖子点赞成功');
+        
+        // 清除用户相关缓存，确保喜欢的帖子列表会更新
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_LIKES, state.user.id);
         }
         
-        commit('SET_ERROR', null);
         return true;
       } catch (error) {
-        console.error(`给帖子 ${postId} 点赞失败:`, error);
-        commit('SET_ERROR', error.message || '点赞失败');
+        console.error('点赞失败:', error);
+        
+        // 回滚UI更新
+        commit('UPDATE_POST_FIELD', { postId, field: 'likedByCurrentUser', value: false });
+        commit('UPDATE_POST_FIELD', { postId, field: 'likes', value: post => Math.max(0, post.likes - 1) });
+        
         throw error;
       } finally {
         commit('SET_ACTION_LOADING', false);
@@ -588,33 +598,30 @@ export default createStore({
     
     // 取消点赞
     async unlikePost({ commit, state }, postId) {
-      commit('SET_ACTION_LOADING', true);
       try {
-        console.log(`取消帖子 ${postId} 的点赞`);
-        await apiService.posts.unlike(postId);
+        commit('SET_ACTION_LOADING', true);
         
-        // 在缓存和UI中更新点赞状态
-        if (state.postCache[postId]) {
-          commit('UPDATE_POST_FIELD', { 
-            postId, 
-            field: 'likedByCurrentUser', 
-            value: false 
-          });
-          
-          // 更新点赞数
-          const currentLikes = state.postCache[postId].likes || 0;
-          commit('UPDATE_POST_FIELD', {
-            postId,
-            field: 'likes',
-            value: Math.max(0, currentLikes - 1)
-          });
+        // 乐观更新UI
+        commit('UPDATE_POST_FIELD', { postId, field: 'likedByCurrentUser', value: false });
+        commit('UPDATE_POST_FIELD', { postId, field: 'likes', value: post => Math.max(0, post.likes - 1) });
+        
+        // 调用API
+        await apiService.posts.unlike(postId);
+        console.log('取消点赞成功');
+        
+        // 清除用户相关缓存，确保喜欢的帖子列表会更新
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_LIKES, state.user.id);
         }
         
-        commit('SET_ERROR', null);
         return true;
       } catch (error) {
-        console.error(`取消帖子 ${postId} 点赞失败:`, error);
-        commit('SET_ERROR', error.message || '取消点赞失败');
+        console.error('取消点赞失败:', error);
+        
+        // 回滚UI更新
+        commit('UPDATE_POST_FIELD', { postId, field: 'likedByCurrentUser', value: true });
+        commit('UPDATE_POST_FIELD', { postId, field: 'likes', value: post => post.likes + 1 });
+        
         throw error;
       } finally {
         commit('SET_ACTION_LOADING', false);
@@ -623,33 +630,30 @@ export default createStore({
     
     // 收藏帖子
     async favoritePost({ commit, state }, postId) {
-      commit('SET_ACTION_LOADING', true);
       try {
-        console.log(`收藏帖子 ${postId}`);
-        await apiService.posts.favorite(postId);
+        commit('SET_ACTION_LOADING', true);
         
-        // 在缓存和UI中更新收藏状态
-        if (state.postCache[postId]) {
-          commit('UPDATE_POST_FIELD', { 
-            postId, 
-            field: 'favoritedByCurrentUser', 
-            value: true 
-          });
-          
-          // 更新收藏数
-          const currentFavorites = state.postCache[postId].favorites || 0;
-          commit('UPDATE_POST_FIELD', {
-            postId,
-            field: 'favorites',
-            value: currentFavorites + 1
-          });
+        // 乐观更新UI
+        commit('UPDATE_POST_FIELD', { postId, field: 'favoritedByCurrentUser', value: true });
+        commit('UPDATE_POST_FIELD', { postId, field: 'favorites', value: post => post.favorites + 1 });
+        
+        // 调用API
+        await apiService.posts.favorite(postId);
+        console.log('收藏帖子成功');
+        
+        // 清除用户相关缓存，确保收藏的帖子列表会更新
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_FAVORITES, state.user.id);
         }
         
-        commit('SET_ERROR', null);
         return true;
       } catch (error) {
-        console.error(`收藏帖子 ${postId} 失败:`, error);
-        commit('SET_ERROR', error.message || '收藏失败');
+        console.error('收藏帖子失败:', error);
+        
+        // 回滚UI更新
+        commit('UPDATE_POST_FIELD', { postId, field: 'favoritedByCurrentUser', value: false });
+        commit('UPDATE_POST_FIELD', { postId, field: 'favorites', value: post => Math.max(0, post.favorites - 1) });
+        
         throw error;
       } finally {
         commit('SET_ACTION_LOADING', false);
@@ -658,33 +662,30 @@ export default createStore({
     
     // 取消收藏
     async unfavoritePost({ commit, state }, postId) {
-      commit('SET_ACTION_LOADING', true);
       try {
-        console.log(`取消收藏帖子 ${postId}`);
-        await apiService.posts.unfavorite(postId);
+        commit('SET_ACTION_LOADING', true);
         
-        // 在缓存和UI中更新收藏状态
-        if (state.postCache[postId]) {
-          commit('UPDATE_POST_FIELD', { 
-            postId, 
-            field: 'favoritedByCurrentUser', 
-            value: false 
-          });
-          
-          // 更新收藏数
-          const currentFavorites = state.postCache[postId].favorites || 0;
-          commit('UPDATE_POST_FIELD', {
-            postId,
-            field: 'favorites',
-            value: Math.max(0, currentFavorites - 1)
-          });
+        // 乐观更新UI
+        commit('UPDATE_POST_FIELD', { postId, field: 'favoritedByCurrentUser', value: false });
+        commit('UPDATE_POST_FIELD', { postId, field: 'favorites', value: post => Math.max(0, post.favorites - 1) });
+        
+        // 调用API
+        await apiService.posts.unfavorite(postId);
+        console.log('取消收藏成功');
+        
+        // 清除用户相关缓存，确保收藏的帖子列表会更新
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_FAVORITES, state.user.id);
         }
         
-        commit('SET_ERROR', null);
         return true;
       } catch (error) {
-        console.error(`取消收藏帖子 ${postId} 失败:`, error);
-        commit('SET_ERROR', error.message || '取消收藏失败');
+        console.error('取消收藏失败:', error);
+        
+        // 回滚UI更新
+        commit('UPDATE_POST_FIELD', { postId, field: 'favoritedByCurrentUser', value: true });
+        commit('UPDATE_POST_FIELD', { postId, field: 'favorites', value: post => post.favorites + 1 });
+        
         throw error;
       } finally {
         commit('SET_ACTION_LOADING', false);
@@ -881,7 +882,7 @@ export default createStore({
     },
     
     // 关注用户
-    async followUser({ commit, dispatch }, userId) {
+    async followUser({ commit, state }, userId) {
       commit('SET_FOLLOW_LOADING', true);
       commit('SET_FOLLOW_ERROR', null);
       
@@ -894,6 +895,13 @@ export default createStore({
             followersCount: response.data?.followersCount || 0
           } 
         });
+        
+        // 清除用户缓存
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, state.user.id);
+        }
+        cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
+        
         return response;
       } catch (error) {
         console.error('Failed to follow user:', error);
@@ -905,7 +913,7 @@ export default createStore({
     },
     
     // 取消关注用户
-    async unfollowUser({ commit }, userId) {
+    async unfollowUser({ commit, state }, userId) {
       commit('SET_FOLLOW_LOADING', true);
       commit('SET_FOLLOW_ERROR', null);
       
@@ -918,6 +926,13 @@ export default createStore({
             followersCount: response.data?.followersCount || 0
           } 
         });
+        
+        // 清除用户缓存
+        if (state.user) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, state.user.id);
+        }
+        cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
+        
         return response;
       } catch (error) {
         console.error('Failed to unfollow user:', error);

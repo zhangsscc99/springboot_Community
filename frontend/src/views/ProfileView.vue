@@ -260,8 +260,9 @@
 
 <script>
 import UserAvatar from '@/components/UserAvatar.vue';
-import { mapGetters } from 'vuex';
 import apiService from '@/services/apiService';
+import { mapGetters } from 'vuex';
+import cacheService, { CACHE_TYPES } from '@/services/cacheService';
 
 export default {
   name: 'ProfileView',
@@ -302,7 +303,14 @@ export default {
       followModalType: 'followers', // or 'following'
       followUsers: [],
       followUsersLoading: false,
-      followingUserIds: [] // IDs of users the current user is following
+      followingUserIds: [], // IDs of users the current user is following
+      // 缓存相关
+      useCacheForPosts: true,
+      useCacheForLikes: true,
+      useCacheForFavorites: true,
+      cachedPostsTime: null,
+      cachedLikesTime: null,
+      cachedFavoritesTime: null
     };
   },
   computed: {
@@ -357,28 +365,41 @@ export default {
       this.likedPosts = [];
       this.favoritedPosts = [];
       this.error = null;
+      // 重置缓存时间戳
+      this.cachedPostsTime = null;
+      this.cachedLikesTime = null;
+      this.cachedFavoritesTime = null;
     },
     async loadUserProfile() {
       try {
         this.loading = true;
         
-        // 获取用户信息
-        const response = await apiService.users.getProfile(this.profileId);
-        const userData = response.data;
+        // 尝试从缓存加载用户信息
+        const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
+        const cachedProfile = cacheService.getCache(profileCacheKey);
         
-        // 更新用户信息
-        this.profileName = userData.username;
-        this.profileBio = userData.bio || '';
-        this.profileAvatar = userData.avatar;
+        if (cachedProfile) {
+          console.log('使用缓存的用户信息数据');
+          // 使用缓存数据
+          this.profileName = cachedProfile.username;
+          this.profileBio = cachedProfile.bio || '';
+          this.profileAvatar = cachedProfile.avatar;
+          this.followerCount = cachedProfile.followerCount || 0;
+          this.followingCount = cachedProfile.followingCount || 0;
+          this.likesCount = cachedProfile.likesCount || 0;
+          
+          // 异步更新缓存
+          this.fetchProfileDataAndCache();
+        } else {
+          // 缓存不存在，直接从服务器获取
+          await this.fetchProfileDataAndCache();
+        }
         
         // 加载用户帖子
         await this.fetchUserPosts();
         
-        // 获取关注数据
-        await this.fetchFollowCounts();
-        
         // 如果用户已登录，检查关注状态
-        if (this.isAuthenticated) {
+        if (this.isAuthenticated && !this.isCurrentUser) {
           await this.checkFollowStatus();
         }
         
@@ -395,10 +416,46 @@ export default {
         this.loading = false;
       }
     },
+    async fetchProfileDataAndCache() {
+      try {
+        // 获取用户信息
+        const response = await apiService.users.getProfile(this.profileId);
+        const userData = response.data;
+        
+        // 更新用户信息
+        this.profileName = userData.username;
+        this.profileBio = userData.bio || '';
+        this.profileAvatar = userData.avatar;
+        
+        // 获取关注数据
+        await this.fetchFollowCounts();
+        
+        // 缓存用户数据
+        const profileData = {
+          username: userData.username,
+          bio: userData.bio || '',
+          avatar: userData.avatar,
+          followerCount: this.followerCount,
+          followingCount: this.followingCount,
+          likesCount: this.likesCount
+        };
+        
+        const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
+        cacheService.setCache(profileCacheKey, profileData);
+        
+      } catch (error) {
+        console.error('获取和缓存用户资料失败:', error);
+        throw error; // 向上传递错误
+      }
+    },
     goBack() {
       this.$router.go(-1);
     },
     logout() {
+      // 退出前清除当前用户的缓存
+      if (this.currentUser && this.currentUser.id) {
+        cacheService.clearUserCache(this.currentUser.id);
+      }
       this.$store.dispatch('logout');
       this.$router.push('/');
     },
@@ -425,12 +482,30 @@ export default {
     async fetchUserPosts() {
       try {
         this.postsLoading = true;
-        // 修正: profileId 而不是 userId
-        const response = await apiService.posts.getByUserId(this.profileId); 
         
-        // 确保正确映射数据
-        this.userPosts = response.data.content || response.data || [];
-        console.log('获取到的用户帖子:', this.userPosts);
+        // 尝试从缓存加载帖子数据
+        if (this.useCacheForPosts) {
+          const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_POSTS, this.profileId);
+          const cachedPosts = cacheService.getCache(cacheKey);
+          
+          if (cachedPosts) {
+            console.log('使用缓存的用户帖子数据');
+            this.userPosts = cachedPosts;
+            this.cachedPostsTime = Date.now();
+            
+            // 如果这是当前活动标签，异步更新缓存
+            if (this.activeTab === 'posts') {
+              this.refreshPostsCache();
+            }
+            
+            this.postsLoading = false;
+            return;
+          }
+        }
+        
+        // 缓存不存在或不使用缓存，从服务器获取
+        await this.refreshPostsCache();
+        
       } catch (error) {
         console.error('获取用户帖子失败:', error);
         this.error = '加载用户帖子失败';
@@ -438,12 +513,52 @@ export default {
         this.postsLoading = false;
       }
     },
+    async refreshPostsCache() {
+      try {
+        // 从服务器获取最新数据
+        const response = await apiService.posts.getByUserId(this.profileId); 
+        
+        // 更新本地数据
+        this.userPosts = response.data.content || response.data || [];
+        this.cachedPostsTime = Date.now();
+        
+        // 缓存新数据
+        const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_POSTS, this.profileId);
+        cacheService.setCache(cacheKey, this.userPosts);
+        console.log('用户帖子数据已缓存');
+        
+      } catch (error) {
+        console.error('刷新用户帖子缓存失败:', error);
+        throw error; // 向上传递错误
+      }
+    },
     async fetchLikedPosts() {
       try {
         this.likesLoading = true;
-        const response = await apiService.posts.getLikedByUserId(this.profileId);
-        this.likedPosts = response.data.content || response.data || [];
-        console.log('获取到的用户点赞帖子:', this.likedPosts);
+        
+        // 尝试从缓存加载点赞数据
+        if (this.useCacheForLikes) {
+          const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_LIKES, this.profileId);
+          const cachedLikes = cacheService.getCache(cacheKey);
+          
+          if (cachedLikes) {
+            console.log('使用缓存的用户点赞数据');
+            this.likedPosts = cachedLikes;
+            this.cachedLikesTime = Date.now();
+            
+            // 如果这是当前活动标签，异步更新缓存
+            if (this.activeTab === 'likes') {
+              this.refreshLikesCache();
+            }
+            
+            this.likesLoading = false;
+            return;
+          }
+        }
+        
+        // 缓存不存在或不使用缓存，从服务器获取
+        await this.refreshLikesCache();
+        
       } catch (error) {
         console.error('获取用户点赞帖子失败:', error);
         this.error = '加载用户点赞帖子失败';
@@ -451,7 +566,29 @@ export default {
         this.likesLoading = false;
       }
     },
+    async refreshLikesCache() {
+      try {
+        // 从服务器获取最新数据
+        const response = await apiService.posts.getLikedByUserId(this.profileId);
+        
+        // 更新本地数据
+        this.likedPosts = response.data.content || response.data || [];
+        this.cachedLikesTime = Date.now();
+        
+        // 缓存新数据
+        const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_LIKES, this.profileId);
+        cacheService.setCache(cacheKey, this.likedPosts);
+        console.log('用户点赞数据已缓存');
+        
+      } catch (error) {
+        console.error('刷新用户点赞缓存失败:', error);
+        throw error; // 向上传递错误
+      }
+    },
     setActiveTab(tab) {
+      // 如果是相同标签，不做任何操作
+      if (this.activeTab === tab) return;
+      
       this.activeTab = tab;
       
       if (tab === 'posts' && this.userPosts.length === 0) {
@@ -460,19 +597,69 @@ export default {
         this.fetchLikedPosts();
       } else if (tab === 'favorites' && this.favoritedPosts.length === 0) {
         this.fetchFavoritedPosts();
+      } else {
+        // 如果已有数据但缓存已超过5分钟，则在后台刷新数据
+        const now = Date.now();
+        if (tab === 'posts' && now - this.cachedPostsTime > 5 * 60 * 1000) {
+          this.refreshPostsCache().catch(e => console.error('背景刷新帖子失败:', e));
+        } else if (tab === 'likes' && now - this.cachedLikesTime > 5 * 60 * 1000) {
+          this.refreshLikesCache().catch(e => console.error('背景刷新点赞失败:', e));
+        } else if (tab === 'favorites' && now - this.cachedFavoritesTime > 5 * 60 * 1000) {
+          this.refreshFavoritesCache().catch(e => console.error('背景刷新收藏失败:', e));
+        }
       }
     },
     async fetchFavoritedPosts() {
       try {
         this.favoritesLoading = true;
-        const response = await apiService.posts.getFavoritedByUserId(this.profileId);
-        this.favoritedPosts = response.data.content || response.data || [];
-        console.log('获取到的用户收藏帖子:', this.favoritedPosts);
+        
+        // 尝试从缓存加载收藏数据
+        if (this.useCacheForFavorites) {
+          const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_FAVORITES, this.profileId);
+          const cachedFavorites = cacheService.getCache(cacheKey);
+          
+          if (cachedFavorites) {
+            console.log('使用缓存的用户收藏数据');
+            this.favoritedPosts = cachedFavorites;
+            this.cachedFavoritesTime = Date.now();
+            
+            // 如果这是当前活动标签，异步更新缓存
+            if (this.activeTab === 'favorites') {
+              this.refreshFavoritesCache();
+            }
+            
+            this.favoritesLoading = false;
+            return;
+          }
+        }
+        
+        // 缓存不存在或不使用缓存，从服务器获取
+        await this.refreshFavoritesCache();
+        
       } catch (error) {
         console.error('获取用户收藏帖子失败:', error);
         this.error = '加载用户收藏帖子失败';
       } finally {
         this.favoritesLoading = false;
+      }
+    },
+    async refreshFavoritesCache() {
+      try {
+        // 从服务器获取最新数据
+        const response = await apiService.posts.getFavoritedByUserId(this.profileId);
+        
+        // 更新本地数据
+        this.favoritedPosts = response.data.content || response.data || [];
+        this.cachedFavoritesTime = Date.now();
+        
+        // 缓存新数据
+        const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_FAVORITES, this.profileId);
+        cacheService.setCache(cacheKey, this.favoritedPosts);
+        console.log('用户收藏数据已缓存');
+        
+      } catch (error) {
+        console.error('刷新用户收藏缓存失败:', error);
+        throw error; // 向上传递错误
       }
     },
     openEditModal() {
@@ -500,11 +687,27 @@ export default {
         this.profileAvatar = this.editForm.avatar;
         this.profileBio = this.editForm.bio; // 更新 data 中的 profileBio
         
+        // 更新缓存
+        const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
+        cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
+        
+        // 重新缓存用户资料
+        const profileData = {
+          username: this.profileName,
+          bio: this.profileBio,
+          avatar: this.profileAvatar,
+          followerCount: this.followerCount,
+          followingCount: this.followingCount,
+          likesCount: this.likesCount
+        };
+        cacheService.setCache(profileCacheKey, profileData);
+        
         alert('个人资料已更新');
         this.closeEditModal();
         
-        // 页面刷新以确保一切更新
-        window.location.reload();
+        // 使用温和的重载方式，避免整页刷新
+        this.resetData();
+        await this.loadUserProfile();
       } catch (error) {
         console.error('更新个人资料失败:', error);
         alert('更新个人资料失败: ' + (error.response?.data || error.message));
@@ -550,12 +753,30 @@ export default {
           await apiService.users.unfollow(this.profileId);
           this.isFollowing = false;
           this.followerCount = Math.max(0, this.followerCount - 1);
+          
+          // 清除相关缓存
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
         } else {
           // Follow
           await apiService.users.follow(this.profileId);
           this.isFollowing = true;
           this.followerCount += 1;
+          
+          // 清除相关缓存
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
         }
+        
+        // 更新用户资料缓存
+        const profileData = {
+          username: this.profileName,
+          bio: this.profileBio,
+          avatar: this.profileAvatar,
+          followerCount: this.followerCount,
+          followingCount: this.followingCount,
+          likesCount: this.likesCount
+        };
+        const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
+        cacheService.setCache(profileCacheKey, profileData);
       } catch (error) {
         console.error('操作关注失败:', error);
         alert('操作失败，请稍后再试');
@@ -630,6 +851,9 @@ export default {
             this.followUsers = this.followUsers.filter(user => user.id !== userId);
             this.followingCount = Math.max(0, this.followingCount - 1);
           }
+          
+          // 清除相关缓存
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
         } else {
           // Follow
           await apiService.users.follow(userId);
@@ -640,6 +864,9 @@ export default {
           if (this.isCurrentUser && this.followModalType === 'followers') {
             this.followingCount += 1;
           }
+          
+          // 清除相关缓存
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
         }
       } catch (error) {
         console.error('操作关注失败:', error);
@@ -675,6 +902,12 @@ export default {
   },
   mounted() {
     // 不需要在这里重复调用fetchUserProfile
+  },
+  beforeUnmount() {
+    // 离开组件前确保不会有未完成的后台异步操作
+    this.useCacheForPosts = false;
+    this.useCacheForLikes = false;
+    this.useCacheForFavorites = false;
   }
 }
 </script>
