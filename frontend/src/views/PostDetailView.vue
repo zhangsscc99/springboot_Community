@@ -265,7 +265,8 @@ export default {
       return this.post ? this.post.content.split('\n\n') : [];
     },
     isAuthor() {
-      return this.post && this.post.author && this.post.author.id === this.user.id;
+      // 检查用户是否已登录，以及帖子作者是否存在，然后比较ID
+      return this.user && this.post && this.post.author && this.post.author.id === this.user.id;
     }
   },
   methods: {
@@ -608,7 +609,8 @@ export default {
     
     // 检查用户是否可以删除评论
     canDeleteComment(comment) {
-      if (!this.isAuthenticated || !this.user) return false;
+      // 确保用户已登录并且comment对象有效
+      if (!this.isAuthenticated || !this.user || !comment || !comment.author) return false;
       
       // 当前用户是评论作者或帖子作者
       return (
