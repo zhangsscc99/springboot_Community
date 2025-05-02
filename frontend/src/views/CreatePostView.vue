@@ -116,6 +116,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import apiService from '@/services/apiService';
+import apiConfig from '@/config/api.config.js';
 
 export default {
   name: 'CreatePostView',
@@ -216,7 +217,7 @@ export default {
           console.log('帖子更新成功:', response.data);
         } else {
           // 直接使用axios发送认证请求
-          const baseURL = apiService.getBaseURL ? apiService.getBaseURL() : 'http://communityapi.jinshuqingci.com';
+          const baseURL = apiConfig.BASE_URL;
           console.log('使用基础URL:', baseURL);
           
           response = await apiService.posts.create(this.postData);

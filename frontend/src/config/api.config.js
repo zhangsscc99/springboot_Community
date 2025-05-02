@@ -6,7 +6,7 @@
 // API基础URL配置
 const apiConfig = {
   // 更新为与curl测试相同的域名
-  BASE_URL: 'http://communityapi.jinshuqingci.com',
+  BASE_URL: 'http://localhost:8083',
   // 或者使用相对路径，让浏览器自动使用当前域名
   // BASE_URL: '',
 };

@@ -1,0 +1,327 @@
+[33mcommit 6ae9f7952957114b563ad6237e93648eead8bf90[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sun Apr 27 02:39:14 2025 -0400
+
+    bio
+
+[33mcommit 3e8ea890306906fe9ffd06484c6179be0e985a0b[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sun Apr 27 01:53:42 2025 -0400
+
+    cache_service
+
+[33mcommit 223811dc159b64efb2f876a0403bac46c1eceffb[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sun Apr 27 01:41:30 2025 -0400
+
+    messages cache set
+
+[33mcommit d031db969d3397e5212b5d552d4d86efdacc1e94[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sun Apr 27 01:31:15 2025 -0400
+
+    logic
+
+[33mcommit e1b5a4fb96974a13d0599812e50184979599714f[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sat Apr 26 03:54:20 2025 -0400
+
+    register debugged successfully
+
+[33mcommit 51878048658464cb0d95865231f3dac782ad3bf8[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sat Apr 26 03:53:46 2025 -0400
+
+    register debugged successfully
+
+[33mcommit 795ced536051c5ee4628ed5f11200d6af906c89f[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sat Apr 26 03:27:40 2025 -0400
+
+    login debugged okay
+
+[33mcommit 22b59ae3cd3cfc1ce23035c5d916d4c3205cfe2e[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Sat Apr 26 03:01:07 2025 -0400
+
+    home redirection
+
+[33mcommit adf36d0a059cfae026298e72c2939f7c19703908[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 23:33:15 2025 -0400
+
+    posts deleted
+
+[33mcommit 6a344b16aa59ce07ce25bf35652e0df8e179c007[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 23:24:30 2025 -0400
+
+    dynamics
+
+[33mcommit ff389446f398d80213cf08a8fc6e63955d3676fe[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 23:12:34 2025 -0400
+
+    dynamics
+
+[33mcommit 14c33fa3cf88a7913cf163c853c954a21f7dca46[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 22:51:39 2025 -0400
+
+    dynamics
+
+[33mcommit c1fdf0e214d84f160d3702ff80a31da915866560[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 13:35:22 2025 -0400
+
+    intro
+
+[33mcommit 4a87fb850fd32cd491a6b92d3ae0b8984219ecad[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 02:17:15 2025 -0400
+
+    intro
+
+[33mcommit cb7ed96efaa4926d71113a1ee2f7aa04c24b3957[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 00:46:04 2025 -0400
+
+    intro
+
+[33mcommit b7b65b858160667ce600e54edaf4b6bc615f3c7d[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 00:31:21 2025 -0400
+
+    intro
+
+[33mcommit 81db2a2dd68de5850f0a3beef42c649b4971d21e[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 00:06:05 2025 -0400
+
+    贝塞尔曲线
+
+[33mcommit f2643acd1e48188d991d77282f514d0be072e773[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Fri Apr 25 00:04:59 2025 -0400
+
+    user experience
+
+[33mcommit df27db54c35b96e645d6efcd482b640dd2667c45[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 23:39:34 2025 -0400
+
+    clipboard
+
+[33mcommit 866e1e38c7d6be8d538441499a53d23fd3210d55[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 22:06:35 2025 -0400
+
+    clipboard
+
+[33mcommit 2474b5d2421e021333dd246c2242a68778724dda[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 21:49:34 2025 -0400
+
+    jinshuurl
+
+[33mcommit 46e280aba4bc259543d841d34cd9c5553665f3f7[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 18:12:47 2025 -0400
+
+    timeremoved
+
+[33mcommit 65896b8cd8bc66c5df327194a5df758da0ed63f1[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 18:03:53 2025 -0400
+
+    timeremoved
+
+[33mcommit a46a3258087af804442dcd34fab6d5b7c1578036[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 18:01:15 2025 -0400
+
+    css
+
+[33mcommit b8db7653f0ba8c9fce1073d0c057d9cbb7635e98[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 17:44:33 2025 -0400
+
+    haha
+
+[33mcommit 8e06b6686ae3b07ad95c38b1d0bd9ed45eb2355c[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 17:01:36 2025 -0400
+
+    对话框简洁
+
+[33mcommit c470ca31981707fc17af4f8eb915681a1265af9d[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 16:58:12 2025 -0400
+
+    对话框转移
+
+[33mcommit 49ec8641b06f59886e087258de4f77803281765b[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 15:55:38 2025 -0400
+
+    对话框转移
+
+[33mcommit 5d74b6eb08e557af8fbae17b10a857de3137214a[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 15:25:57 2025 -0400
+
+    avatar
+
+[33mcommit fd00524877f2ce61c238918f4d239a7c19c2ce5f[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 14:45:04 2025 -0400
+
+    avatar
+
+[33mcommit 8039327d84110af325f4874e8192a456c339874a[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 03:25:16 2025 -0400
+
+    avatar
+
+[33mcommit 8733c32862b3de2c7c7ca8b0aab49ad74490735d[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 00:38:05 2025 -0400
+
+    avatar
+
+[33mcommit fd10eb71f4abf9aa772a797d5aa7aba0e344ebe4[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Thu Apr 24 00:13:15 2025 -0400
+
+    avatar
+
+[33mcommit db9bf2fe5ccde5e989447561919f0ee22f37f2b3[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 23:53:45 2025 -0400
+
+    avatar
+
+[33mcommit 457eaebad84646941a22847e1d78cccaa66e16e8[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 23:51:50 2025 -0400
+
+    avatar
+
+[33mcommit c49ca7898e459bd6b9d0e60e1f7fb942c8570d0c[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 23:42:59 2025 -0400
+
+    avatar
+
+[33mcommit 9bb11db08eaf32b84e59c836ee6adcb3b35703ed[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 23:38:11 2025 -0400
+
+    avatar
+
+[33mcommit 9aefc76184ecb9530639c36a71d9b25ada083850[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 23:03:15 2025 -0400
+
+    avatar
+
+[33mcommit 86be709f7ddf77a0c41c35215bccf9fbacf74965[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 21:42:27 2025 -0400
+
+    gradient color
+
+[33mcommit ca7c6dd6b741d095e59c6fa564f65e85fb75313f[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 21:38:11 2025 -0400
+
+    loader
+
+[33mcommit af04b48b97caee7d53f31af0c1183a37170d2316[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 21:31:44 2025 -0400
+
+    tools
+
+[33mcommit 042b6df32ed37d0d80db363df52b388783d75283[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 21:31:05 2025 -0400
+
+    loader
+
+[33mcommit df7cc74f397e055ba00fbc3d30d6b06b20706872[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 21:28:04 2025 -0400
+
+    loader
+
+[33mcommit 6f5506b3333437678f3fecdbf77ea507ec986b01[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Wed Apr 23 20:26:54 2025 -0400
+
+    chat interface
+
+[33mcommit d272088e429d9c63387d7251ef20499b5c941961[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:58:55 2025 -0500
+
+    messages
+
+[33mcommit 7e06f85db31adb73366134742896c44de0ca0e31[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:49:05 2025 -0500
+
+    messages
+
+[33mcommit b941091d6cdfa15b7dd0084bced4cd239e8e4702[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:40:43 2025 -0500
+
+    messages
+
+[33mcommit 76e6af5946911018e12a4a181807b71f294170ff[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:20:06 2025 -0500
+
+    messages
+
+[33mcommit 072346e3c4974e70bc5ccec76da5d4e67b48dc41[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:15:36 2025 -0500
+
+    messages
+
+[33mcommit ad8b6e95990c590ebcf4e249896288fbaa3755dc[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:08:02 2025 -0500
+
+    messages
+
+[33mcommit 6fad50a6ad87610663dd458397f6192b325f77c4[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 17:03:29 2025 -0500
+
+    likes
+
+[33mcommit dcc772aa98409339174fb570638a4e4b0afaa94f[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 14:53:58 2025 -0500
+
+    likes
+
+[33mcommit 26eb8187d0ded5b6e1d40959015d1f198ba749ad[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 14:45:11 2025 -0500
+
+    likes
+
+[33mcommit e439fc32d932a3932af9c9af7388b59cb6ca4801[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Date:   Tue Apr 22 14:39:36 2025 -0500
+
+    likes
+
+[33mcommit 8cc89ea34a7a9eb8a074456e3e7834d49078b4bc[m
+Author: Yuting Wang <yw4554@nyu.edu>
+Da
