@@ -58,3 +58,9 @@ API文档可以在 http://localhost:8083/api/swagger-ui.html 上找到（服务�
 
 
 花时间 20h 
+
+
+
+
+npm install -g serve
+serve -s dist -l 3010
