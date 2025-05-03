@@ -64,8 +64,13 @@ const routes = [
   }
 ]
 
+// const router = createRouter({
+//   history: createWebHistory(process.env.BASE_URL),
+//   routes
+// })
+
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory('/community'), // 直接写 '/community'
   routes
 })
 
