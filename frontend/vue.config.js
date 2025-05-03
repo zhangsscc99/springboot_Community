@@ -1,6 +1,6 @@
 module.exports = {
   // 部署应用包时的基本 URL
-  publicPath: '/',
+  publicPath: '/community/',
   
   // 开发服务器配置 - 只保留最基本的部分
   devServer: {
