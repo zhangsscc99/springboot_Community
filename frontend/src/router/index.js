@@ -70,7 +70,7 @@ const routes = [
 // })
 
 const router = createRouter({
-  history: createWebHistory('/community'), // 直接写 '/community'
+  history: createWebHistory(), // 直接写 '/community'
   routes
 })
 
