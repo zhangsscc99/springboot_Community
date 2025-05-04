@@ -271,7 +271,7 @@ export default {
               
               // 检查是否已关注
               const followResponse = await apiService.users.checkFollowing(user.id);
-              return { ...user, isFollowing: followResponse.data };
+              return { ...user, isFollowing: followResponse.data.following };
             } catch (error) {
               console.error(`检查关注状态失败，用户ID: ${user.id}`, error);
               return { ...user, isFollowing: false };
