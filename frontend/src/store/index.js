@@ -119,22 +119,30 @@ export default createStore({
     UPDATE_POST_FIELD(state, { postId, field, value }) {
       // 更新缓存
       if (state.postCache[postId]) {
-        state.postCache[postId][field] = value;
+        state.postCache[postId][field] = typeof value === 'function' 
+          ? value(state.postCache[postId]) 
+          : value;
       }
       // 更新当前帖子
       if (state.currentPost && state.currentPost.id === postId) {
-        state.currentPost[field] = value;
+        state.currentPost[field] = typeof value === 'function' 
+          ? value(state.currentPost) 
+          : value;
       }
       // 更新列表中的帖子
       const postInList = state.posts.find(p => p.id === postId);
       if (postInList) {
-        postInList[field] = value;
+        postInList[field] = typeof value === 'function' 
+          ? value(postInList) 
+          : value;
       }
       // 更新标签页中的帖子
       Object.keys(state.tabPosts).forEach(tab => {
         const post = state.tabPosts[tab].find(p => p.id === postId);
         if (post) {
-          post[field] = value;
+          post[field] = typeof value === 'function' 
+            ? value(post) 
+            : value;
         }
       });
     },

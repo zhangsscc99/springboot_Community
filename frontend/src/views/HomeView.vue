@@ -65,8 +65,6 @@
           </div>
           <div class="post-info">
             <i class="fas fa-eye"></i> {{ post.views || 0 }}
-            <span class="post-time-separator">•</span>
-            <span class="post-time">{{ formatDate(post.created_at) }}</span>
           </div>
         </div>
       </div>
@@ -278,19 +276,15 @@ export default {
       
       // 保存初始状态，以便操作失败时恢复
       const originalLikeStatus = post.likedByCurrentUser;
-      const originalLikeCount = post.likes || 0;
       
       try {
         // 设置处理中状态，防止重复点击 - 使用Vue兼容的赋值方式
         this.isProcessingLike = { ...this.isProcessingLike, [post.id]: true };
         
-        // 立即乐观更新界面状态（不等待API响应）
+        // 更新UI状态以提供即时反馈，但不更新数据
         post.likedByCurrentUser = !originalLikeStatus;
-        post.likes = post.likedByCurrentUser 
-          ? (originalLikeCount + 1) 
-          : Math.max(0, originalLikeCount - 1);
         
-        // 异步发送API请求
+        // 异步发送API请求 - 让Vuex处理数据更新
         if (post.likedByCurrentUser) {
           // 点赞
           await this.likePost(post.id);
@@ -302,7 +296,6 @@ export default {
         console.error('点赞操作失败:', error);
         // 操作失败时，恢复原始状态
         post.likedByCurrentUser = originalLikeStatus;
-        post.likes = originalLikeCount;
       } finally {
         // 无论成功失败，都要重置处理中状态 - 使用Vue兼容的赋值方式
         this.isProcessingLike = { ...this.isProcessingLike, [post.id]: false };
@@ -325,19 +318,15 @@ export default {
       
       // 保存初始状态，以便操作失败时恢复
       const originalFavoriteStatus = post.favoritedByCurrentUser;
-      const originalFavoriteCount = post.favorites || 0;
       
       try {
         // 设置处理中状态，防止重复点击 - 使用Vue兼容的赋值方式
         this.isProcessingFavorite = { ...this.isProcessingFavorite, [post.id]: true };
         
-        // 立即乐观更新界面状态（不等待API响应）
+        // 更新UI状态以提供即时反馈，但不更新数据
         post.favoritedByCurrentUser = !originalFavoriteStatus;
-        post.favorites = post.favoritedByCurrentUser 
-          ? (originalFavoriteCount + 1) 
-          : Math.max(0, originalFavoriteCount - 1);
         
-        // 异步发送API请求
+        // 异步发送API请求 - 让Vuex处理数据更新
         if (post.favoritedByCurrentUser) {
           // 收藏
           await this.favoritePost(post.id);
@@ -349,7 +338,6 @@ export default {
         console.error('收藏操作失败:', error);
         // 操作失败时，恢复原始状态
         post.favoritedByCurrentUser = originalFavoriteStatus;
-        post.favorites = originalFavoriteCount;
       } finally {
         // 无论成功失败，都要重置处理中状态 - 使用Vue兼容的赋值方式
         this.isProcessingFavorite = { ...this.isProcessingFavorite, [post.id]: false };
@@ -623,6 +611,9 @@ export default {
   border-top: 1px solid var(--border-color);
   color: var(--light-text-color);
   font-size: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .post-actions {
@@ -656,17 +647,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.post-time {
-  font-size: 12px;
-  color: var(--light-text-color);
-}
-
-.post-time-separator {
-  margin: 0 2px;
-  color: var(--light-text-color);
-  opacity: 0.8;
 }
 
 .loading-indicator,
@@ -749,5 +729,21 @@ export default {
 /* 移除调试按钮样式 */
 .debug-button {
   display: none; /* 先隐藏，之后可以完全删除 */
+}
+
+/* 在小屏幕上保持良好的布局 */
+@media (max-width: 480px) {
+  .post-footer {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .post-actions {
+    gap: 10px;
+  }
+  
+  .post-action {
+    padding: 4px 8px;
+  }
 }
 </style> 
