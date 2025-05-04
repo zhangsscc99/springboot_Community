@@ -24,6 +24,7 @@ import javax.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,12 +47,11 @@ public class AuthController {
     @Autowired
     JwtUtils jwtUtils;
 
-    @PostMapping("/login")
+    @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
-                
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
         
@@ -60,12 +60,28 @@ public class AuthController {
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                                                 userDetails.getId(),
-                                                 userDetails.getUsername(),
-                                                 userDetails.getEmail(),
-                                                 userDetails.getAvatar(),
-                                                 roles));
+        // 获取更完整的用户信息
+        Optional<User> userOpt = userRepository.findById(userDetails.getId());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            JwtResponse response = new JwtResponse(jwt,
+                                                userDetails.getId(),
+                                                userDetails.getUsername(),
+                                                userDetails.getEmail(),
+                                                user.getAvatar(),
+                                                roles);
+            // 设置昵称
+            response.setNickname(user.getNickname());
+            return ResponseEntity.ok(response);
+        } else {
+            // 如果找不到用户（极少发生），则使用默认数据返回
+            return ResponseEntity.ok(new JwtResponse(jwt,
+                                                userDetails.getId(),
+                                                userDetails.getUsername(),
+                                                userDetails.getEmail(),
+                                                null, // 没有头像
+                                                roles));
+        }
     }
 
     @PostMapping("/register")

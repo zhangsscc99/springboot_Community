@@ -25,8 +25,8 @@
           :username="profileName"
           class="profile-avatar-component"
         />
-        <h1 class="profile-name">{{ profileName }}</h1>
-        <div class="profile-userid">ID: {{ profileId }}</div>
+        <h1 class="profile-name">{{ profileNickname || defaultNickname }}</h1>
+        <div class="profile-userid">锦书号: {{ profileName }}</div>
         
         <div class="profile-stats">
           <div class="stat-item" @click="openFollowingList">
@@ -197,6 +197,10 @@
             <input type="text" v-model="editForm.username" disabled class="form-control" />
           </div>
           <div class="form-group">
+            <label>昵称</label>
+            <input type="text" v-model="editForm.nickname" class="form-control" placeholder="设置一个昵称" />
+          </div>
+          <div class="form-group">
             <label>头像</label>
             <input type="text" v-model="editForm.avatar" class="form-control" placeholder="输入头像URL地址" />
           </div>
@@ -275,6 +279,7 @@ export default {
       profileId: this.$route.params.id,
       currentUserId: parseInt(localStorage.getItem('userId')) || null,
       profileName: '',
+      profileNickname: '',
       profileBio: '',
       profileAvatar: '',
       activeTab: 'posts',
@@ -288,6 +293,7 @@ export default {
       showEditModal: false,
       editForm: {
         username: '',
+        nickname: '',
         avatar: '',
         bio: '',
         email: ''
@@ -320,6 +326,9 @@ export default {
     }),
     formattedProfileBio() {
       return this.profileBio || '这个人很懒，还没有介绍自己...';
+    },
+    defaultNickname() {
+      return this.profileName ? `锦书用户_${this.profileName}` : '锦书用户';
     },
     isCurrentUser() {
       if (!this.isAuthenticated || !this.currentUser) {
@@ -358,6 +367,7 @@ export default {
     resetData() {
       // 重置所有数据状态
       this.profileName = '';
+      this.profileNickname = '';
       this.profileBio = '';
       this.profileAvatar = '';
       this.activeTab = 'posts';
@@ -382,6 +392,7 @@ export default {
           console.log('使用缓存的用户信息数据');
           // 使用缓存数据
           this.profileName = cachedProfile.username;
+          this.profileNickname = cachedProfile.nickname || '';
           this.profileBio = cachedProfile.bio || '';
           this.profileAvatar = cachedProfile.avatar;
           this.followerCount = cachedProfile.followerCount || 0;
@@ -424,6 +435,7 @@ export default {
         
         // 更新用户信息
         this.profileName = userData.username;
+        this.profileNickname = userData.nickname || '';
         this.profileBio = userData.bio || '';
         this.profileAvatar = userData.avatar;
         
@@ -433,6 +445,7 @@ export default {
         // 缓存用户数据
         const profileData = {
           username: userData.username,
+          nickname: userData.nickname || '',
           bio: userData.bio || '',
           avatar: userData.avatar,
           followerCount: this.followerCount,
@@ -665,6 +678,7 @@ export default {
     openEditModal() {
       this.editForm = {
         username: this.profileName,
+        nickname: this.profileNickname,
         avatar: this.profileAvatar,
         bio: this.profileBio,
         email: ''
@@ -680,12 +694,14 @@ export default {
         
         await apiService.users.updateProfile(this.profileId, {
           avatar: this.editForm.avatar,
-          bio: this.editForm.bio
+          bio: this.editForm.bio,
+          nickname: this.editForm.nickname
         });
         
         // 立即更新本地数据
         this.profileAvatar = this.editForm.avatar;
-        this.profileBio = this.editForm.bio; // 更新 data 中的 profileBio
+        this.profileBio = this.editForm.bio;
+        this.profileNickname = this.editForm.nickname;
         
         // 更新缓存
         const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
@@ -694,6 +710,7 @@ export default {
         // 重新缓存用户资料
         const profileData = {
           username: this.profileName,
+          nickname: this.profileNickname,
           bio: this.profileBio,
           avatar: this.profileAvatar,
           followerCount: this.followerCount,
@@ -769,6 +786,7 @@ export default {
         // 更新用户资料缓存
         const profileData = {
           username: this.profileName,
+          nickname: this.profileNickname,
           bio: this.profileBio,
           avatar: this.profileAvatar,
           followerCount: this.followerCount,
@@ -994,7 +1012,7 @@ export default {
 .profile-userid {
   font-size: 14px;
   color: var(--light-text-color);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .profile-stats {

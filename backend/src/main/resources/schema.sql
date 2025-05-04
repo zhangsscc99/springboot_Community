@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
+    nickname VARCHAR(50),
     avatar VARCHAR(255),
     bio TEXT,
     role VARCHAR(20) DEFAULT 'USER',

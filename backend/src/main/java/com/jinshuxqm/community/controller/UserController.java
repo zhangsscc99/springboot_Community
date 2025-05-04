@@ -42,6 +42,7 @@ public class UserController {
                     Map<String, Object> response = new HashMap<>();
                     response.put("id", user.getId());
                     response.put("username", user.getUsername());
+                    response.put("nickname", user.getNickname());
                     response.put("email", user.getEmail());
                     response.put("avatar", user.getAvatar());
                     response.put("bio", user.getBio());
@@ -154,6 +155,11 @@ public class UserController {
                 user.setBio(profileData.get("bio"));
             }
             
+            // 更新昵称
+            if (profileData.containsKey("nickname")) {
+                user.setNickname(profileData.get("nickname"));
+            }
+            
             // 不再更新邮箱
             
             // 保存更新
@@ -163,6 +169,7 @@ public class UserController {
             Map<String, Object> response = new HashMap<>();
             response.put("id", updatedUser.getId());
             response.put("username", updatedUser.getUsername());
+            response.put("nickname", updatedUser.getNickname());
             response.put("avatar", updatedUser.getAvatar());
             response.put("bio", updatedUser.getBio());
             

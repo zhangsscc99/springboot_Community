@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class UserDTO {
     private Long id;
     private String username;
+    private String nickname;
     private String avatar;
     private String email;
     private String bio;
@@ -23,6 +24,7 @@ public class UserDTO {
         return UserDTO.builder()
             .id(user.getId())
             .username(user.getUsername())
+            .nickname(user.getNickname())
             .avatar(user.getAvatar())
             .email(user.getEmail())
             .bio(user.getBio())
