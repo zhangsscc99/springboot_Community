@@ -273,6 +273,7 @@ export default createStore({
         const userInfo = {
           id: data.id,
           username: data.username,
+          nickname: data.nickname,
           email: data.email,
           avatar: data.avatar,
           token: token,

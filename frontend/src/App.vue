@@ -31,7 +31,7 @@
           <button class="btn btn-primary" @click="goToRegister">注册</button>
         </div>
         <div v-else class="user-info">
-          <span class="username">{{ currentUser?.username || 'User' }}</span>
+          <span class="username">{{ currentUser?.nickname || currentUser?.username || 'User' }}</span>
           <button class="btn" @click="logout">退出</button>
         </div>
       </div>

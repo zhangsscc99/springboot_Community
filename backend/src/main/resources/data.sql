@@ -3,6 +3,9 @@ INSERT INTO roles (name) VALUES ('ROLE_USER');
 INSERT INTO roles (name) VALUES ('ROLE_MODERATOR');
 INSERT INTO roles (name) VALUES ('ROLE_ADMIN');
 
+-- 确保nickname字段存在
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(50) AFTER email;
+
 -- 创建管理员用户（密码：admin123）
 INSERT INTO users (username, email, password, nickname, avatar, bio, created_at, updated_at) 
 VALUES ('admin', 'admin@jinshuxqm.com', '$2a$10$ixWPJBRz9Bvh0Eus1/2G6.WvFqEONFtkwUdwDe7/LX9FiAQkgCdSG', 
