@@ -30,14 +30,31 @@
         </div>
 
         <div v-else class="message-list">
-          <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper" :data-sender="isOwnMessage(message) ? 'own' : 'other'" :data-message-id="message.id">
+          <div 
+            v-for="(message, index) in messages" 
+            :key="message.id" 
+            class="message-wrapper" 
+            :data-sender="isOwnMessage(message) ? 'own' : 'other'" 
+            :data-message-id="message.id"
+            v-show="!message.hidden"
+          >
             <div v-if="shouldShowDateDivider(message, index)" class="date-divider">
               {{ formatDate(message.createdAt) }}
             </div>
             <div v-if="shouldShowTimeDisplay(message, index)" class="time-display">
               {{ formatMessageTime(message.createdAt) }}
             </div>
-            <div class="message" :class="{ 'own': isOwnMessage(message) }">
+            <div 
+              class="message" 
+              :class="{ 'own': isOwnMessage(message) }"
+              @touchstart="startLongPress(message, $event)"
+              @touchend="cancelLongPress"
+              @touchmove="cancelLongPress"
+              @mousedown="startLongPress(message, $event)"
+              @mouseup="cancelLongPress"
+              @mouseleave="cancelLongPress"
+              @contextmenu="handleRightClick(message, $event)"
+            >
               <div class="avatar" v-if="!isOwnMessage(message)">
                 <UserAvatar 
                   :src="message.senderAvatar || partnerAvatar || 'https://via.placeholder.com/35/CCCCCC/666666/?text=?'" 
@@ -68,6 +85,22 @@
         </div>
       </div>
     </div>
+
+    <!-- 消息操作菜单 -->
+    <div class="message-actions-menu" v-if="showActionsMenu" :style="menuPosition">
+      <div class="menu-item delete" @click="deleteMessage">
+        <i class="fas fa-trash"></i> 删除消息
+      </div>
+      <div class="menu-item hide" @click="hideMessage">
+        <i class="fas fa-eye-slash"></i> 不再显示
+      </div>
+      <div class="menu-item cancel" @click="closeActionsMenu">
+        <i class="fas fa-times"></i> 取消
+      </div>
+    </div>
+    
+    <!-- 遮罩层 - 点击空白区域关闭菜单 -->
+    <div class="menu-overlay" v-if="showActionsMenu" @click="closeActionsMenu"></div>
 
     <div class="chat-input-bar">
       <div class="chat-input-container">
@@ -119,7 +152,15 @@ export default {
       size: 20,
       hasMoreMessages: false,
       userAvatar: '',
-      eventSource: null
+      eventSource: null,
+      longPressTimeout: null,
+      showActionsMenu: false,
+      selectedMessage: null,
+      menuPosition: {
+        top: '0px',
+        left: '0px'
+      },
+      longPressDuration: 500, // 长按时间，单位毫秒
     };
   },
   created() {
@@ -160,6 +201,12 @@ export default {
     if (input) {
       input.focus();
     }
+    
+    // 添加全局键盘事件监听器，按下Escape键关闭菜单
+    window.addEventListener('keydown', this.handleKeyDown);
+    
+    // 添加全局点击监听器，点击消息外区域关闭菜单
+    window.addEventListener('click', this.handleGlobalClick);
     
     // 检查用户头像
     console.log('[Debug] 界面挂载时的用户头像:', this.userAvatar);
@@ -207,6 +254,10 @@ export default {
     this.closeSseConnection();
     // Mark messages as read when leaving
     this.markAsRead();
+    
+    // 移除全局事件监听器
+    window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('click', this.handleGlobalClick);
   },
   methods: {
     loadUserInfo() {
@@ -364,9 +415,10 @@ export default {
         // Clear input right away for better UX
         this.newMessage = '';
         
-        // Scroll to the new message
+        // 使用平滑滚动到新消息
         this.$nextTick(() => {
-          this.scrollToBottom();
+          this.scrollToBottom(true); // 这里传入true启用平滑滚动
+          
           // Focus input for continuous typing
           const input = document.querySelector('.chat-input');
           if (input) {
@@ -456,9 +508,9 @@ export default {
         this.messages.push(message);
         // Mark as read
         this.markAsRead();
-        // Scroll to bottom
+        // 使用平滑滚动效果滚动到底部
         this.$nextTick(() => {
-          this.scrollToBottom();
+          this.scrollToBottom(true);
         });
         
         // 更新该用户的消息历史缓存
@@ -570,11 +622,24 @@ export default {
       // 比较消息发送者 ID 与当前用户 ID
       return String(message.senderId) === String(currentUserId);
     },
-    scrollToBottom() {
+    scrollToBottom(smooth = false) {
       const chatBody = document.querySelector('.chat-body');
       if (chatBody) {
         this.$nextTick(() => {
+          // 如果需要平滑滚动，添加平滑滚动样式
+          if (smooth) {
+            chatBody.style.scrollBehavior = 'smooth';
+          }
+          
           chatBody.scrollTop = chatBody.scrollHeight;
+          
+          // 如果启用了平滑滚动，滚动完成后恢复默认
+          if (smooth) {
+            // 等待滚动动画完成后恢复默认滚动行为
+            setTimeout(() => {
+              chatBody.style.scrollBehavior = 'auto';
+            }, 500); // 500ms应该足够完成大多数滚动动画
+          }
         });
       }
     },
@@ -697,6 +762,163 @@ export default {
             console.error('[Debug] 路由导航错误:', err);
           }
         });
+    },
+    // 开始长按计时
+    startLongPress(message, event) {
+      // 清除任何现有的计时器
+      this.cancelLongPress();
+      
+      // 创建新的长按计时器
+      this.longPressTimeout = setTimeout(() => {
+        this.handleLongPress(message, event);
+      }, this.longPressDuration);
+    },
+    
+    // 取消长按
+    cancelLongPress() {
+      if (this.longPressTimeout) {
+        clearTimeout(this.longPressTimeout);
+        this.longPressTimeout = null;
+      }
+    },
+    
+    // 处理长按事件
+    handleLongPress(message, event) {
+      // 获取触摸/鼠标位置
+      const posX = event.touches ? event.touches[0].clientX : event.clientX;
+      const posY = event.touches ? event.touches[0].clientY : event.clientY;
+      
+      // 保存选中的消息
+      this.selectedMessage = message;
+      
+      // 设置菜单位置 - 根据窗口大小调整
+      const menuWidth = 150; // 预估菜单宽度
+      const menuHeight = 150; // 预估菜单高度
+      
+      // 确保菜单不会超出屏幕边界
+      let left = posX;
+      let top = posY;
+      
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 10;
+      }
+      
+      if (top + menuHeight > window.innerHeight) {
+        top = window.innerHeight - menuHeight - 10;
+      }
+      
+      // 设置菜单位置
+      this.menuPosition = {
+        left: `${left}px`,
+        top: `${top}px`
+      };
+      
+      // 显示操作菜单
+      this.showActionsMenu = true;
+    },
+    
+    // 关闭操作菜单
+    closeActionsMenu() {
+      this.showActionsMenu = false;
+      this.selectedMessage = null;
+    },
+    
+    // 删除消息（从历史记录中永久删除）
+    async deleteMessage() {
+      if (!this.selectedMessage) return;
+      
+      try {
+        // 调用后端删除消息API
+        await MessageService.deleteMessage(this.selectedMessage.id);
+        
+        // 从本地列表中移除消息
+        const index = this.messages.findIndex(m => m.id === this.selectedMessage.id);
+        if (index !== -1) {
+          this.messages.splice(index, 1);
+        }
+        
+        // 关闭菜单
+        this.closeActionsMenu();
+      } catch (error) {
+        console.error('删除消息失败:', error);
+        alert('删除消息失败，请稍后重试');
+      }
+    },
+    
+    // 隐藏消息（仅本地隐藏，不删除历史记录）
+    hideMessage() {
+      if (!this.selectedMessage) return;
+      
+      // 标记消息为隐藏
+      const index = this.messages.findIndex(m => m.id === this.selectedMessage.id);
+      if (index !== -1) {
+        // Vue reactive update
+        this.$set(this.messages[index], 'hidden', true);
+      }
+      
+      // 关闭菜单
+      this.closeActionsMenu();
+    },
+    handleRightClick(message, event) {
+      // 阻止默认的浏览器右键菜单
+      event.preventDefault();
+      
+      // 获取右键点击的位置
+      const posX = event.clientX;
+      const posY = event.clientY;
+      
+      // 保存选中的消息
+      this.selectedMessage = message;
+      
+      // 设置菜单位置 - 根据窗口大小调整
+      const menuWidth = 150; // 预估菜单宽度
+      const menuHeight = 150; // 预估菜单高度
+      
+      // 确保菜单不会超出屏幕边界
+      let left = posX;
+      let top = posY;
+      
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 10;
+      }
+      
+      if (top + menuHeight > window.innerHeight) {
+        top = window.innerHeight - menuHeight - 10;
+      }
+      
+      // 设置菜单位置
+      this.menuPosition = {
+        left: `${left}px`,
+        top: `${top}px`
+      };
+      
+      // 显示操作菜单
+      this.showActionsMenu = true;
+      
+      return false; // 阻止事件进一步传播
+    },
+    // 处理全局键盘事件
+    handleKeyDown(event) {
+      // 如果按下Escape键，关闭菜单
+      if (event.key === 'Escape' && this.showActionsMenu) {
+        this.closeActionsMenu();
+      }
+    },
+    
+    // 处理全局点击事件
+    handleGlobalClick(event) {
+      // 如果菜单显示中，并且点击的不是菜单或消息元素，则关闭菜单
+      if (this.showActionsMenu) {
+        // 检查点击的元素是否在菜单内
+        const menuEl = document.querySelector('.message-actions-menu');
+        if (menuEl && !menuEl.contains(event.target)) {
+          // 检查点击的元素是否是消息
+          const messageEl = event.target.closest('.message');
+          if (!messageEl) {
+            this.closeActionsMenu();
+          }
+        }
+      }
     }
   }
 };
@@ -852,6 +1074,8 @@ export default {
   position: relative;
   margin-bottom: 20px;
   padding-bottom: 10px;
+  touch-action: none; /* 防止浏览器默认行为干扰长按事件 */
+  user-select: none; /* 防止长按选择文本 */
 }
 
 .message-content {
@@ -1276,5 +1500,85 @@ body {
 .message:not(.own) .avatar:hover {
   transform: scale(1.05);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* 消息操作菜单样式 */
+.message-actions-menu {
+  position: fixed;
+  z-index: 1000;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  width: 150px;
+  overflow: hidden;
+  animation: menu-appear 0.15s ease-out;
+}
+
+@keyframes menu-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.menu-item {
+  padding: 12px 16px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.menu-item i {
+  margin-right: 10px;
+  width: 16px;
+  text-align: center;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+  transform: translateX(2px);
+}
+
+.menu-item:active {
+  background-color: #ebebeb;
+  transform: translateX(0) scale(0.98);
+}
+
+.menu-item.delete {
+  color: #ff3b30;
+}
+
+.menu-item.delete:hover {
+  background-color: #ffebeb;
+}
+
+.menu-item.hide {
+  color: #ff9500;
+}
+
+.menu-item.hide:hover {
+  background-color: #fff8eb;
+}
+
+.menu-item.cancel {
+  color: #8e8e93;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* 遮罩层样式 */
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+  z-index: 999;
 }
 </style> 

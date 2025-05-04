@@ -303,6 +303,34 @@ class MessageService {
   }
 
   /**
+   * 删除指定的消息
+   * @param {string|number} messageId 要删除的消息ID
+   * @returns {Promise} 删除操作的Promise
+   */
+  deleteMessage(messageId) {
+    if (!messageId) {
+      return Promise.reject(new Error('消息ID不能为空'));
+    }
+    
+    console.log(`删除消息: ${messageId}`);
+    return axios.delete(`${MESSAGES_API}/${messageId}`, { headers: authHeader() })
+      .then(response => {
+        // 删除成功后，清除相关缓存
+        this.clearConversationsCache(); // 会话列表可能会变化
+        
+        // 因为不知道这条消息是哪个会话的，所以无法清除特定会话的缓存
+        // 为安全起见，清除所有消息历史缓存
+        this.clearAllMessageHistoryCache();
+        
+        return response;
+      })
+      .catch(error => {
+        console.error('删除消息失败:', error);
+        throw error;
+      });
+  }
+
+  /**
    * 创建SSE连接，用于接收实时消息
    * @returns {EventSource} 事件源对象
    */
