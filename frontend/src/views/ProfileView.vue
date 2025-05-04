@@ -497,20 +497,37 @@ export default {
       this.$router.push('/');
     },
     formatDate(dateString) {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffInSeconds = Math.floor((now - date) / 1000);
+      if (!dateString) return '未知时间';
       
-      if (diffInSeconds < 60) {
-        return '刚刚';
-      } else if (diffInSeconds < 3600) {
-        return Math.floor(diffInSeconds / 60) + '分钟前';
-      } else if (diffInSeconds < 86400) {
-        return Math.floor(diffInSeconds / 3600) + '小时前';
-      } else if (diffInSeconds < 604800) {
-        return Math.floor(diffInSeconds / 86400) + '天前';
-      } else {
-        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      try {
+        const date = new Date(dateString);
+        
+        // 检查日期是否有效
+        if (isNaN(date.getTime())) {
+          console.warn('无效的日期字符串:', dateString);
+          return '未知时间';
+        }
+        
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+      
+        if (diffInSeconds < 60) {
+          return '刚刚';
+        } else if (diffInSeconds < 3600) {
+          return Math.floor(diffInSeconds / 60) + '分钟前';
+        } else if (diffInSeconds < 86400) {
+          return Math.floor(diffInSeconds / 3600) + '小时前';
+        } else if (diffInSeconds < 604800) {
+          return Math.floor(diffInSeconds / 86400) + '天前';
+        } else {
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          const day = date.getDate();
+          return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
+        }
+      } catch (error) {
+        console.error('日期格式化错误:', error, '原始日期字符串:', dateString);
+        return '未知时间';
       }
     },
     goToPostDetail(postId) {
