@@ -4,14 +4,6 @@
       <button class="back-button" @click="goBack">
         <i class="fas fa-arrow-left"></i>
       </button>
-      <div class="profile-header-actions">
-        <button class="action-button">
-          <i class="fas fa-share-alt"></i>
-        </button>
-        <button class="action-button">
-          <i class="fas fa-ellipsis-h"></i>
-        </button>
-      </div>
     </div>
     
     <div v-if="loading" class="loading-indicator">
@@ -1238,19 +1230,6 @@ export default {
 }
 
 .back-button {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--text-color);
-}
-
-.profile-header-actions {
-  display: flex;
-  gap: 15px;
-}
-
-.action-button {
   background: none;
   border: none;
   font-size: 18px;
