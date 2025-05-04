@@ -26,8 +26,16 @@
         <div class="post-user-info">
           <h4 class="post-username">{{ post.author.username }}</h4>
         </div>
-        <button class="follow-button">
-          <i class="fas fa-plus"></i> 关注
+        <button 
+          class="follow-button" 
+          :class="{ 'following': isFollowingAuthor, 'loading': followLoading }" 
+          @click="toggleFollowAuthor"
+          v-if="isAuthenticated && !isAuthor">
+          <i v-if="followLoading" class="fas fa-spinner fa-spin"></i>
+          <template v-else>
+            <i :class="isFollowingAuthor ? 'fas fa-check' : 'fas fa-plus'"></i>
+            {{ isFollowingAuthor ? '已关注' : '关注' }}
+          </template>
         </button>
       </div>
       
@@ -229,6 +237,10 @@ export default {
       isProcessingFavorite: false,  // 收藏操作进行中标志
       debounceTimer: null,  // 防抖定时器
       
+      // 关注相关
+      isFollowingAuthor: false,
+      followLoading: false,
+      
       // 评论相关
       commentLoading: false,
       commentsLoading: false,
@@ -282,7 +294,10 @@ export default {
       'createComment',
       'fetchComments',
       'deleteComment',
-      'likeComment'
+      'likeComment',
+      'followUser',
+      'unfollowUser',
+      'getUserFollowState'
     ]),
     async fetchPost() {
       this.loading = true;
@@ -307,6 +322,9 @@ export default {
         if (this.isAuthenticated) {
           this.isLiked = this.post.likedByCurrentUser || false;
           this.isFavorited = this.post.favoritedByCurrentUser || false;
+          
+          // 如果已登录，检查是否关注了作者
+          await this.checkFollowStatus();
         }
         
         // 获取评论 - 可以考虑也为评论添加缓存机制
@@ -320,6 +338,77 @@ export default {
         this.loading = false;
       }
     },
+    // 检查是否关注了帖子作者
+    async checkFollowStatus() {
+      if (!this.isAuthenticated || !this.post || !this.post.author) {
+        return;
+      }
+      
+      // 如果是自己的帖子，不需要检查关注状态
+      if (this.isAuthor) {
+        return;
+      }
+      
+      try {
+        this.followLoading = true;
+        const authorId = this.post.author.id;
+        
+        // 使用getUserFollowState检查关注状态
+        const response = await this.getUserFollowState(authorId);
+        this.isFollowingAuthor = response.isFollowing || false;
+        
+        console.log(`用户关注状态: ${this.isFollowingAuthor ? '已关注' : '未关注'} 作者ID: ${authorId}`);
+      } catch (error) {
+        console.error('获取关注状态失败:', error);
+      } finally {
+        this.followLoading = false;
+      }
+    },
+    
+    // 关注/取消关注作者
+    async toggleFollowAuthor() {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login?redirect=' + this.$route.fullPath);
+        return;
+      }
+      
+      // 如果正在加载，不执行操作
+      if (this.followLoading) {
+        return;
+      }
+      
+      const authorId = this.post.author.id;
+      
+      // 保存当前状态，以便操作失败时恢复
+      const originalFollowState = this.isFollowingAuthor;
+      
+      try {
+        this.followLoading = true;
+        
+        // 立即更新UI状态（乐观更新）
+        this.isFollowingAuthor = !originalFollowState;
+        
+        // 在后台发送API请求
+        if (this.isFollowingAuthor) {
+          // 关注
+          await this.followUser(authorId);
+          console.log(`已关注用户: ${authorId}`);
+        } else {
+          // 取消关注
+          await this.unfollowUser(authorId);
+          console.log(`已取消关注用户: ${authorId}`);
+        }
+      } catch (error) {
+        console.error('切换关注状态失败:', error);
+        
+        // 如果API请求失败，恢复原始状态
+        this.isFollowingAuthor = originalFollowState;
+        alert('操作失败，请稍后再试');
+      } finally {
+        this.followLoading = false;
+      }
+    },
+    
     // 处理点赞
     async handleLike() {
       // 检查用户登录状态
@@ -866,6 +955,11 @@ export default {
       // 只有当帖子成功加载后才加载评论
       if (this.post && this.post.id) {
         await this.loadComments();
+        
+        // 确保我们有最新的关注状态
+        if (this.isAuthenticated && this.post.author && !this.isAuthor) {
+          await this.checkFollowStatus();
+        }
       } else {
         console.log('帖子数据未加载，跳过评论加载');
       }
@@ -999,10 +1093,64 @@ export default {
   color: white;
   font-size: 12px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  position: relative;
+  overflow: hidden;
 }
 
 .follow-button i {
   margin-right: 4px;
+  transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.follow-button:active i {
+  transform: scale(1.3);
+}
+
+.follow-button.following {
+  background-image: none;
+  background-color: #f0f2f5;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.follow-button.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.follow-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.follow-button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.follow-button.following:hover {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.follow-button.following:hover i {
+  display: none;
+}
+
+.follow-button.following:hover::after {
+  content: '取消关注';
 }
 
 .post-title {
