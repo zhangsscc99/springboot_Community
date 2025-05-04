@@ -196,6 +196,7 @@ export default {
       currentSearchTerm: '',
       activeTab: 'posts',
       currentUserId: parseInt(localStorage.getItem('userId')) || null,
+      returnFromProfile: false,
     };
   },
   computed: {
@@ -353,7 +354,27 @@ export default {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
     },
     goToUserProfile(userId) {
-      this.$router.push({ name: 'profile', params: { id: userId } });
+      // 设置标志，表示此次查看用户是从搜索结果点击的
+      sessionStorage.setItem('fromSearch', 'true');
+      // 存储当前的搜索状态
+      sessionStorage.setItem('searchQuery', this.searchQuery);
+      sessionStorage.setItem('hasSearched', JSON.stringify(this.hasSearched));
+      sessionStorage.setItem('currentSearchTerm', this.currentSearchTerm);
+      sessionStorage.setItem('activeTab', this.activeTab);
+      
+      // 用户和帖子结果只有在实际有搜索结果时才保存
+      if (this.userResults.length > 0) {
+        sessionStorage.setItem('userResults', JSON.stringify(this.userResults));
+      }
+      if (this.searchResults.length > 0) {
+        sessionStorage.setItem('searchResults', JSON.stringify(this.searchResults));
+      }
+      
+      // 导航到用户个人页面
+      this.$router.push({ 
+        name: 'profile', 
+        params: { id: userId }
+      });
     },
     // 新增方法：切换关注/取消关注
     async toggleFollow(user) {
@@ -399,20 +420,68 @@ export default {
       }
     },
   },
+  beforeRouteEnter(to, from, next) {
+    // 检查是否从用户资料页面返回
+    const fromSearch = sessionStorage.getItem('fromSearch') === 'true';
+    
+    // 如果是从个人页面返回，并且之前有搜索状态，则恢复状态
+    if (fromSearch && from.name === 'profile') {
+      next(vm => {
+        vm.returnFromProfile = true;
+        // 清除标记
+        sessionStorage.removeItem('fromSearch');
+      });
+    } else {
+      next();
+    }
+  },
   mounted() {
     // 加载历史记录
     this.loadSearchHistory();
+    
+    // 检查是否从个人页面返回
+    if (this.returnFromProfile) {
+      // 恢复搜索状态
+      this.searchQuery = sessionStorage.getItem('searchQuery') || '';
+      this.hasSearched = JSON.parse(sessionStorage.getItem('hasSearched') || 'false');
+      this.currentSearchTerm = sessionStorage.getItem('currentSearchTerm') || '';
+      this.activeTab = sessionStorage.getItem('activeTab') || 'posts';
+      
+      // 恢复搜索结果
+      const savedUserResults = sessionStorage.getItem('userResults');
+      const savedSearchResults = sessionStorage.getItem('searchResults');
+      
+      if (savedUserResults) {
+        try {
+          this.userResults = JSON.parse(savedUserResults);
+        } catch (e) {
+          console.error('解析用户搜索结果失败', e);
+        }
+      }
+      
+      if (savedSearchResults) {
+        try {
+          this.searchResults = JSON.parse(savedSearchResults);
+        } catch (e) {
+          console.error('解析帖子搜索结果失败', e);
+        }
+      }
+      
+      console.log('从个人页面返回，恢复搜索状态', {
+        query: this.searchQuery,
+        hasResults: this.userResults.length > 0 || this.searchResults.length > 0
+      });
+    }
+    // 如果不是从个人页面返回，且有查询参数，则执行搜索
+    else if (this.$route.query.q) {
+      this.searchQuery = this.$route.query.q;
+      this.performSearch();
+    }
     
     // 自动聚焦搜索框
     this.$nextTick(() => {
       this.$refs.searchInput.focus();
     });
-    
-    // 如果有查询参数，则自动搜索
-    if (this.$route.query.q) {
-      this.searchQuery = this.$route.query.q;
-      this.performSearch();
-    }
   }
 };
 </script>
