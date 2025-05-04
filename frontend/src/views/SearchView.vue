@@ -179,6 +179,7 @@
 import UserAvatar from '@/components/UserAvatar.vue';
 import apiService from '@/services/apiService';
 import { mapGetters } from 'vuex';
+import cacheService, { CACHE_TYPES } from '@/services/cacheService';
 
 export default {
   name: 'SearchView',
@@ -401,10 +402,25 @@ export default {
           // 取消关注
           await apiService.users.unfollow(user.id);
           console.log(`已取消关注用户: ${user.username}`);
+          
+          // 更新当前登录用户的关注计数
+          this.updateCurrentUserFollowingCount(-1);
         } else {
           // 关注
           await apiService.users.follow(user.id);
           console.log(`已关注用户: ${user.username}`);
+          
+          // 更新当前登录用户的关注计数
+          this.updateCurrentUserFollowingCount(1);
+        }
+        
+        // 清除用户资料缓存，确保下次访问时获取最新数据
+        cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, user.id);
+        
+        // 清除当前用户的缓存
+        const currentUserId = parseInt(localStorage.getItem('userId')) || null;
+        if (currentUserId) {
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, currentUserId);
         }
       } catch (error) {
         console.error('关注/取消关注操作失败:', error);
@@ -417,6 +433,25 @@ export default {
         
         // 显示错误提示（可选）
         alert('操作失败，请稍后再试');
+      }
+    },
+    
+    // 更新当前用户的关注计数
+    updateCurrentUserFollowingCount(delta) {
+      // 获取当前用户信息
+      const userInfoStr = localStorage.getItem('userInfo');
+      if (userInfoStr) {
+        try {
+          const userInfo = JSON.parse(userInfoStr);
+          // 如果用户信息中存在followingCount字段，则更新它
+          if (userInfo.followingCount !== undefined) {
+            userInfo.followingCount = Math.max(0, (userInfo.followingCount || 0) + delta);
+            // 保存更新后的用户信息
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          }
+        } catch (e) {
+          console.error('更新用户关注计数失败:', e);
+        }
       }
     },
   },

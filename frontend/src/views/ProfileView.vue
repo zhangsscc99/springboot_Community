@@ -277,7 +277,7 @@ export default {
     return {
       loading: false,
       profileId: this.$route.params.id,
-      currentUserId: parseInt(localStorage.getItem('userId')) || null,
+      currentUserId: null,
       profileName: '',
       profileNickname: '',
       profileBio: '',
@@ -299,18 +299,16 @@ export default {
         email: ''
       },
       saving: false,
-      // New follow-related data
       isFollowing: false,
       followLoading: false,
       followerCount: 0,
       followingCount: 0,
       likesCount: 0,
       showFollowModal: false,
-      followModalType: 'followers', // or 'following'
+      followModalType: 'followers',
       followUsers: [],
       followUsersLoading: false,
-      followingUserIds: [], // IDs of users the current user is following
-      // 缓存相关
+      followingUserIds: [],
       useCacheForPosts: true,
       useCacheForLikes: true,
       useCacheForFavorites: true,
@@ -345,7 +343,6 @@ export default {
     }
   },
   watch: {
-    // 监听路由参数变化
     '$route.params.id': {
       handler(newId, oldId) {
         if (newId !== oldId) {
@@ -356,7 +353,6 @@ export default {
       },
       immediate: false
     },
-    // Watch for authentication state change
     isAuthenticated(newValue) {
       if (newValue && this.profileId) {
         this.checkFollowStatus();
@@ -365,7 +361,6 @@ export default {
   },
   methods: {
     resetData() {
-      // 重置所有数据状态
       this.profileName = '';
       this.profileNickname = '';
       this.profileBio = '';
@@ -375,7 +370,6 @@ export default {
       this.likedPosts = [];
       this.favoritedPosts = [];
       this.error = null;
-      // 重置缓存时间戳
       this.cachedPostsTime = null;
       this.cachedLikesTime = null;
       this.cachedFavoritesTime = null;
@@ -384,13 +378,11 @@ export default {
       try {
         this.loading = true;
         
-        // 尝试从缓存加载用户信息
         const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
         const cachedProfile = cacheService.getCache(profileCacheKey);
         
         if (cachedProfile) {
           console.log('使用缓存的用户信息数据');
-          // 使用缓存数据
           this.profileName = cachedProfile.username;
           this.profileNickname = cachedProfile.nickname || '';
           this.profileBio = cachedProfile.bio || '';
@@ -399,24 +391,18 @@ export default {
           this.followingCount = cachedProfile.followingCount || 0;
           this.likesCount = cachedProfile.likesCount || 0;
           
-          // 异步更新缓存
           this.fetchProfileDataAndCache();
         } else {
-          // 缓存不存在，直接从服务器获取
           await this.fetchProfileDataAndCache();
         }
         
-        // 加载用户帖子
         await this.fetchUserPosts();
         
-        // 如果用户已登录，检查关注状态
         if (this.isAuthenticated && !this.isCurrentUser) {
           await this.checkFollowStatus();
         }
         
-        // 如果是当前用户查看自己的资料，预加载喜欢和收藏的帖子
         if (this.isCurrentUser) {
-          // 异步加载其他标签的数据，但不等待完成
           this.fetchLikedPosts();
           this.fetchFavoritedPosts();
         }
@@ -429,20 +415,20 @@ export default {
     },
     async fetchProfileDataAndCache() {
       try {
-        // 获取用户信息
         const response = await apiService.users.getProfile(this.profileId);
         const userData = response.data;
         
-        // 更新用户信息
         this.profileName = userData.username;
         this.profileNickname = userData.nickname || '';
         this.profileBio = userData.bio || '';
         this.profileAvatar = userData.avatar;
         
-        // 获取关注数据
         await this.fetchFollowCounts();
         
-        // 缓存用户数据
+        if (this.isCurrentUser) {
+          this.updateLocalUserInfo();
+        }
+        
         const profileData = {
           username: userData.username,
           nickname: userData.nickname || '',
@@ -458,14 +444,27 @@ export default {
         
       } catch (error) {
         console.error('获取和缓存用户资料失败:', error);
-        throw error; // 向上传递错误
+        throw error;
+      }
+    },
+    updateLocalUserInfo() {
+      const userInfoStr = localStorage.getItem('userInfo');
+      if (userInfoStr) {
+        try {
+          const userInfo = JSON.parse(userInfoStr);
+          userInfo.followingCount = this.followingCount;
+          userInfo.followerCount = this.followerCount;
+          localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          console.log('更新了localStorage中的用户关注数据');
+        } catch (e) {
+          console.error('更新localStorage用户信息失败:', e);
+        }
       }
     },
     goBack() {
       this.$router.go(-1);
     },
     logout() {
-      // 退出前清除当前用户的缓存
       if (this.currentUser && this.currentUser.id) {
         cacheService.clearUserCache(this.currentUser.id);
       }
@@ -496,7 +495,6 @@ export default {
       try {
         this.postsLoading = true;
         
-        // 尝试从缓存加载帖子数据
         if (this.useCacheForPosts) {
           const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_POSTS, this.profileId);
           const cachedPosts = cacheService.getCache(cacheKey);
@@ -506,7 +504,6 @@ export default {
             this.userPosts = cachedPosts;
             this.cachedPostsTime = Date.now();
             
-            // 如果这是当前活动标签，异步更新缓存
             if (this.activeTab === 'posts') {
               this.refreshPostsCache();
             }
@@ -516,7 +513,6 @@ export default {
           }
         }
         
-        // 缓存不存在或不使用缓存，从服务器获取
         await this.refreshPostsCache();
         
       } catch (error) {
@@ -528,28 +524,24 @@ export default {
     },
     async refreshPostsCache() {
       try {
-        // 从服务器获取最新数据
         const response = await apiService.posts.getByUserId(this.profileId); 
         
-        // 更新本地数据
         this.userPosts = response.data.content || response.data || [];
         this.cachedPostsTime = Date.now();
         
-        // 缓存新数据
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_POSTS, this.profileId);
         cacheService.setCache(cacheKey, this.userPosts);
         console.log('用户帖子数据已缓存');
         
       } catch (error) {
         console.error('刷新用户帖子缓存失败:', error);
-        throw error; // 向上传递错误
+        throw error;
       }
     },
     async fetchLikedPosts() {
       try {
         this.likesLoading = true;
         
-        // 尝试从缓存加载点赞数据
         if (this.useCacheForLikes) {
           const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_LIKES, this.profileId);
           const cachedLikes = cacheService.getCache(cacheKey);
@@ -559,7 +551,6 @@ export default {
             this.likedPosts = cachedLikes;
             this.cachedLikesTime = Date.now();
             
-            // 如果这是当前活动标签，异步更新缓存
             if (this.activeTab === 'likes') {
               this.refreshLikesCache();
             }
@@ -569,7 +560,6 @@ export default {
           }
         }
         
-        // 缓存不存在或不使用缓存，从服务器获取
         await this.refreshLikesCache();
         
       } catch (error) {
@@ -581,25 +571,21 @@ export default {
     },
     async refreshLikesCache() {
       try {
-        // 从服务器获取最新数据
         const response = await apiService.posts.getLikedByUserId(this.profileId);
         
-        // 更新本地数据
         this.likedPosts = response.data.content || response.data || [];
         this.cachedLikesTime = Date.now();
         
-        // 缓存新数据
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_LIKES, this.profileId);
         cacheService.setCache(cacheKey, this.likedPosts);
         console.log('用户点赞数据已缓存');
         
       } catch (error) {
         console.error('刷新用户点赞缓存失败:', error);
-        throw error; // 向上传递错误
+        throw error;
       }
     },
     setActiveTab(tab) {
-      // 如果是相同标签，不做任何操作
       if (this.activeTab === tab) return;
       
       this.activeTab = tab;
@@ -611,7 +597,6 @@ export default {
       } else if (tab === 'favorites' && this.favoritedPosts.length === 0) {
         this.fetchFavoritedPosts();
       } else {
-        // 如果已有数据但缓存已超过5分钟，则在后台刷新数据
         const now = Date.now();
         if (tab === 'posts' && now - this.cachedPostsTime > 5 * 60 * 1000) {
           this.refreshPostsCache().catch(e => console.error('背景刷新帖子失败:', e));
@@ -626,7 +611,6 @@ export default {
       try {
         this.favoritesLoading = true;
         
-        // 尝试从缓存加载收藏数据
         if (this.useCacheForFavorites) {
           const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_FAVORITES, this.profileId);
           const cachedFavorites = cacheService.getCache(cacheKey);
@@ -636,7 +620,6 @@ export default {
             this.favoritedPosts = cachedFavorites;
             this.cachedFavoritesTime = Date.now();
             
-            // 如果这是当前活动标签，异步更新缓存
             if (this.activeTab === 'favorites') {
               this.refreshFavoritesCache();
             }
@@ -646,7 +629,6 @@ export default {
           }
         }
         
-        // 缓存不存在或不使用缓存，从服务器获取
         await this.refreshFavoritesCache();
         
       } catch (error) {
@@ -658,21 +640,18 @@ export default {
     },
     async refreshFavoritesCache() {
       try {
-        // 从服务器获取最新数据
         const response = await apiService.posts.getFavoritedByUserId(this.profileId);
         
-        // 更新本地数据
         this.favoritedPosts = response.data.content || response.data || [];
         this.cachedFavoritesTime = Date.now();
         
-        // 缓存新数据
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_FAVORITES, this.profileId);
         cacheService.setCache(cacheKey, this.favoritedPosts);
         console.log('用户收藏数据已缓存');
         
       } catch (error) {
         console.error('刷新用户收藏缓存失败:', error);
-        throw error; // 向上传递错误
+        throw error;
       }
     },
     openEditModal() {
@@ -698,16 +677,13 @@ export default {
           nickname: this.editForm.nickname
         });
         
-        // 立即更新本地数据
         this.profileAvatar = this.editForm.avatar;
         this.profileBio = this.editForm.bio;
         this.profileNickname = this.editForm.nickname;
         
-        // 更新缓存
         const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
         cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
         
-        // 重新缓存用户资料
         const profileData = {
           username: this.profileName,
           nickname: this.profileNickname,
@@ -722,7 +698,6 @@ export default {
         alert('个人资料已更新');
         this.closeEditModal();
         
-        // 使用温和的重载方式，避免整页刷新
         this.resetData();
         await this.loadUserProfile();
       } catch (error) {
@@ -737,8 +712,7 @@ export default {
         const response = await apiService.users.getFollowCounts(this.profileId);
         this.followerCount = response.data.followerCount || 0;
         this.followingCount = response.data.followingCount || 0;
-        // For now, we'll use a placeholder for likes count
-        this.likesCount = 0; // This would need to be implemented on the backend
+        this.likesCount = 0;
       } catch (error) {
         console.error('获取关注数据失败:', error);
       }
@@ -757,7 +731,6 @@ export default {
     },
     async toggleFollow() {
       if (!this.isAuthenticated) {
-        // Redirect to login if not authenticated
         this.$router.push('/login');
         return;
       }
@@ -766,24 +739,19 @@ export default {
       
       try {
         if (this.isFollowing) {
-          // Unfollow
           await apiService.users.unfollow(this.profileId);
           this.isFollowing = false;
           this.followerCount = Math.max(0, this.followerCount - 1);
           
-          // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
         } else {
-          // Follow
           await apiService.users.follow(this.profileId);
           this.isFollowing = true;
           this.followerCount += 1;
           
-          // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
         }
         
-        // 更新用户资料缓存
         const profileData = {
           username: this.profileName,
           nickname: this.profileNickname,
@@ -806,12 +774,34 @@ export default {
       this.followModalType = 'followers';
       this.showFollowModal = true;
       this.followUsers = [];
+      
+      // 确保有正确的currentUserId
+      if (this.isAuthenticated && !this.currentUserId) {
+        this.currentUserId = parseInt(localStorage.getItem('userId')) || null;
+      }
+      
+      // 先获取当前用户关注的用户列表（用于显示关注状态）
+      if (this.isAuthenticated) {
+        await this.fetchCurrentUserFollowing();
+      }
+      
       await this.fetchFollowUsers('followers');
     },
     async openFollowingList() {
       this.followModalType = 'following';
       this.showFollowModal = true;
       this.followUsers = [];
+      
+      // 确保有正确的currentUserId
+      if (this.isAuthenticated && !this.currentUserId) {
+        this.currentUserId = parseInt(localStorage.getItem('userId')) || null;
+      }
+      
+      // 先获取当前用户关注的用户列表（用于显示关注状态）
+      if (this.isAuthenticated) {
+        await this.fetchCurrentUserFollowing();
+      }
+      
       await this.fetchFollowUsers('following');
     },
     closeFollowModal() {
@@ -821,36 +811,76 @@ export default {
       this.followUsersLoading = true;
       
       try {
+        console.log(`获取${type === 'followers' ? '粉丝' : '关注'}列表, 用户ID: ${this.profileId}`);
         let response;
         if (type === 'followers') {
           response = await apiService.users.getFollowers(this.profileId);
           this.followUsers = response.data.followers || [];
+          console.log('获取到粉丝列表:', this.followUsers.length, '个粉丝');
         } else {
           response = await apiService.users.getFollowing(this.profileId);
           this.followUsers = response.data.following || [];
+          console.log('获取到关注列表:', this.followUsers.length, '个关注');
         }
         
-        // If the current user is authenticated, fetch their following list
-        // to determine which users in this list they are already following
+        // 如果当前用户已登录并且有效，确保更新关注状态显示
         if (this.isAuthenticated && !this.isCurrentUser) {
-          await this.fetchCurrentUserFollowing();
+          // 检查是否已经获取了当前用户的关注列表
+          if (this.followingUserIds.length === 0) {
+            await this.fetchCurrentUserFollowing();
+          }
+          
+          // 在UI上标记已关注的用户
+          this.followUsers.forEach(user => {
+            console.log(`检查用户 ${user.username} (ID:${user.id}) 的关注状态:`, 
+                      this.isUserInFollowingList(user.id) ? '已关注' : '未关注');
+          });
         }
       } catch (error) {
         console.error(`获取${type === 'followers' ? '粉丝' : '关注'}列表失败:`, error);
+        this.followUsers = []; // 确保失败时清空列表
       } finally {
         this.followUsersLoading = false;
       }
     },
     async fetchCurrentUserFollowing() {
       try {
+        // Make sure currentUserId is valid
+        if (!this.currentUserId && this.isAuthenticated) {
+          // Try to get currentUserId from localStorage or userInfo
+          const userInfoStr = localStorage.getItem('userInfo');
+          if (userInfoStr) {
+            try {
+              const userInfo = JSON.parse(userInfoStr);
+              if (userInfo && userInfo.id) {
+                this.currentUserId = userInfo.id;
+              }
+            } catch (e) {
+              console.error('解析userInfo失败:', e);
+            }
+          }
+          
+          // If still no currentUserId, try to get from localStorage.userId
+          if (!this.currentUserId) {
+            this.currentUserId = parseInt(localStorage.getItem('userId')) || null;
+          }
+        }
+        
+        if (!this.currentUserId) {
+          console.error('无法获取当前用户ID，无法检查关注状态');
+          return;
+        }
+        
+        console.log('获取当前用户(ID:', this.currentUserId, ')的关注列表');
         const response = await apiService.users.getFollowing(this.currentUserId);
         this.followingUserIds = (response.data.following || []).map(user => user.id);
+        console.log('当前用户关注的用户IDs:', this.followingUserIds);
       } catch (error) {
         console.error('获取当前用户关注列表失败:', error);
       }
     },
     isUserInFollowingList(userId) {
-      return this.followingUserIds.includes(userId);
+      return this.followingUserIds.includes(parseInt(userId));
     },
     async toggleFollowUser(userId) {
       if (!this.isAuthenticated) {
@@ -859,46 +889,62 @@ export default {
       }
       
       try {
-        if (this.isUserInFollowingList(userId)) {
-          // Unfollow
-          await apiService.users.unfollow(userId);
-          this.followingUserIds = this.followingUserIds.filter(id => id !== userId);
+        const isFollowing = this.isUserInFollowingList(userId);
+        console.log('切换关注状态, 用户ID:', userId, '当前状态:', isFollowing ? '已关注' : '未关注');
+        
+        if (isFollowing) {
+          // 取消关注 - 乐观更新UI
+          this.followingUserIds = this.followingUserIds.filter(id => id !== parseInt(userId));
           
-          // If we're on our own following list, remove the user
+          // 异步调用API
+          await apiService.users.unfollow(userId);
+          console.log('已取消关注用户:', userId);
+          
+          // 如果在自己的关注列表页面，从列表中移除该用户
           if (this.isCurrentUser && this.followModalType === 'following') {
-            this.followUsers = this.followUsers.filter(user => user.id !== userId);
+            this.followUsers = this.followUsers.filter(user => user.id !== parseInt(userId));
             this.followingCount = Math.max(0, this.followingCount - 1);
           }
           
+          // 更新用户资料缓存
+          this.updateLocalUserInfo();
+          
           // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.currentUserId);
         } else {
-          // Follow
-          await apiService.users.follow(userId);
-          this.followingUserIds.push(userId);
+          // 关注 - 乐观更新UI
+          this.followingUserIds.push(parseInt(userId));
           
-          // If we're on our own followers list and follow someone back,
-          // update the following count
+          // 异步调用API
+          await apiService.users.follow(userId);
+          console.log('已关注用户:', userId);
+          
+          // 如果在自己的粉丝列表页面并关注了粉丝，更新关注计数
           if (this.isCurrentUser && this.followModalType === 'followers') {
             this.followingCount += 1;
           }
           
+          // 更新用户资料缓存
+          this.updateLocalUserInfo();
+          
           // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, userId);
+          cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.currentUserId);
         }
       } catch (error) {
         console.error('操作关注失败:', error);
         alert('操作失败，请稍后再试');
+        
+        // 如果API调用失败，回滚UI更新
+        await this.fetchCurrentUserFollowing();
       }
     },
     goToMessages() {
-      // 直接导航到与该用户的聊天页面，而不是消息列表页面
       this.$router.push(`/chat/${this.profileId}`);
     }
   },
-  // 添加路由导航守卫
   beforeRouteUpdate(to, from, next) {
-    // 当路由参数变化但组件实例被复用时触发
     if (to.params.id !== from.params.id) {
       this.resetData();
       this.profileId = to.params.id;
@@ -916,6 +962,28 @@ export default {
       return;
     }
     
+    // 设置当前用户ID - 首先从localStorage.userId获取
+    this.currentUserId = parseInt(localStorage.getItem('userId')) || null;
+    
+    // 如果获取失败，尝试从userInfo中获取
+    if (!this.currentUserId && this.isAuthenticated) {
+      const userInfoStr = localStorage.getItem('userInfo');
+      if (userInfoStr) {
+        try {
+          const userInfo = JSON.parse(userInfoStr);
+          if (userInfo && userInfo.id) {
+            this.currentUserId = userInfo.id;
+            // 确保userId存在localStorage中，方便其他地方使用
+            localStorage.setItem('userId', userInfo.id);
+            console.log('已从userInfo中获取并设置userId:', userInfo.id);
+          }
+        } catch (e) {
+          console.error('解析userInfo失败:', e);
+        }
+      }
+    }
+    
+    console.log('当前状态检查: 用户ID=', this.currentUserId, '资料页ID=', this.profileId);
     await this.loadUserProfile();
   },
   mounted() {

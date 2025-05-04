@@ -277,12 +277,17 @@ export default createStore({
           email: data.email,
           avatar: data.avatar,
           token: token,
-          roles: data.roles
+          roles: data.roles,
+          followingCount: data.followingCount || 0,
+          followerCount: data.followerCount || 0
         };
         
         // 存储令牌和用户信息
         localStorage.setItem('token', token);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        localStorage.setItem('userId', data.id);
+        
+        console.log('用户登录成功，ID已保存:', data.id);
         
         // 更新状态
         commit('SET_USER', userInfo);
