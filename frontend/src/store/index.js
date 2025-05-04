@@ -355,11 +355,11 @@ export default createStore({
     
     logout({ commit }) {
       // 获取当前用户ID（如果有）
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const currentUser = JSON.parse(localStorage.getItem('userInfo') || '{}');
       const userId = currentUser?.id;
       
       // 清除本地存储中的所有用户数据
-      localStorage.removeItem('user');
+      localStorage.removeItem('userInfo');
       localStorage.removeItem('token');
       localStorage.removeItem('userId');
       
@@ -369,7 +369,7 @@ export default createStore({
       }
       
       // 提交mutation
-      commit('LOGOUT');
+      commit('SET_USER', null);
     },
     
     setActiveTab({ commit, dispatch }, tab) {

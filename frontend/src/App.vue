@@ -77,9 +77,7 @@ export default {
   methods: {
     logout() {
       this.$store.dispatch('logout');
-      if (this.$route.path.includes('/profile') || this.$route.path.includes('/create-post')) {
-        this.$router.push('/');
-      }
+      this.$router.push('/');
     },
     goToLogin() {
       this.$router.push('/login');
