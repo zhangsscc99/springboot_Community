@@ -106,6 +106,7 @@
               <h3 class="post-title">{{ post.title }}</h3>
               <p class="post-content">{{ post.content }}</p>
               <div class="post-footer">
+                <div class="post-time">{{ formatDate(post.createdAt) }}</div>
                 <div class="post-actions">
                   <div class="post-action">
                     <i class="far fa-heart"></i> {{ post.likes }}
@@ -114,7 +115,6 @@
                     <i class="far fa-comment"></i> {{ post.comments }}
                   </div>
                 </div>
-                <div class="post-time">{{ formatDate(post.created_at) }}</div>
               </div>
             </div>
           </div>
@@ -133,6 +133,7 @@
               <h3 class="post-title">{{ post.title }}</h3>
               <p class="post-content">{{ post.content }}</p>
               <div class="post-footer">
+                <div class="post-time">{{ formatDate(post.createdAt) }}</div>
                 <div class="post-actions">
                   <div class="post-action">
                     <i class="fas fa-heart"></i> {{ post.likes }}
@@ -141,7 +142,6 @@
                     <i class="far fa-comment"></i> {{ post.comments }}
                   </div>
                 </div>
-                <div class="post-time">{{ formatDate(post.created_at) }}</div>
               </div>
             </div>
           </div>
@@ -160,6 +160,7 @@
               <h3 class="post-title">{{ post.title }}</h3>
               <p class="post-content">{{ post.content }}</p>
               <div class="post-footer">
+                <div class="post-time">{{ formatDate(post.createdAt) }}</div>
                 <div class="post-actions">
                   <div class="post-action">
                     <i class="far fa-heart"></i> {{ post.likes }}
@@ -171,7 +172,6 @@
                     <i class="fas fa-bookmark"></i>
                   </div>
                 </div>
-                <div class="post-time">{{ formatDate(post.created_at) }}</div>
               </div>
             </div>
           </div>
@@ -497,7 +497,9 @@ export default {
       this.$router.push('/');
     },
     formatDate(dateString) {
-      if (!dateString) return '未知时间';
+      if (!dateString) {
+        return '未知时间';
+      }
       
       try {
         const date = new Date(dateString);
@@ -526,7 +528,7 @@ export default {
           return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
         }
       } catch (error) {
-        console.error('日期格式化错误:', error, '原始日期字符串:', dateString);
+        console.error('日期格式化错误:', error);
         return '未知时间';
       }
     },
@@ -568,8 +570,51 @@ export default {
       try {
         const response = await apiService.posts.getByUserId(this.profileId); 
         
-        this.userPosts = response.data.content || response.data || [];
+        let posts = response.data.content || response.data || [];
         this.cachedPostsTime = Date.now();
+        
+        // 添加日志检查帖子数据
+        if (posts.length > 0) {
+          console.log('获取的帖子数据示例:', {
+            id: posts[0].id,
+            title: posts[0].title,
+            date: posts[0].createdAt,
+            dateType: typeof posts[0].createdAt,
+            allKeys: Object.keys(posts[0])
+          });
+          
+          // 尝试处理日期字段
+          posts = posts.map(post => {
+            // 如果createdAt为null或undefined，但created_at存在
+            if (!post.createdAt && post.created_at) {
+              post.createdAt = post.created_at;
+            }
+            
+            // 如果仍然没有createdAt，尝试从其他可能的字段中获取
+            if (!post.createdAt) {
+              // 尝试其他可能的字段名
+              const possibleDateFields = ['timestamp', 'date', 'createTime', 'createDate', 'postDate'];
+              for (const field of possibleDateFields) {
+                if (post[field]) {
+                  post.createdAt = post[field];
+                  break;
+                }
+              }
+            }
+            
+            // 如果仍然没有createdAt，使用当前时间
+            if (!post.createdAt) {
+              console.warn(`帖子 ${post.id} 没有日期字段，使用当前时间`);
+              post.createdAt = new Date().toISOString();
+            }
+            
+            return post;
+          });
+        } else {
+          console.log('未获取到帖子数据');
+        }
+        
+        this.userPosts = posts;
         
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_POSTS, this.profileId);
         cacheService.setCache(cacheKey, this.userPosts);
@@ -615,8 +660,38 @@ export default {
       try {
         const response = await apiService.posts.getLikedByUserId(this.profileId);
         
-        this.likedPosts = response.data.content || response.data || [];
+        let posts = response.data.content || response.data || [];
         this.cachedLikesTime = Date.now();
+        
+        // 处理日期字段
+        posts = posts.map(post => {
+          // 如果createdAt为null或undefined，但created_at存在
+          if (!post.createdAt && post.created_at) {
+            post.createdAt = post.created_at;
+          }
+          
+          // 如果仍然没有createdAt，尝试从其他可能的字段中获取
+          if (!post.createdAt) {
+            // 尝试其他可能的字段名
+            const possibleDateFields = ['timestamp', 'date', 'createTime', 'createDate', 'postDate'];
+            for (const field of possibleDateFields) {
+              if (post[field]) {
+                post.createdAt = post[field];
+                break;
+              }
+            }
+          }
+          
+          // 如果仍然没有createdAt，使用当前时间
+          if (!post.createdAt) {
+            console.warn(`帖子 ${post.id} 没有日期字段，使用当前时间`);
+            post.createdAt = new Date().toISOString();
+          }
+          
+          return post;
+        });
+        
+        this.likedPosts = posts;
         
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_LIKES, this.profileId);
         cacheService.setCache(cacheKey, this.likedPosts);
@@ -684,8 +759,38 @@ export default {
       try {
         const response = await apiService.posts.getFavoritedByUserId(this.profileId);
         
-        this.favoritedPosts = response.data.content || response.data || [];
+        let posts = response.data.content || response.data || [];
         this.cachedFavoritesTime = Date.now();
+        
+        // 处理日期字段
+        posts = posts.map(post => {
+          // 如果createdAt为null或undefined，但created_at存在
+          if (!post.createdAt && post.created_at) {
+            post.createdAt = post.created_at;
+          }
+          
+          // 如果仍然没有createdAt，尝试从其他可能的字段中获取
+          if (!post.createdAt) {
+            // 尝试其他可能的字段名
+            const possibleDateFields = ['timestamp', 'date', 'createTime', 'createDate', 'postDate'];
+            for (const field of possibleDateFields) {
+              if (post[field]) {
+                post.createdAt = post[field];
+                break;
+              }
+            }
+          }
+          
+          // 如果仍然没有createdAt，使用当前时间
+          if (!post.createdAt) {
+            console.warn(`帖子 ${post.id} 没有日期字段，使用当前时间`);
+            post.createdAt = new Date().toISOString();
+          }
+          
+          return post;
+        });
+        
+        this.favoritedPosts = posts;
         
         const cacheKey = cacheService.generateKey(CACHE_TYPES.USER_FAVORITES, this.profileId);
         cacheService.setCache(cacheKey, this.favoritedPosts);
@@ -1343,6 +1448,7 @@ export default {
   align-items: center;
   color: var(--light-text-color);
   font-size: 14px;
+  margin-top: 12px;
 }
 
 .posts-list .post-actions {
@@ -1358,6 +1464,8 @@ export default {
 
 .posts-list .post-time {
   font-size: 12px;
+  color: #8a9aa4;
+  padding: 2px 0;
 }
 
 .logout-btn {

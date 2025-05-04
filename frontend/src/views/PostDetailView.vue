@@ -25,7 +25,6 @@
         />
         <div class="post-user-info">
           <h4 class="post-username">{{ post.author.username }}</h4>
-          <span class="post-time">{{ formattedDate }}</span>
         </div>
         <button class="follow-button">
           <i class="fas fa-plus"></i> 关注
@@ -34,6 +33,10 @@
       
       <div class="post-content-full">
         <p v-for="(paragraph, index) in contentParagraphs" :key="index">{{ paragraph }}</p>
+      </div>
+      
+      <div class="post-time-container">
+        <span class="post-time">{{ formattedDate }}</span>
       </div>
       
       <div class="post-tags" v-if="post.tags">
@@ -982,8 +985,10 @@ export default {
 }
 
 .post-time {
-  font-size: 11px;
-  color: var(--light-text-color);
+  font-size: 12px;
+  color: #8a9aa4;
+  display: inline-block;
+  margin-top: 5px;
 }
 
 .follow-button {
@@ -1018,6 +1023,18 @@ export default {
 
 .post-content-full p {
   margin-bottom: 16px;
+}
+
+.post-time-container {
+  padding: 0 16px 10px;
+  text-align: left;
+}
+
+.post-time {
+  font-size: 12px;
+  color: #8a9aa4;
+  display: inline-block;
+  margin-top: 5px;
 }
 
 .post-tags {
