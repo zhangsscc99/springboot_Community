@@ -225,6 +225,11 @@ const apiService = {
     checkFollowing(userId) {
       return apiClient.get(`/api/users/${userId}/follow/check`);
     },
+    // 获取用户的关注和粉丝数
+    getFollowCounts(userId) {
+      console.log(`获取用户 ${userId} 的关注和粉丝计数`);
+      return apiClient.get(`/api/users/${userId}/follow/count`);
+    },
     // 搜索用户
     search(query) {
       return apiClient.get(`/api/users/search`, {

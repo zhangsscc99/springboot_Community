@@ -387,10 +387,22 @@ export default {
           this.profileNickname = cachedProfile.nickname || '';
           this.profileBio = cachedProfile.bio || '';
           this.profileAvatar = cachedProfile.avatar;
+          
+          // 临时使用缓存的关注数据
           this.followerCount = cachedProfile.followerCount || 0;
           this.followingCount = cachedProfile.followingCount || 0;
           this.likesCount = cachedProfile.likesCount || 0;
           
+          // 但无论如何都要异步更新关注数据，确保显示最新的关注/粉丝数
+          this.fetchFollowCounts().then(counts => {
+            // 如果实际关注数与缓存不同，刷新缓存
+            if (counts.followerCount !== this.followerCount || 
+                counts.followingCount !== this.followingCount) {
+              this.fetchProfileDataAndCache();
+            }
+          });
+          
+          // 异步更新缓存
           this.fetchProfileDataAndCache();
         } else {
           await this.fetchProfileDataAndCache();
@@ -448,14 +460,27 @@ export default {
       }
     },
     updateLocalUserInfo() {
+      // 更新localStorage中的用户信息
       const userInfoStr = localStorage.getItem('userInfo');
       if (userInfoStr) {
         try {
           const userInfo = JSON.parse(userInfoStr);
+          
+          // 更新关注计数
           userInfo.followingCount = this.followingCount;
           userInfo.followerCount = this.followerCount;
+          
+          // 确保userId也存在于localStorage中
+          if (userInfo.id) {
+            localStorage.setItem('userId', userInfo.id);
+          }
+          
+          // 保存回localStorage
           localStorage.setItem('userInfo', JSON.stringify(userInfo));
-          console.log('更新了localStorage中的用户关注数据');
+          console.log('更新了localStorage中的用户关注数据:', {
+            followingCount: this.followingCount,
+            followerCount: this.followerCount
+          });
         } catch (e) {
           console.error('更新localStorage用户信息失败:', e);
         }
@@ -709,12 +734,38 @@ export default {
     },
     async fetchFollowCounts() {
       try {
+        console.log('获取用户关注数据, 用户ID:', this.profileId);
         const response = await apiService.users.getFollowCounts(this.profileId);
-        this.followerCount = response.data.followerCount || 0;
-        this.followingCount = response.data.followingCount || 0;
-        this.likesCount = 0;
+        
+        // 更新关注相关的计数
+        const followerCount = response.data.followerCount || 0;
+        const followingCount = response.data.followingCount || 0;
+        
+        console.log('获取到的关注数据:', {
+          followerCount: followerCount,
+          followingCount: followingCount
+        });
+        
+        // 更新状态
+        this.followerCount = followerCount;
+        this.followingCount = followingCount;
+        this.likesCount = response.data.likesCount || 0;
+        
+        // 如果是当前用户，更新localStorage中的数据
+        if (this.isCurrentUser) {
+          this.updateLocalUserInfo();
+        }
+        
+        return {
+          followerCount,
+          followingCount
+        };
       } catch (error) {
         console.error('获取关注数据失败:', error);
+        return {
+          followerCount: 0,
+          followingCount: 0
+        };
       }
     },
     async checkFollowStatus() {
@@ -738,20 +789,55 @@ export default {
       this.followLoading = true;
       
       try {
+        console.log(`切换关注状态, 当前状态: ${this.isFollowing ? '已关注' : '未关注'}, 用户ID: ${this.profileId}`);
+        
         if (this.isFollowing) {
-          await apiService.users.unfollow(this.profileId);
+          // 取消关注 - 先乐观更新UI
           this.isFollowing = false;
           this.followerCount = Math.max(0, this.followerCount - 1);
           
+          // 然后调用API
+          await apiService.users.unfollow(this.profileId);
+          console.log(`已取消关注用户: ${this.profileId}`);
+          
+          // 更新当前用户的关注计数
+          if (this.currentUser) {
+            this.currentUser.followingCount = Math.max(0, (this.currentUser.followingCount || 0) - 1);
+            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            userInfo.followingCount = Math.max(0, (userInfo.followingCount || 0) - 1);
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          }
+          
+          // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
+          if (this.currentUserId) {
+            cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.currentUserId);
+          }
         } else {
-          await apiService.users.follow(this.profileId);
+          // 关注 - 先乐观更新UI
           this.isFollowing = true;
           this.followerCount += 1;
           
+          // 然后调用API
+          await apiService.users.follow(this.profileId);
+          console.log(`已关注用户: ${this.profileId}`);
+          
+          // 更新当前用户的关注计数
+          if (this.currentUser) {
+            this.currentUser.followingCount = (this.currentUser.followingCount || 0) + 1;
+            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            userInfo.followingCount = (userInfo.followingCount || 0) + 1;
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          }
+          
+          // 清除相关缓存
           cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.profileId);
+          if (this.currentUserId) {
+            cacheService.clearTypeCache(CACHE_TYPES.USER_PROFILE, this.currentUserId);
+          }
         }
         
+        // 确保更新follower属性缓存
         const profileData = {
           username: this.profileName,
           nickname: this.profileNickname,
@@ -763,8 +849,23 @@ export default {
         };
         const profileCacheKey = cacheService.generateKey(CACHE_TYPES.USER_PROFILE, this.profileId);
         cacheService.setCache(profileCacheKey, profileData);
+        
+        // 刷新当前用户的关注列表
+        if (this.isAuthenticated) {
+          await this.fetchCurrentUserFollowing();
+        }
       } catch (error) {
         console.error('操作关注失败:', error);
+        
+        // 恢复UI状态
+        if (this.isFollowing) {
+          this.isFollowing = false;
+          this.followerCount = Math.max(0, this.followerCount - 1);
+        } else {
+          this.isFollowing = true;
+          this.followerCount += 1;
+        }
+        
         alert('操作失败，请稍后再试');
       } finally {
         this.followLoading = false;
