@@ -10,7 +10,7 @@
           <input 
             type="text" 
             class="search-input" 
-            placeholder="搜索内容..." 
+            placeholder="搜索帖子或用户..." 
             v-model="searchQuery"
             @keyup.enter="performSearch"
             ref="searchInput"
@@ -58,54 +58,115 @@
           <span>搜索结果: "{{ currentSearchTerm }}"</span>
         </div>
         
+        <!-- 搜索结果分类标签 -->
+        <div class="search-tabs">
+          <div 
+            class="search-tab" 
+            :class="{ active: activeTab === 'posts' }"
+            @click="activeTab = 'posts'"
+          >
+            帖子
+          </div>
+          <div 
+            class="search-tab" 
+            :class="{ active: activeTab === 'users' }"
+            @click="activeTab = 'users'"
+          >
+            用户
+          </div>
+        </div>
+        
         <!-- 加载中 -->
         <div v-if="searching" class="loading-indicator">
           <i class="fas fa-spinner fa-spin"></i> 搜索中...
         </div>
         
-        <!-- 无结果 -->
-        <div v-else-if="searchResults.length === 0" class="no-results">
-          <i class="fas fa-search"></i>
-          <p>未找到相关内容</p>
-          <p class="suggestion">请尝试其他关键词</p>
-        </div>
-        
-        <!-- 搜索结果列表 -->
-        <div v-else class="post-list">
-          <div 
-            v-for="post in searchResults" 
-            :key="post.id" 
-            class="post-card" 
-            @click="goToPostDetail(post.id)"
-          >
-            <h3 class="post-title">{{ post.title }}</h3>
-            <div class="post-header">
-              <UserAvatar 
-                :src="post.author.avatar" 
-                :username="post.author.username"
-                :userId="post.author.id"
-              />
-              <div class="post-user-info">
-                <h4 class="post-username">{{ post.author.username }}</h4>
-                <span class="post-time">{{ formatDate(post.created_at) }}</span>
+        <!-- 帖子搜索结果 -->
+        <div v-else-if="activeTab === 'posts'" class="tab-content">
+          <!-- 无结果 -->
+          <div v-if="searchResults.length === 0" class="no-results">
+            <i class="fas fa-search"></i>
+            <p>未找到相关帖子</p>
+            <p class="suggestion">请尝试其他关键词</p>
+          </div>
+          
+          <!-- 搜索结果列表 -->
+          <div v-else class="post-list">
+            <div 
+              v-for="post in searchResults" 
+              :key="post.id" 
+              class="post-card" 
+              @click="goToPostDetail(post.id)"
+            >
+              <h3 class="post-title">{{ post.title }}</h3>
+              <div class="post-header">
+                <UserAvatar 
+                  :src="post.author.avatar" 
+                  :username="post.author.username"
+                  :userId="post.author.id"
+                />
+                <div class="post-user-info">
+                  <h4 class="post-username">{{ post.author.nickname || post.author.username }}</h4>
+                  <span class="post-time">{{ formatDate(post.created_at) }}</span>
+                </div>
               </div>
-            </div>
-            <p class="post-content">{{ post.content }}</p>
-            <div class="post-footer">
-              <div class="post-actions">
-                <div class="post-action" :class="{ active: post.likedByCurrentUser }">
-                  <i class="fas fa-heart"></i> {{ post.likes || 0 }}
+              <p class="post-content">{{ post.content }}</p>
+              <div class="post-footer">
+                <div class="post-actions">
+                  <div class="post-action" :class="{ active: post.likedByCurrentUser }">
+                    <i class="fas fa-heart"></i> {{ post.likes || 0 }}
+                  </div>
+                  <div class="post-action">
+                    <i class="fas fa-comment-dots"></i> {{ post.comments || 0 }}
+                  </div>
+                  <div class="post-action" :class="{ active: post.favoritedByCurrentUser }">
+                    <i class="fas fa-star"></i> {{ post.favorites || 0 }}
+                  </div>
                 </div>
                 <div class="post-action">
-                  <i class="fas fa-comment-dots"></i> {{ post.comments || 0 }}
-                </div>
-                <div class="post-action" :class="{ active: post.favoritedByCurrentUser }">
-                  <i class="fas fa-star"></i> {{ post.favorites || 0 }}
+                  <i class="fas fa-share-alt"></i> {{ post.views || 0 }}
                 </div>
               </div>
-              <div class="post-action">
-                <i class="fas fa-share-alt"></i> {{ post.views || 0 }}
+            </div>
+          </div>
+        </div>
+        
+        <!-- 用户搜索结果 -->
+        <div v-else-if="activeTab === 'users'" class="tab-content">
+          <!-- 无结果 -->
+          <div v-if="userResults.length === 0" class="no-results">
+            <i class="fas fa-search"></i>
+            <p>未找到相关用户</p>
+            <p class="suggestion">请尝试其他关键词</p>
+          </div>
+          
+          <!-- 用户列表 -->
+          <div v-else class="user-list">
+            <div 
+              v-for="user in userResults" 
+              :key="user.id" 
+              class="user-card" 
+              @click="goToUserProfile(user.id)"
+            >
+              <UserAvatar 
+                :src="user.avatar" 
+                :username="user.username"
+                :userId="user.id"
+                class="user-avatar"
+              />
+              <div class="user-info">
+                <div class="user-name">{{ user.nickname || user.username }}</div>
+                <div class="user-id">锦书号: {{ user.username }}</div>
+                <div class="user-bio">{{ user.bio || '这个人很懒，什么都没留下...' }}</div>
               </div>
+              <button 
+                class="follow-btn" 
+                v-if="isAuthenticated && user.id !== currentUserId"
+                :class="{ 'following': user.isFollowing }"
+                @click.stop="toggleFollow(user)"
+              >
+                {{ user.isFollowing ? '已关注' : '关注' }}
+              </button>
             </div>
           </div>
         </div>
@@ -117,6 +178,7 @@
 <script>
 import UserAvatar from '@/components/UserAvatar.vue';
 import apiService from '@/services/apiService';
+import { mapGetters } from 'vuex';
 
 export default {
   name: 'SearchView',
@@ -127,11 +189,19 @@ export default {
     return {
       searchQuery: '',
       searchResults: [],
+      userResults: [],
       searchHistory: [],
       searching: false,
       hasSearched: false,
-      currentSearchTerm: ''
+      currentSearchTerm: '',
+      activeTab: 'posts',
+      currentUserId: parseInt(localStorage.getItem('userId')) || null,
     };
+  },
+  computed: {
+    ...mapGetters({
+      isAuthenticated: 'isAuthenticated'
+    })
   },
   methods: {
     goBack() {
@@ -154,30 +224,69 @@ export default {
       this.hasSearched = true;
       this.searching = true;
       
-      // 调用API进行搜索
-      apiService.posts.search(this.searchQuery)
-        .then(response => {
-          this.searchResults = response.data;
-          console.log('搜索结果:', this.searchResults);
-          
-          // 处理搜索结果中可能缺少的字段
-          this.searchResults = this.searchResults.map(post => {
-            return {
-              ...post,
-              likedByCurrentUser: false, // 默认值
-              favoritedByCurrentUser: false, // 默认值
-              favorites: post.favorites || 0, // 确保有favorites字段
-              views: post.views || 0 // 确保有views字段
-            };
-          });
-        })
-        .catch(error => {
-          console.error('搜索失败:', error);
-          this.searchResults = [];
-        })
-        .finally(() => {
-          this.searching = false;
+      // 同时搜索帖子和用户
+      Promise.all([
+        this.searchPosts(),
+        this.searchUsers()
+      ]).finally(() => {
+        this.searching = false;
+      });
+    },
+    async searchPosts() {
+      try {
+        const response = await apiService.posts.search(this.searchQuery);
+        this.searchResults = response.data || [];
+        
+        // 处理搜索结果中可能缺少的字段
+        this.searchResults = this.searchResults.map(post => {
+          return {
+            ...post,
+            likedByCurrentUser: post.likedByCurrentUser || false,
+            favoritedByCurrentUser: post.favoritedByCurrentUser || false,
+            favorites: post.favorites || 0,
+            views: post.views || 0
+          };
         });
+        
+        console.log('帖子搜索结果:', this.searchResults);
+      } catch (error) {
+        console.error('搜索帖子失败:', error);
+        this.searchResults = [];
+      }
+    },
+    async searchUsers() {
+      try {
+        const response = await apiService.users.search(this.searchQuery);
+        const users = response.data || [];
+        
+        // 如果用户已登录，检查是否关注了搜索结果中的用户
+        if (this.isAuthenticated && users.length > 0) {
+          // 为每个用户添加isFollowing属性，默认为false
+          this.userResults = await Promise.all(users.map(async user => {
+            try {
+              // 当前用户不能关注自己
+              if (user.id === this.currentUserId) {
+                return { ...user, isFollowing: false };
+              }
+              
+              // 检查是否已关注
+              const followResponse = await apiService.users.checkFollowing(user.id);
+              return { ...user, isFollowing: followResponse.data };
+            } catch (error) {
+              console.error(`检查关注状态失败，用户ID: ${user.id}`, error);
+              return { ...user, isFollowing: false };
+            }
+          }));
+        } else {
+          // 未登录用户或没有搜索结果
+          this.userResults = users.map(user => ({ ...user, isFollowing: false }));
+        }
+        
+        console.log('用户搜索结果:', this.userResults);
+      } catch (error) {
+        console.error('搜索用户失败:', error);
+        this.userResults = [];
+      }
     },
     saveToHistory(query) {
       query = query.trim();
@@ -222,6 +331,8 @@ export default {
       localStorage.setItem('searchHistory', JSON.stringify(this.searchHistory));
     },
     formatDate(dateString) {
+      if (!dateString) return '';
+      
       const date = new Date(dateString);
       const now = new Date();
       const diffInSeconds = Math.floor((now - date) / 1000);
@@ -240,7 +351,53 @@ export default {
     },
     goToPostDetail(postId) {
       this.$router.push({ name: 'post-detail', params: { id: postId } });
-    }
+    },
+    goToUserProfile(userId) {
+      this.$router.push({ name: 'profile', params: { id: userId } });
+    },
+    // 新增方法：切换关注/取消关注
+    async toggleFollow(user) {
+      if (!this.isAuthenticated) {
+        this.$router.push('/login');
+        return;
+      }
+      
+      // 阻止事件冒泡，防止导航到用户个人页
+      event.stopPropagation();
+      
+      try {
+        // 乐观更新UI
+        const isCurrentlyFollowing = user.isFollowing;
+        
+        // 立即在前端更新状态
+        const userIndex = this.userResults.findIndex(u => u.id === user.id);
+        if (userIndex !== -1) {
+          this.userResults[userIndex].isFollowing = !isCurrentlyFollowing;
+        }
+        
+        // 异步调用API
+        if (isCurrentlyFollowing) {
+          // 取消关注
+          await apiService.users.unfollow(user.id);
+          console.log(`已取消关注用户: ${user.username}`);
+        } else {
+          // 关注
+          await apiService.users.follow(user.id);
+          console.log(`已关注用户: ${user.username}`);
+        }
+      } catch (error) {
+        console.error('关注/取消关注操作失败:', error);
+        
+        // 如果API调用失败，恢复原状态
+        const userIndex = this.userResults.findIndex(u => u.id === user.id);
+        if (userIndex !== -1) {
+          this.userResults[userIndex].isFollowing = !this.userResults[userIndex].isFollowing;
+        }
+        
+        // 显示错误提示（可选）
+        alert('操作失败，请稍后再试');
+      }
+    },
   },
   mounted() {
     // 加载历史记录
@@ -394,6 +551,44 @@ export default {
   margin-top: 5px;
 }
 
+/* 搜索结果分类标签 */
+.search-tabs {
+  display: flex;
+  margin-bottom: 15px;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  color: var(--light-text-color);
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+}
+
+.search-tab.active {
+  color: var(--primary-color);
+}
+
+.search-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+}
+
+.tab-content {
+  padding: 5px 0;
+}
+
 .loading-indicator {
   text-align: center;
   padding: 30px 0;
@@ -418,6 +613,7 @@ export default {
   margin-top: 8px;
 }
 
+/* 帖子搜索结果样式 */
 .post-list {
   display: flex;
   flex-direction: column;
@@ -492,5 +688,72 @@ export default {
 
 .post-action.active {
   color: var(--primary-color);
+}
+
+/* 用户搜索结果样式 */
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+}
+
+.user-avatar {
+  margin-right: 15px;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.user-id {
+  font-size: 12px;
+  color: var(--light-text-color);
+  margin-bottom: 6px;
+}
+
+.user-bio {
+  font-size: 13px;
+  color: var(--light-text-color);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.follow-btn {
+  background-image: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 15px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.follow-btn.following {
+  background-image: none;
+  background-color: #f0f0f0;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+.user-card .follow-btn {
+  flex-shrink: 0;
 }
 </style> 

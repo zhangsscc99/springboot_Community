@@ -224,6 +224,12 @@ const apiService = {
     // 检查当前用户是否关注了某个用户
     checkFollowing(userId) {
       return apiClient.get(`/api/users/${userId}/follow/check`);
+    },
+    // 搜索用户
+    search(query) {
+      return apiClient.get(`/api/users/search`, {
+        params: { query }
+      });
     }
   },
   

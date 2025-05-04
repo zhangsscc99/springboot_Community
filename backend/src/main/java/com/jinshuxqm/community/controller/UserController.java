@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -178,6 +180,33 @@ public class UserController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("更新个人资料失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 搜索用户（通过用户名或昵称）
+     */
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(@RequestParam String query) {
+        try {
+            List<User> users = userRepository.searchByUsernameOrNickname(query);
+            
+            // 转换为DTO以保护敏感信息
+            List<Map<String, Object>> userDtos = users.stream().map(user -> {
+                Map<String, Object> dto = new HashMap<>();
+                dto.put("id", user.getId());
+                dto.put("username", user.getUsername());
+                dto.put("nickname", user.getNickname());
+                dto.put("avatar", user.getAvatar());
+                dto.put("bio", user.getBio());
+                return dto;
+            }).collect(Collectors.toList());
+            
+            return ResponseEntity.ok(userDtos);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("搜索用户失败: " + e.getMessage());
         }
     }
 } 

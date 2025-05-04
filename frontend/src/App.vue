@@ -16,7 +16,7 @@
           <input 
             type="text" 
             class="search-input" 
-            placeholder="搜索内容..." 
+            placeholder="搜索帖子或用户..." 
             @click.stop="goToSearch"
             readonly
             v-model="searchPlaceholder"
