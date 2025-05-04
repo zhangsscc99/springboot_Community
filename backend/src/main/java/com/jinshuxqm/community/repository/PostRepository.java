@@ -50,4 +50,28 @@ public interface PostRepository extends JpaRepository<Post, Long> {
            "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
            "LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))")
     Page<Post> searchByTitleOrContent(@Param("query") String query, Pageable pageable);
+
+    /**
+     * 更新帖子的点赞数量
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE PostStats ps SET ps.likeCount = :likesCount WHERE ps.post.id = :postId")
+    void updateLikes(@Param("postId") Long postId, @Param("likesCount") int likesCount);
+
+    /**
+     * 更新帖子的评论数量
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE PostStats ps SET ps.commentCount = :commentsCount WHERE ps.post.id = :postId")
+    void updateComments(@Param("postId") Long postId, @Param("commentsCount") int commentsCount);
+
+    /**
+     * 更新帖子的浏览数量
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE PostStats ps SET ps.viewCount = :viewsCount WHERE ps.post.id = :postId")
+    void updateViews(@Param("postId") Long postId, @Param("viewsCount") int viewsCount);
 } 
