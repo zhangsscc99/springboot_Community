@@ -67,34 +67,49 @@ public class PostServiceImpl implements PostService {
     
     @Override
     public PostResponse createPost(PostRequest postRequest, String username) {
-        // 查找用户
-        User author = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
+        System.out.println("开始创建帖子: 标题=" + postRequest.getTitle() + ", 用户名=" + username + ", 栏目=" + postRequest.getTab());
         
-        // 创建帖子实体
-        Post post = new Post();
-        post.setTitle(postRequest.getTitle());
-        post.setContent(postRequest.getContent());
-        post.setAuthor(author);
-        post.setTab(postRequest.getTab());
-        
-        if (postRequest.getTags() != null) {
-            post.setTags(postRequest.getTags());
+        try {
+            // 查找用户
+            User author = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
+            
+            System.out.println("找到用户: ID=" + author.getId() + ", 用户名=" + author.getUsername());
+            
+            // 创建帖子实体
+            Post post = new Post();
+            post.setTitle(postRequest.getTitle());
+            post.setContent(postRequest.getContent());
+            post.setAuthor(author);
+            post.setTab(postRequest.getTab());
+            
+            if (postRequest.getTags() != null) {
+                post.setTags(postRequest.getTags());
+                System.out.println("设置标签: " + postRequest.getTags());
+            }
+            
+            post.setCreatedAt(LocalDateTime.now());
+            post.setUpdatedAt(LocalDateTime.now());
+            
+            // 创建并关联统计信息
+            PostStats stats = new PostStats();
+            stats.setPost(post);
+            post.setStats(stats);
+            
+            System.out.println("准备保存帖子到数据库");
+            // 保存到数据库
+            Post savedPost = postRepository.save(post);
+            System.out.println("帖子保存成功: ID=" + savedPost.getId());
+            
+            // 转换为响应DTO
+            PostResponse response = convertToDto(savedPost, username);
+            System.out.println("帖子创建完成: ID=" + response.getId() + ", 标题=" + response.getTitle());
+            return response;
+        } catch (Exception e) {
+            System.err.println("创建帖子时出错: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // 重新抛出异常以便于上层捕获
         }
-        
-        post.setCreatedAt(LocalDateTime.now());
-        post.setUpdatedAt(LocalDateTime.now());
-        
-        // 创建并关联统计信息
-        PostStats stats = new PostStats();
-        stats.setPost(post);
-        post.setStats(stats);
-        
-        // 保存到数据库
-        Post savedPost = postRepository.save(post);
-        
-        // 转换为响应DTO
-        return convertToDto(savedPost, username);
     }
     
     @Override

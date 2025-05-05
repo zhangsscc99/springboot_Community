@@ -43,7 +43,6 @@ public class ScheduledTasks {
     
     private static final Logger logger = LoggerFactory.getLogger(ScheduledTasks.class);
     private static final String AGENT_USERNAME = "lovelessboy";
-    private static final Long AGENT_USER_ID = 999L; // 固定的Agent账号ID
     
     private final Random random = new Random();
     
@@ -70,13 +69,12 @@ public class ScheduledTasks {
     public void initAgent() {
         try {
             // 检查Agent账号是否存在
-            Optional<User> existingAgent = userRepository.findById(AGENT_USER_ID);
+            Optional<User> existingAgent = userRepository.findByUsername(AGENT_USERNAME);
             if (existingAgent.isPresent()) {
                 logger.info("Agent账号已存在，跳过创建步骤");
             } else {
                 // 创建Agent账号
                 User agent = new User();
-                agent.setId(AGENT_USER_ID);
                 agent.setUsername(AGENT_USERNAME);
                 agent.setPassword(passwordEncoder.encode("lovelessboy123"));
                 agent.setEmail("lovelessboy@example.com");
@@ -112,7 +110,7 @@ public class ScheduledTasks {
     public void randomInteraction() {
         try {
             // 获取Agent账号
-            Optional<User> agentOpt = userRepository.findById(AGENT_USER_ID);
+            Optional<User> agentOpt = userRepository.findByUsername(AGENT_USERNAME);
             if (!agentOpt.isPresent()) {
                 logger.warn("Agent账号不存在，无法执行互动任务");
                 return;
@@ -137,7 +135,7 @@ public class ScheduledTasks {
                 Post post = recentPosts.get(random.nextInt(recentPosts.size()));
                 
                 // 确保不是自己的帖子
-                if (!post.getAuthor().getId().equals(AGENT_USER_ID)) {
+                if (!post.getAuthor().getUsername().equals(AGENT_USERNAME)) {
                     // 50%概率点赞
                     if (random.nextBoolean()) {
                         try {
@@ -145,7 +143,7 @@ public class ScheduledTasks {
                             boolean alreadyLiked = false;
                             if (post.getLikes() != null) {
                                 alreadyLiked = post.getLikes().stream()
-                                        .anyMatch(like -> like.getUser().getId().equals(AGENT_USER_ID));
+                                        .anyMatch(like -> like.getUser().getUsername().equals(AGENT_USERNAME));
                             }
                             
                             if (!alreadyLiked) {
@@ -207,11 +205,14 @@ public class ScheduledTasks {
      */
     private void createAgentPost() {
         try {
-            Optional<User> agentOpt = userRepository.findById(AGENT_USER_ID);
+            Optional<User> agentOpt = userRepository.findByUsername(AGENT_USERNAME);
             if (!agentOpt.isPresent()) {
                 logger.warn("Agent账号不存在，无法创建帖子");
                 return;
             }
+            
+            User agent = agentOpt.get();
+            logger.info("找到Agent账号: ID={}, 用户名={}", agent.getId(), agent.getUsername());
             
             String[] titles = {
                 "真的好难受，她还是放弃了我",
@@ -290,37 +291,27 @@ public class ScheduledTasks {
             String title = titles[random.nextInt(titles.length)];
             String content = contents[random.nextInt(contents.length)];
             
-            // 创建帖子对象
-            Post post = new Post();
-            post.setTitle(title);
-            post.setContent(content);
-            post.setAuthor(agentOpt.get());
-            post.setCreatedAt(LocalDateTime.now());
-            post.setUpdatedAt(LocalDateTime.now());
-            // 设置标签为"推荐"
-            post.setTab("推荐");
-            
-            // 使用PostRepository保存帖子
-            Post savedPost = postRepository.save(post);
-            
-            // 确保帖子有PostStats对象
-            if (savedPost != null && savedPost.getStats() == null) {
-                PostStats stats = new PostStats();
-                stats.setPost(savedPost);
-                savedPost.setStats(stats);
+            // 使用PostService创建帖子，而不是直接使用Repository
+            try {
+                // 创建帖子请求对象
+                com.jinshuxqm.community.model.dto.PostRequest postRequest = new com.jinshuxqm.community.model.dto.PostRequest();
+                postRequest.setTitle(title);
+                postRequest.setContent(content);
+                postRequest.setTab("推荐"); // 设置为推荐栏目
                 
-                // 再次保存以确保PostStats被持久化
-                savedPost = postRepository.save(savedPost);
+                // 使用PostService创建帖子
+                com.jinshuxqm.community.model.dto.PostResponse response = postService.createPost(postRequest, agent.getUsername());
                 
-                // 初始化帖子统计信息
-                postRepository.updateViews(savedPost.getId(), 0);
-                postRepository.updateLikes(savedPost.getId(), 0);
-                postRepository.updateComments(savedPost.getId(), 0);
+                if (response != null && response.getId() != null) {
+                    logger.info("Agent {} 成功发布新帖子: ID={}, 标题={}", agent.getUsername(), response.getId(), response.getTitle());
+                } else {
+                    logger.error("Agent创建帖子后返回的响应为null或无ID");
+                }
+            } catch (Exception e) {
+                logger.error("使用PostService创建帖子时出错: {}", e.getMessage(), e);
             }
-            
-            logger.info("Agent {} 发布了新帖子: {}", AGENT_USERNAME, title);
         } catch (Exception e) {
-            logger.error("创建Agent帖子时出错", e);
+            logger.error("创建Agent帖子时出错: {}", e.getMessage(), e);
             e.printStackTrace();
         }
     }
