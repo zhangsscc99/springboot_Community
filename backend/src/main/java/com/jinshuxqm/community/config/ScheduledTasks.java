@@ -297,6 +297,8 @@ public class ScheduledTasks {
             post.setAuthor(agentOpt.get());
             post.setCreatedAt(LocalDateTime.now());
             post.setUpdatedAt(LocalDateTime.now());
+            // 设置标签为"推荐"
+            post.setTab("推荐");
             
             // 使用PostRepository保存帖子
             Post savedPost = postRepository.save(post);
