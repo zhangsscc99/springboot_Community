@@ -43,6 +43,12 @@
           </div>
         </div>
         <p class="post-content">{{ post.content }}</p>
+        
+        <!-- 添加发布时间显示 -->
+        <div class="post-time-container">
+          <span class="post-time">{{ formatDate(post.createdAt) }}</span>
+        </div>
+        
         <div class="post-tags" v-if="post.tags">
           <span v-for="(tag, index) in post.tags" :key="index" class="post-tag">
             #{{ tag }}
@@ -589,6 +595,17 @@ export default {
   overflow: hidden;
   line-height: 1.5;
   letter-spacing: -0.2px;
+}
+
+.post-time-container {
+  padding: 0 16px 12px;
+  text-align: left;
+}
+
+.post-time {
+  font-size: 12px;
+  color: #8a9aa4;
+  display: inline-block;
 }
 
 .post-tags {
