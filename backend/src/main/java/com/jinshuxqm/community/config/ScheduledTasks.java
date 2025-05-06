@@ -35,7 +35,7 @@ import java.util.Random;
 
 /**
  * 定时任务：模拟一个为情所伤的男大学生Agent账号
- * 每10秒发布一篇帖子，快速填充论坛内容
+ * 每5分钟发布一篇帖子，填充论坛内容
  */
 @Component
 @EnableScheduling
@@ -95,12 +95,12 @@ public class ScheduledTasks {
     }
     
     /**
-     * 每10秒发布一篇帖子
+     * 每5分钟发布一篇帖子
      */
-    @Scheduled(fixedRate = 10000) // 每10秒执行一次
+    @Scheduled(fixedRate = 300000) // 每5分钟执行一次
     public void autoPost() {
         createAgentPost();
-        logger.info("Agent自动发帖已执行，每10秒发一篇");
+        logger.info("Agent自动发帖已执行，每5分钟发一篇");
     }
     
     /**

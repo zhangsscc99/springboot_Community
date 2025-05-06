@@ -7,7 +7,7 @@
 const apiConfig = {
   // 更新为与curl测试相同的域名
   //47.243.102.28
-  BASE_URL: 'http://47.243.102.28:8083',
+  BASE_URL: 'http://localhost:8083',
   // 或者使用相对路径，让浏览器自动使用当前域名
   // BASE_URL: '',
 };
