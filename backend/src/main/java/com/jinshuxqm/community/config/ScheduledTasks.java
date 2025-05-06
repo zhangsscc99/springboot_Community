@@ -122,7 +122,7 @@ public class ScheduledTasks {
     /**
      * 每5分钟随机选择一个Agent发布帖子
      */
-    @Scheduled(fixedRate = 300000) // 每5分钟执行一次
+    @Scheduled(fixedRate = 30000) // 每5分钟执行一次
     public void autoPost() {
         List<AgentConfig> agentConfigs = agentManager.getAllAgentConfigs();
         
