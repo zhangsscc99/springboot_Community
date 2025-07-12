@@ -3,8 +3,8 @@ import { createStore } from 'vuex'
 import apiService from '@/services/apiService'
 import cacheService, { CACHE_TYPES } from '@/services/cacheService'
 
-// 缓存有效期（毫秒）- 2分钟
-const CACHE_EXPIRATION = 2 * 60 * 1000;
+// 缓存有效期（毫秒）- 2秒 (调试用，快速显示新帖子)
+const CACHE_EXPIRATION = 2 * 1000;
 
 export default createStore({
   state: {

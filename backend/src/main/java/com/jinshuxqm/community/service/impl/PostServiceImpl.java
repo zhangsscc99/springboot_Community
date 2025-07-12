@@ -150,8 +150,24 @@ public class PostServiceImpl implements PostService {
     
     @Override
     public Page<PostResponse> getPostsByTab(String tab, Pageable pageable) {
-        return postRepository.findByTab(tab, pageable)
-                .map(post -> convertToDto(post, null));
+        System.out.println("=== getPostsByTab调试信息 ===");
+        System.out.println("查询tab: '" + tab + "'");
+        System.out.println("tab长度: " + tab.length());
+        System.out.println("tab字节: " + java.util.Arrays.toString(tab.getBytes()));
+        
+        Page<Post> posts = postRepository.findByTab(tab, pageable);
+        System.out.println("查询到的帖子数量: " + posts.getTotalElements());
+        
+        if (posts.getTotalElements() > 0) {
+            System.out.println("第一个帖子信息:");
+            Post firstPost = posts.getContent().get(0);
+            System.out.println("  ID: " + firstPost.getId());
+            System.out.println("  标题: " + firstPost.getTitle());
+            System.out.println("  Tab: '" + firstPost.getTab() + "'");
+            System.out.println("  Tab字节: " + java.util.Arrays.toString(firstPost.getTab().getBytes()));
+        }
+        
+        return posts.map(post -> convertToDto(post, null));
     }
     
     @Override
@@ -594,6 +610,11 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toList());
         
         return new PageImpl<>(postResponses, pageable, postsWithScores.size());
+    }
+    
+    @Override
+    public List<Post> getAllPostsForDebug() {
+        return postRepository.findAll();
     }
     
     // 帮助类：用于存储帖子及其热度分数

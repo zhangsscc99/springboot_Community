@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -89,6 +91,14 @@ public class PostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
+        System.out.println("=== PostController调试信息 ===");
+        System.out.println("接收到的tab参数: '" + tab + "'");
+        try {
+            System.out.println("URL编码检查: " + URLDecoder.decode(tab, StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            System.out.println("URL解码失败: " + e.getMessage());
+        }
+        
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<PostResponse> posts;
         
@@ -100,7 +110,50 @@ public class PostController {
             posts = postService.getPostsByTab(tab, pageable);
         }
         
+        System.out.println("返回帖子数量: " + posts.getTotalElements());
+        
         return ResponseEntity.ok(posts);
+    }
+    
+    // 临时调试接口：查看所有帖子的tab分布
+    @GetMapping("/debug/tabs")
+    public ResponseEntity<?> debugTabs() {
+        try {
+            // 这需要在PostService中添加对应方法
+            List<Post> allPosts = postService.getAllPostsForDebug();
+            
+            Map<String, Long> tabCounts = allPosts.stream()
+                .collect(Collectors.groupingBy(
+                    post -> post.getTab() == null ? "NULL" : post.getTab(),
+                    Collectors.counting()
+                ));
+            
+            Map<String, Object> debugInfo = new HashMap<>();
+            debugInfo.put("总帖子数", allPosts.size());
+            debugInfo.put("tab分布", tabCounts);
+            
+            // 显示最近的10个帖子
+            List<Map<String, Object>> recentPosts = allPosts.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(10)
+                .map(post -> {
+                    Map<String, Object> postInfo = new HashMap<>();
+                    postInfo.put("id", post.getId());
+                    postInfo.put("title", post.getTitle());
+                    postInfo.put("tab", post.getTab());
+                    postInfo.put("author", post.getAuthor().getUsername());
+                    postInfo.put("createdAt", post.getCreatedAt());
+                    return postInfo;
+                })
+                .collect(Collectors.toList());
+            
+            debugInfo.put("最近10个帖子", recentPosts);
+            
+            return ResponseEntity.ok(debugInfo);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("调试查询失败: " + e.getMessage());
+        }
     }
 
     // 创建帖子

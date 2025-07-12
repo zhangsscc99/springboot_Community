@@ -57,7 +57,15 @@ public class AgentConfig {
     // 检查当前时间是否在活跃时段
     public boolean isActiveNow() {
         LocalTime now = LocalTime.now();
-        return (now.isAfter(activeStartTime) && now.isBefore(activeEndTime));
+        
+        // 如果设置为全天活跃（00:00-23:59），直接返回true
+        if (activeStartTime.equals(LocalTime.of(0, 0)) && 
+            activeEndTime.equals(LocalTime.of(23, 59))) {
+            return true;
+        }
+        
+        // 使用包含边界的时间比较
+        return (!now.isBefore(activeStartTime) && !now.isAfter(activeEndTime));
     }
 
     // Getters and Setters

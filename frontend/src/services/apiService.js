@@ -254,7 +254,20 @@ const apiService = {
     },
     // 根据标签获取帖子
     getByTab: (tab, config = {}) => {
-      return apiClient.get(`/api/posts/tab/${tab}`, config);
+      // 添加默认排序参数，确保新帖子显示在最前面
+      const params = {
+        sortBy: 'createdAt',
+        sortDir: 'desc',
+        size: 50, // 增加显示数量确保能看到更多帖子
+        ...config.params // 允许覆盖默认参数
+      };
+      
+      const requestConfig = {
+        ...config,
+        params
+      };
+      
+      return apiClient.get(`/api/posts/tab/${tab}`, requestConfig);
     },
     // 获取单个帖子详情
     getById(id) {

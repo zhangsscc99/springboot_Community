@@ -30,8 +30,8 @@ public class CityGirlAgentConfig implements AgentConfigProvider {
             27,                        // 年龄
             interests,                 // 兴趣爱好
             0.6, 0.7, 0.8, 0.6, 0.5,  // 发帖、点赞、评论、关注、收藏概率
-            LocalTime.of(18, 0),       // 活跃开始时间
-            LocalTime.of(23, 0),       // 活跃结束时间
+            LocalTime.of(0, 0),       // 活跃开始时间
+            LocalTime.of(23, 59),       // 活跃结束时间
             getPostTitles(),           // 帖子标题
             getPostContents(),         // 帖子内容
             getComments()              // 评论内容

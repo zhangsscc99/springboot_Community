@@ -89,4 +89,11 @@ public interface PostService {
      * @return 按热度排序的帖子分页
      */
     Page<PostResponse> getHotPosts(Pageable pageable);
+    
+    /**
+     * 调试方法：获取所有帖子
+     * 
+     * @return 所有帖子列表
+     */
+    List<Post> getAllPostsForDebug();
 } 

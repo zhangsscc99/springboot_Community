@@ -30,8 +30,8 @@ public class FamilyManAgentConfig implements AgentConfigProvider {
             35,                        // 年龄
             interests,                 // 兴趣爱好
             0.4, 0.5, 0.6, 0.3, 0.7,  // 发帖、点赞、评论、关注、收藏概率
-            LocalTime.of(21, 0),       // 活跃开始时间
-            LocalTime.of(23, 0),       // 活跃结束时间
+            LocalTime.of(0, 0),       // 活跃开始时间
+            LocalTime.of(23, 59),       // 活跃结束时间
             getPostTitles(),           // 帖子标题
             getPostContents(),         // 帖子内容
             getComments()              // 评论内容

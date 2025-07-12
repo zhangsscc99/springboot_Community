@@ -120,9 +120,9 @@ public class ScheduledTasks {
     }
     
     /**
-     * 每5分钟随机选择一个Agent发布帖子
+     * 每20秒随机选择一个Agent发布帖子
      */
-    @Scheduled(fixedRate = 30000) // 每5分钟执行一次
+    @Scheduled(fixedRate = 20000) // 每20秒执行一次
     public void autoPost() {
         List<AgentConfig> agentConfigs = agentManager.getAllAgentConfigs();
         
@@ -339,6 +339,10 @@ public class ScheduledTasks {
                 
                 if (response != null && response.getId() != null) {
                     logger.info("Agent {} 成功发布新帖子: ID={}, 标题={}", agent.getUsername(), response.getId(), response.getTitle());
+                    
+                    // 新增功能：触发其他Agent对新帖子进行评论
+                    triggerAgentCommentsOnNewPost(response.getId(), agentConfig.getUsername());
+                    
                 } else {
                     logger.error("Agent创建帖子后返回的响应为null或无ID");
                 }
@@ -347,6 +351,74 @@ public class ScheduledTasks {
             }
         } catch (Exception e) {
             logger.error("创建Agent帖子时出错: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 触发其他Agent对新帖子进行评论
+     * @param postId 新发布的帖子ID
+     * @param authorUsername 发帖Agent的用户名（排除自己）
+     */
+    private void triggerAgentCommentsOnNewPost(Long postId, String authorUsername) {
+        try {
+            logger.info("=== 开始为新帖子 {} 触发Agent评论，发帖者: {} ===", postId, authorUsername);
+            
+            // 获取所有Agent配置，排除发帖的Agent
+            List<AgentConfig> allAgents = agentManager.getAllAgentConfigs();
+            logger.info("总共有 {} 个Agent配置", allAgents.size());
+            
+            List<AgentConfig> otherAgents = allAgents.stream()
+                .filter(agent -> !agent.getUsername().equals(authorUsername))
+                .collect(Collectors.toList());
+            
+            logger.info("排除发帖者后，有 {} 个Agent可以评论", otherAgents.size());
+            
+            if (otherAgents.isEmpty()) {
+                logger.warn("没有其他Agent可以评论帖子 {}", postId);
+                return;
+            }
+            
+            // 为了让评论看起来更自然，随机选择2-4个Agent进行评论
+            int commentersCount = Math.min(otherAgents.size(), random.nextInt(3) + 2); // 2-4个评论者
+            Collections.shuffle(otherAgents); // 随机打乱顺序
+            
+            for (int i = 0; i < commentersCount; i++) {
+                AgentConfig commenterAgent = otherAgents.get(i);
+                User commenterUser = agentUsers.get(commenterAgent.getUsername());
+                
+                if (commenterUser == null) {
+                    logger.warn("评论Agent {} 用户对象未找到，跳过评论", commenterAgent.getUsername());
+                    continue;
+                }
+                
+                try {
+                    // 随机选择一条评论内容
+                    String commentContent = commenterAgent.getComments().get(
+                        random.nextInt(commenterAgent.getComments().size()));
+                    
+                    // 创建评论对象
+                    CommentDTO commentDTO = new CommentDTO();
+                    commentDTO.setContent(commentContent);
+                    commentDTO.setPostId(postId);
+                    
+                    // 创建Authentication对象
+                    Authentication commenterAuth = createAgentAuthentication(commenterUser);
+                    
+                    // 发布评论 (移除阻塞延迟)
+                    commentService.createComment(postId, commentDTO, commenterAuth);
+                    logger.info("Agent {} 成功评论了新帖子 {}: {}", 
+                        commenterAgent.getUsername(), postId, commentContent);
+                        
+                } catch (Exception e) {
+                    logger.error("Agent {} 评论新帖子 {} 时出错: {}", 
+                        commenterAgent.getUsername(), postId, e.getMessage());
+                }
+            }
+            
+            logger.info("完成为新帖子 {} 触发Agent评论，共 {} 个评论者", postId, commentersCount);
+            
+        } catch (Exception e) {
+            logger.error("触发Agent评论新帖子时出错: {}", e.getMessage(), e);
         }
     }
 } 
