@@ -3,8 +3,11 @@ import { createStore } from 'vuex'
 import apiService from '@/services/apiService'
 import cacheService, { CACHE_TYPES } from '@/services/cacheService'
 
-// 缓存有效期（毫秒）- 2秒 (调试用，快速显示新帖子)
-const CACHE_EXPIRATION = 2 * 1000;
+// 缓存有效期（毫秒）- 禁用缓存用于调试
+const CACHE_EXPIRATION = 0; // 完全禁用缓存
+
+// 缓存存储
+const cache = new Map();
 
 export default createStore({
   state: {
@@ -72,6 +75,9 @@ export default createStore({
       state.isAuthenticated = !!user;
     },
     SET_POSTS(state, posts) {
+      console.log('=== Vuex SET_POSTS ===');
+      console.log('设置帖子数量:', posts.length);
+      console.log('帖子列表:', posts.map(p => ({id: p.id, title: p.title, author: p.author})));
       state.posts = posts;
     },
     SET_TAB_POSTS(state, { tab, posts }) {
@@ -101,6 +107,7 @@ export default createStore({
       }
     },
     SET_LOADING(state, status) {
+      console.log('=== Vuex SET_LOADING ===', status);
       state.loading = status;
     },
     SET_ACTION_LOADING(state, status) {
@@ -426,9 +433,13 @@ export default createStore({
     
     // 获取特定栏目的帖子
     async fetchPostsByTab({ commit, state, getters }, tab, options = {}) {
+      console.log('=== fetchPostsByTab 开始 ===');
+      console.log('请求tab:', tab);
+      console.log('当前activeTab:', state.activeTab);
+      
       // 如果标签缓存未过期且有数据，直接使用缓存数据
       if (!getters.isTabCacheExpired(tab) && state.tabPosts[tab] && state.tabPosts[tab].length > 0) {
-        console.log(`使用缓存中的${tab}栏目帖子`);
+        console.log(`使用缓存中的${tab}栏目帖子，数量:`, state.tabPosts[tab].length);
         return state.tabPosts[tab];
       }
       
@@ -437,7 +448,7 @@ export default createStore({
       
       commit('SET_LOADING', true);
       try {
-        console.log(`从API获取${tab}栏目的帖子`);
+        console.log(`=== 从API获取${tab}栏目的帖子 ===`);
         
         // 创建一个可取消的请求
         const CancelToken = apiService.getCancelToken();
@@ -449,37 +460,49 @@ export default createStore({
           state.requestCancelTokens[options.cancelToken] = source;
         }
         
+        console.log('准备调用API，URL:', `/api/posts/tab/${encodeURIComponent(tab)}`);
         const response = await apiService.posts.getByTab(tab, { cancelToken: source.token });
-        const posts = response.data.content || response.data;
+        console.log('API响应状态:', response.status);
+        console.log('API响应数据结构:', {
+          hasData: !!response.data,
+          hasContent: !!(response.data && response.data.content),
+          totalElements: response.data && response.data.totalElements,
+          contentLength: response.data && response.data.content && response.data.content.length
+        });
         
-        // 添加调试信息 - 检查后端返回数据中是否有bio字段
-        console.log(`[API Debug] Response received for tab ${tab}:`, response.data);
+        const posts = response.data.content || response.data;
+        console.log('解析出的帖子数量:', posts ? posts.length : 0);
+        
         if (posts && posts.length > 0) {
-          const firstPost = posts[0];
-          console.log(`[API Debug] First post:`, firstPost);
-          if (firstPost.author) {
-            console.log(`[API Debug] First post author:`, firstPost.author);
-            console.log(`[API Debug] Bio field exists: ${firstPost.author.bio !== undefined}`);
-            if (firstPost.author.bio !== undefined) {
-              console.log(`[API Debug] Bio value: "${firstPost.author.bio}"`);
-            }
-          }
+          console.log('前3个帖子预览:', posts.slice(0, 3).map(p => ({
+            id: p.id,
+            title: p.title,
+            author: p.author && p.author.username,
+            createdAt: p.createdAt
+          })));
         }
         
         // 检查当前激活标签是否仍然是发起请求时的标签
         if (state.activeTab !== tab) {
-          console.log(`标签已切换，丢弃 ${tab} 的响应数据`);
+          console.log(`标签已切换从${tab}到${state.activeTab}，丢弃 ${tab} 的响应数据`);
           return [];
         }
         
         // 更新标签帖子并写入缓存
-        posts.forEach(post => {
-          commit('UPDATE_POST_CACHE', post);
-        });
+        if (posts && Array.isArray(posts)) {
+          posts.forEach(post => {
+            commit('UPDATE_POST_CACHE', post);
+          });
+          
+          commit('SET_TAB_POSTS', { tab, posts });
+          console.log(`=== 成功设置${tab}栏目帖子，数量:`, posts.length);
+        } else {
+          console.warn('API返回的posts不是数组:', posts);
+          commit('SET_TAB_POSTS', { tab, posts: [] });
+        }
         
-        commit('SET_TAB_POSTS', { tab, posts });
         commit('SET_ERROR', null);
-        return posts;
+        return posts || [];
       } catch (error) {
         if (apiService.isCancel(error)) {
           console.log(`请求 ${tab} 被取消`);
