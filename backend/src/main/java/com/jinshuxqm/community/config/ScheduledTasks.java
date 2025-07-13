@@ -94,7 +94,34 @@ public class ScheduledTasks {
                 Optional<User> existingAgent = userRepository.findByUsername(config.getUsername());
                 if (existingAgent.isPresent()) {
                     logger.info("Agent账号 {} 已存在，跳过创建步骤", config.getUsername());
-                    agentUsers.put(config.getUsername(), existingAgent.get());
+                    User agent = existingAgent.get();
+                    agentUsers.put(config.getUsername(), agent);
+                    
+                    // 更新现有Agent的avatar和其他信息（如果缺失）
+                    boolean needUpdate = false;
+                    
+                    if (agent.getAvatar() == null || agent.getAvatar().isEmpty()) {
+                        agent.setAvatar(getDefaultAvatarForAgent(config.getUsername()));
+                        needUpdate = true;
+                        logger.info("为Agent {} 添加头像", config.getUsername());
+                    }
+                    
+                    if (agent.getNickname() == null || agent.getNickname().isEmpty()) {
+                        agent.setNickname(config.getNickname());
+                        needUpdate = true;
+                        logger.info("为Agent {} 添加昵称", config.getUsername());
+                    }
+                    
+                    if (agent.getBio() == null || agent.getBio().isEmpty()) {
+                        agent.setBio(config.getBio());
+                        needUpdate = true;
+                        logger.info("为Agent {} 添加简介", config.getUsername());
+                    }
+                    
+                    if (needUpdate) {
+                        userRepository.save(agent);
+                        logger.info("更新Agent {} 的信息完成", config.getUsername());
+                    }
                 } else {
                     // 创建Agent账号
                     User agent = new User();
@@ -103,6 +130,7 @@ public class ScheduledTasks {
                     agent.setEmail(config.getEmail());
                     agent.setNickname(config.getNickname());
                     agent.setBio(config.getBio());
+                    agent.setAvatar(getDefaultAvatarForAgent(config.getUsername())); // 设置默认头像
                     agent.setCreatedAt(LocalDateTime.now());
                     agent.setUpdatedAt(LocalDateTime.now());
                     
@@ -519,6 +547,26 @@ public class ScheduledTasks {
             
         } catch (Exception e) {
             logger.error("触发Agent评论新帖子时出错: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 为不同的Agent获取默认头像
+     */
+    private String getDefaultAvatarForAgent(String agentUsername) {
+        switch (agentUsername) {
+            case "city_girl":
+                return "https://i.pinimg.com/474x/81/8a/1b/818a1b89a91a4a90f5ff6dc70908c313.jpg";
+            case "career_sister":
+                return "https://i.pinimg.com/474x/2e/38/8e/2e388e5cb3a4de8f8b9a7f6f4a1b2c3d.jpg";
+            case "teen_heart":
+                return "https://i.pinimg.com/474x/5f/9a/2b/5f9a2b8c7d6e3f4a9b8c7d6e3f4a9b8c.jpg";
+            case "family_man":
+                return "https://i.pinimg.com/474x/4c/7d/9e/4c7d9e1f8a6b5c4d3e2f1a9b8c7d6e5f.jpg";
+            case "lovelessboy":
+                return "https://i.pinimg.com/474x/8b/4e/7f/8b4e7f2a9d6c5b4e3f2a1d9c8b7e6f5a.jpg";
+            default:
+                return "https://via.placeholder.com/50x50/007bff/ffffff?text=AI";
         }
     }
 } 

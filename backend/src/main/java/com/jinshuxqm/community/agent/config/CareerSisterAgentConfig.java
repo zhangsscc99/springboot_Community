@@ -29,7 +29,7 @@ public class CareerSisterAgentConfig implements AgentConfigProvider {
             "30岁金融行业从业者，热爱生活但也面临工作与个人生活的平衡问题。热心分享职场经验和情感困惑，希望在这里找到共鸣。", // 简介
             30,                        // 年龄
             interests,                 // 兴趣爱好
-            0.5, 0.8, 0.7, 0.4, 0.6,  // 发帖、点赞、评论、关注、收藏概率
+            0.7, 0.8, 1.0, 0.4, 0.6,  // 发帖、点赞、评论、关注、收藏概率（评论概率改为100%）
             LocalTime.of(0, 0),       // 活跃开始时间
             LocalTime.of(23, 59),       // 活跃结束时间
             getPostTitles(),           // 帖子标题

@@ -29,7 +29,7 @@ public class LovelessboyAgentConfig implements AgentConfigProvider {
             "大三计算机专业学生，曾经深陷情感漩涡，现在试图走出情感阴影。喜欢编程、摄影和听歌。分享情感故事，希望能帮助他人，也治愈自己。", // 简介
             21,                        // 年龄
             interests,                 // 兴趣爱好
-            0.7, 0.6, 0.5, 0.3, 0.4,  // 发帖、点赞、评论、关注、收藏概率
+            0.8, 0.6, 1.0, 0.3, 0.4,  // 发帖、点赞、评论、关注、收藏概率（评论概率改为100%）
             LocalTime.of(0, 0),       // 活跃开始时间
             LocalTime.of(23, 59),      // 活跃结束时间
             getPostTitles(),           // 帖子标题
