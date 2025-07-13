@@ -124,27 +124,42 @@ public class ScheduledTasks {
      */
     @Scheduled(fixedRate = 20000) // 每20秒执行一次
     public void autoPost() {
+        // 添加详细调试日志
+        logger.info("=== autoPost定时任务执行 - 当前时间: {} ===", LocalTime.now());
+        
         List<AgentConfig> agentConfigs = agentManager.getAllAgentConfigs();
+        logger.info("获取到 {} 个Agent配置", agentConfigs.size());
         
         // 筛选当前活跃的Agent
         List<AgentConfig> activeAgents = agentConfigs.stream()
             .filter(AgentConfig::isActiveNow)
             .collect(Collectors.toList());
         
+        logger.info("筛选后有 {} 个活跃Agent", activeAgents.size());
+        if (!activeAgents.isEmpty()) {
+            logger.info("活跃Agent列表: {}", 
+                activeAgents.stream().map(AgentConfig::getUsername).collect(Collectors.toList()));
+        }
+        
         if (activeAgents.isEmpty()) {
-            logger.info("当前没有活跃的Agent，跳过发帖");
+            logger.warn("当前没有活跃的Agent，跳过发帖");
             return;
         }
         
         // 随机选择一个活跃的Agent
         AgentConfig selectedAgent = activeAgents.get(random.nextInt(activeAgents.size()));
+        double randomValue = random.nextDouble();
+        logger.info("选中Agent: {}, 发帖概率: {}, 随机值: {}", 
+            selectedAgent.getUsername(), selectedAgent.getPostProbability(), randomValue);
         
         // 根据概率决定是否发帖
-        if (random.nextDouble() <= selectedAgent.getPostProbability()) {
+        if (randomValue <= selectedAgent.getPostProbability()) {
+            logger.info("开始执行Agent {} 发帖", selectedAgent.getUsername());
             createAgentPost(selectedAgent);
             logger.info("Agent {} 自动发帖已执行", selectedAgent.getUsername());
         } else {
-            logger.info("Agent {} 决定不发帖", selectedAgent.getUsername());
+            logger.info("Agent {} 根据概率决定不发帖 (随机值: {} > 概率: {})", 
+                selectedAgent.getUsername(), randomValue, selectedAgent.getPostProbability());
         }
     }
     
@@ -299,6 +314,91 @@ public class ScheduledTasks {
             }
         } catch (Exception e) {
             logger.error("执行Agent互动任务时出错", e);
+        }
+    }
+    
+    /**
+     * 每5秒让Agent对关注栏目下的现有帖子进行评论（高频测试）
+     */
+    @Scheduled(fixedRate = 5000) // 每5秒执行一次
+    public void agentCommentOnExistingPosts() {
+        try {
+            logger.info("=== 开始Agent对现有帖子评论任务 ===");
+            
+            List<AgentConfig> agentConfigs = agentManager.getAllAgentConfigs();
+            
+            // 筛选当前活跃的Agent
+            List<AgentConfig> activeAgents = agentConfigs.stream()
+                .filter(AgentConfig::isActiveNow)
+                .collect(Collectors.toList());
+            
+            if (activeAgents.isEmpty()) {
+                logger.info("当前没有活跃的Agent，跳过评论任务");
+                return;
+            }
+            
+            // 获取关注栏目下的帖子
+            Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
+            List<Post> posts = postRepository.findByTab("关注", pageable).getContent();
+            
+            logger.info("找到关注栏目下的帖子数量: {}", posts.size());
+            
+            if (posts.isEmpty()) {
+                logger.info("关注栏目下没有帖子，跳过评论任务");
+                return;
+            }
+            
+            // 随机选择1-3个Agent进行评论（增加评论活跃度）
+            int agentCount = Math.min(activeAgents.size(), random.nextInt(3) + 1);
+            for (int i = 0; i < agentCount; i++) {
+                AgentConfig selectedAgent = activeAgents.get(random.nextInt(activeAgents.size()));
+                User agentUser = agentUsers.get(selectedAgent.getUsername());
+                
+                if (agentUser == null) {
+                    logger.warn("Agent {} 用户对象未找到，跳过评论", selectedAgent.getUsername());
+                    continue;
+                }
+                
+                // 随机选择一个帖子进行评论
+                Post selectedPost = posts.get(random.nextInt(posts.size()));
+                
+                // 检查是否是自己的帖子
+                if (selectedPost.getAuthor().getUsername().equals(selectedAgent.getUsername())) {
+                    logger.info("Agent {} 跳过评论自己的帖子 {}", selectedAgent.getUsername(), selectedPost.getId());
+                    continue;
+                }
+                
+                // 基于评论概率决定是否评论
+                if (random.nextDouble() <= selectedAgent.getCommentProbability()) {
+                    try {
+                        // 随机选择一条评论内容
+                        String commentContent = selectedAgent.getComments().get(
+                            random.nextInt(selectedAgent.getComments().size()));
+                        
+                        // 创建评论对象
+                        CommentDTO commentDTO = new CommentDTO();
+                        commentDTO.setContent(commentContent);
+                        commentDTO.setPostId(selectedPost.getId());
+                        
+                        // 创建Authentication对象
+                        Authentication agentAuth = createAgentAuthentication(agentUser);
+                        
+                        // 发布评论
+                        commentService.createComment(selectedPost.getId(), commentDTO, agentAuth);
+                        logger.info("Agent {} 成功评论了关注栏目帖子 {} (标题: {}): {}", 
+                            selectedAgent.getUsername(), selectedPost.getId(), selectedPost.getTitle(), commentContent);
+                            
+                    } catch (Exception e) {
+                        logger.error("Agent {} 评论帖子 {} 时出错: {}", 
+                            selectedAgent.getUsername(), selectedPost.getId(), e.getMessage());
+                    }
+                } else {
+                    logger.debug("Agent {} 根据概率决定不评论帖子 {}", selectedAgent.getUsername(), selectedPost.getId());
+                }
+            }
+            
+        } catch (Exception e) {
+            logger.error("Agent评论现有帖子任务执行出错: {}", e.getMessage(), e);
         }
     }
     

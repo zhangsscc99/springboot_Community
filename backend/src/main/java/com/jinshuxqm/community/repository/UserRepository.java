@@ -19,6 +19,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Boolean existsByEmail(String email);
     
+    // 通过用户名列表查找用户
+    List<User> findByUsernameIn(List<String> usernames);
+    
     // 通过用户名或昵称搜索用户
     @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.nickname) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<User> searchByUsernameOrNickname(@Param("query") String query);

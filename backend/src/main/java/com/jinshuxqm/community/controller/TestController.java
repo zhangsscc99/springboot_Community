@@ -1,80 +1,131 @@
 package com.jinshuxqm.community.controller;
 
-import com.jinshuxqm.community.model.ERole;
-import com.jinshuxqm.community.model.Role;
-import com.jinshuxqm.community.repository.RoleRepository;
+import com.jinshuxqm.community.config.ScheduledTasks;
+import com.jinshuxqm.community.dto.CommentDTO;
+import com.jinshuxqm.community.model.Post;
+import com.jinshuxqm.community.model.User;
+import com.jinshuxqm.community.repository.PostRepository;
+import com.jinshuxqm.community.repository.UserRepository;
+import com.jinshuxqm.community.service.CommentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/test")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class TestController {
+
+    @Autowired
+    private ScheduledTasks scheduledTasks;
     
     @Autowired
-    private RoleRepository roleRepository;
+    private PostRepository postRepository;
     
-    @GetMapping("/all")
-    public String allAccess() {
-        return "公共内容";
-    }
+    @Autowired
+    private CommentService commentService;
+    
+    @Autowired
+    private UserRepository userRepository;
 
-    @GetMapping("/user")
-    @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public String userAccess() {
-        return "用户内容";
-    }
-
-    @GetMapping("/mod")
-    @PreAuthorize("hasRole('MODERATOR')")
-    public String moderatorAccess() {
-        return "管理员内容";
-    }
-
-    @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
-    public String adminAccess() {
-        return "超级管理员内容";
-    }
-
-    @GetMapping("/roles")
-    public String checkRoles() {
-        StringBuilder result = new StringBuilder();
-        result.append("角色诊断信息:\n\n");
-        
+    /**
+     * 手动触发agent评论任务
+     */
+    @GetMapping("/trigger-agent-comments")
+    public ResponseEntity<?> triggerAgentComments() {
         try {
-            // 获取所有角色
-            List<Role> allRoles = roleRepository.findAll();
-            result.append("所有角色数量: ").append(allRoles.size()).append("\n\n");
+            // 手动调用agent评论方法
+            scheduledTasks.agentCommentOnExistingPosts();
             
-            for (Role role : allRoles) {
-                result.append("ID: ").append(role.getId())
-                      .append(", 名称: ").append(role.getName())
-                      .append("\n");
-            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("message", "Agent评论任务已触发");
             
-            // 检查是否有重复角色
-            result.append("\n角色重复检测:\n");
-            
-            List<Role> userRoles = roleRepository.findAllByName(ERole.ROLE_USER);
-            result.append("ROLE_USER: ").append(userRoles.size()).append(" 条记录\n");
-            
-            List<Role> modRoles = roleRepository.findAllByName(ERole.ROLE_MODERATOR);
-            result.append("ROLE_MODERATOR: ").append(modRoles.size()).append(" 条记录\n");
-            
-            List<Role> adminRoles = roleRepository.findAllByName(ERole.ROLE_ADMIN);
-            result.append("ROLE_ADMIN: ").append(adminRoles.size()).append(" 条记录\n");
-            
-            return result.toString();
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            result.append("发生错误: ").append(e.getMessage()).append("\n");
-            e.printStackTrace();
-            return result.toString();
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "error");
+            response.put("message", "触发Agent评论任务失败: " + e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取关注栏目的帖子
+     */
+    @GetMapping("/follow-posts")
+    public ResponseEntity<?> getFollowPosts() {
+        try {
+            List<Post> posts = postRepository.findByTab("关注", 
+                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))).getContent();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("count", posts.size());
+            response.put("posts", posts);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "error");
+            response.put("message", "获取关注栏目帖子失败: " + e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取指定帖子的评论
+     */
+    @GetMapping("/post/{postId}/comments")
+    public ResponseEntity<?> getPostComments(@PathVariable Long postId) {
+        try {
+            List<CommentDTO> comments = commentService.getCommentsByPostId(postId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("postId", postId);
+            response.put("commentCount", comments.size());
+            response.put("comments", comments);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "error");
+            response.put("message", "获取评论失败: " + e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 获取所有Agent用户
+     */
+    @GetMapping("/agents")
+    public ResponseEntity<?> getAgents() {
+        try {
+            List<User> agents = userRepository.findByUsernameIn(
+                List.of("city_girl", "career_sister", "teen_heart", "family_man", "lovelessboy"));
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("agentCount", agents.size());
+            response.put("agents", agents);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "error");
+            response.put("message", "获取Agent用户失败: " + e.getMessage());
+            
+            return ResponseEntity.badRequest().body(response);
         }
     }
 }

@@ -122,6 +122,15 @@ public class CommentServiceImpl implements CommentService {
             // 保存评论
             comment = commentRepository.save(comment);
             
+            // 【新增】更新帖子的评论统计数
+            if (post.getStats() != null) {
+                post.getStats().incrementCommentCount();
+                postRepository.save(post);
+                System.out.println("已更新帖子 " + postId + " 的评论数为: " + post.getStats().getCommentCount());
+            } else {
+                System.err.println("警告: 帖子 " + postId + " 的Stats为null，无法更新评论数");
+            }
+            
             // 将实体转换为DTO并返回
             return convertToDTO(comment, author);
         } catch (Exception e) {
