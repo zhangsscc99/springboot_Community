@@ -29,4 +29,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     
     // 查找用户的所有评论
     Page<Comment> findByAuthorIdAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    
+    // 获取帖子的评论，使用fetch join避免懒加载问题
+    @Query("SELECT c FROM Comment c JOIN FETCH c.author WHERE c.post.id = :postId AND c.parent IS NULL AND c.isDeleted = false ORDER BY c.createdAt DESC")
+    List<Comment> findCommentsWithUserByPostId(@Param("postId") Long postId);
 } 

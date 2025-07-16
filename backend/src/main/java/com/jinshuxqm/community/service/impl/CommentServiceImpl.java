@@ -11,6 +11,8 @@ import com.jinshuxqm.community.repository.CommentRepository;
 import com.jinshuxqm.community.repository.PostRepository;
 import com.jinshuxqm.community.repository.UserRepository;
 import com.jinshuxqm.community.service.CommentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CommentServiceImpl implements CommentService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(CommentServiceImpl.class);
     
     @Autowired
     private CommentRepository commentRepository;
@@ -257,9 +261,29 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true) // 添加事务注解以避免LazyInitializationException
     public List<CommentDTO> getCommentsByPostId(Long postId) {
-        // 使用已有方法，返回简化的结果
-        PagedResponseDTO<CommentDTO> pagedResponse = getCommentsByPostId(postId, 0, 20, null);
-        return pagedResponse.getContent();
+        try {
+            // 验证帖子是否存在
+            if (!postRepository.existsById(postId)) {
+                throw new ResourceNotFoundException("Post", "id", postId);
+            }
+            
+            // 获取一级评论，使用fetch join避免懒加载问题
+            List<Comment> comments = commentRepository.findCommentsWithUserByPostId(postId);
+            
+            List<CommentDTO> commentDTOs = new ArrayList<>();
+            
+            for (Comment comment : comments) {
+                // 使用安全的转换方法，避免懒加载问题
+                CommentDTO dto = CommentDTO.fromEntity(comment, false);
+                commentDTOs.add(dto);
+            }
+            
+            return commentDTOs;
+        } catch (Exception e) {
+            logger.error("获取帖子评论失败，postId={}: {}", postId, e.getMessage());
+            return new ArrayList<>(); // 返回空列表而不是抛出异常
+        }
     }
 } 
