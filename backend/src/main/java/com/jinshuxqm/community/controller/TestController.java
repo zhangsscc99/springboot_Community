@@ -9,6 +9,8 @@ import com.jinshuxqm.community.model.User;
 import com.jinshuxqm.community.repository.PostRepository;
 import com.jinshuxqm.community.repository.UserRepository;
 import com.jinshuxqm.community.service.CommentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -25,6 +27,8 @@ import java.util.Map;
 @RequestMapping("/api/test")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class TestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestController.class);
 
     @Autowired(required = false)
     private AgentManager agentManager;
@@ -577,6 +581,129 @@ public class TestController {
             
         } catch (Exception e) {
             result.put("error", "Failed to trigger recent comments: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 详细检查小明发帖系统状态
+     */
+    @GetMapping("/debug-xiaoming-system")
+    public ResponseEntity<Map<String, Object>> debugXiaoMingSystem() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            result.put("currentTime", LocalTime.now().toString());
+            result.put("timestamp", java.time.LocalDateTime.now().toString());
+            
+            // 1. 检查定时任务系统
+            result.put("scheduledTasksInjected", scheduledTasks != null);
+            
+            // 2. 检查AgentManager
+            result.put("agentManagerInjected", agentManager != null);
+            
+            if (agentManager != null) {
+                // 3. 检查小明的Agent配置
+                AgentConfig xiaoMingConfig = agentManager.getAgentConfigByUsername("xiaoming");
+                if (xiaoMingConfig != null) {
+                    Map<String, Object> configInfo = new HashMap<>();
+                    configInfo.put("exists", true);
+                    configInfo.put("username", xiaoMingConfig.getUsername());
+                    configInfo.put("nickname", xiaoMingConfig.getNickname());
+                    configInfo.put("postProbability", xiaoMingConfig.getPostProbability());
+                    configInfo.put("isActiveNow", xiaoMingConfig.isActiveNow());
+                    configInfo.put("activeStartTime", xiaoMingConfig.getActiveStartTime().toString());
+                    configInfo.put("activeEndTime", xiaoMingConfig.getActiveEndTime().toString());
+                    configInfo.put("postTitlesCount", xiaoMingConfig.getPostTitles() != null ? xiaoMingConfig.getPostTitles().size() : 0);
+                    configInfo.put("postContentsCount", xiaoMingConfig.getPostContents() != null ? xiaoMingConfig.getPostContents().size() : 0);
+                    result.put("xiaoMingConfig", configInfo);
+                } else {
+                    result.put("xiaoMingConfig", Map.of("exists", false, "error", "小明配置未找到"));
+                }
+                
+                // 4. 检查所有Agent配置
+                List<AgentConfig> allConfigs = agentManager.getAllAgentConfigs();
+                result.put("totalAgentConfigs", allConfigs.size());
+                List<String> allAgentNames = new ArrayList<>();
+                for (AgentConfig config : allConfigs) {
+                    allAgentNames.add(config.getUsername() + "(" + config.getNickname() + ")");
+                }
+                result.put("allAgentNames", allAgentNames);
+            }
+            
+            // 5. 检查数据库中的小明用户
+            User xiaoMingUser = userRepository.findByUsername("xiaoming").orElse(null);
+            if (xiaoMingUser != null) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("exists", true);
+                userInfo.put("id", xiaoMingUser.getId());
+                userInfo.put("username", xiaoMingUser.getUsername());
+                userInfo.put("nickname", xiaoMingUser.getNickname());
+                userInfo.put("email", xiaoMingUser.getEmail());
+                userInfo.put("hasRoles", xiaoMingUser.getRoles() != null && !xiaoMingUser.getRoles().isEmpty());
+                userInfo.put("createdAt", xiaoMingUser.getCreatedAt().toString());
+                result.put("xiaoMingUser", userInfo);
+            } else {
+                result.put("xiaoMingUser", Map.of("exists", false, "error", "小明用户在数据库中未找到"));
+            }
+            
+            // 6. 检查Spring定时任务是否启用
+            try {
+                java.lang.reflect.Method method = scheduledTasks.getClass().getDeclaredMethod("xiaoMingAutoPost");
+                org.springframework.scheduling.annotation.Scheduled scheduled = method.getAnnotation(org.springframework.scheduling.annotation.Scheduled.class);
+                if (scheduled != null) {
+                    Map<String, Object> schedulingInfo = new HashMap<>();
+                    schedulingInfo.put("methodExists", true);
+                    schedulingInfo.put("fixedRate", scheduled.fixedRate());
+                    schedulingInfo.put("fixedRateString", scheduled.fixedRateString());
+                    result.put("schedulingAnnotation", schedulingInfo);
+                } else {
+                    result.put("schedulingAnnotation", Map.of("exists", false, "error", "@Scheduled注解未找到"));
+                }
+            } catch (Exception e) {
+                result.put("schedulingAnnotation", Map.of("error", "检查@Scheduled注解时出错: " + e.getMessage()));
+            }
+            
+        } catch (Exception e) {
+            result.put("error", "系统检查时出错: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 强制执行小明发帖并显示详细日志
+     */
+    @PostMapping("/force-xiaoming-post")
+    public ResponseEntity<Map<String, Object>> forceXiaoMingPost() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            result.put("startTime", LocalTime.now().toString());
+            
+            if (scheduledTasks == null) {
+                result.put("error", "ScheduledTasks未注入");
+                return ResponseEntity.ok(result);
+            }
+            
+            if (agentManager == null) {
+                result.put("error", "AgentManager未注入");
+                return ResponseEntity.ok(result);
+            }
+            
+            // 强制执行小明发帖
+            logger.info("🔥 === 手动强制执行小明发帖 ===");
+            scheduledTasks.xiaoMingAutoPost();
+            
+            result.put("success", true);
+            result.put("message", "小明发帖任务强制执行完成");
+            result.put("endTime", LocalTime.now().toString());
+            result.put("note", "请查看服务器日志获取详细信息");
+            
+        } catch (Exception e) {
+            result.put("error", "强制执行小明发帖时出错: " + e.getMessage());
+            logger.error("强制执行小明发帖时出错", e);
         }
         
         return ResponseEntity.ok(result);
