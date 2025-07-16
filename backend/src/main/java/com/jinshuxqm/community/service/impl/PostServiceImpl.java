@@ -41,6 +41,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.ArrayList;
 import org.springframework.data.domain.PageImpl;
 import java.util.Comparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -59,6 +61,8 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private PostFavoriteRepository postFavoriteRepository;
     
+    private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
+    
     // 获取指定帖子和用户的操作锁
     private Lock getPostUserLock(Long postId, String username) {
         String key = postId + "-" + username; // 为每个帖子-用户组合创建唯一键
@@ -67,14 +71,17 @@ public class PostServiceImpl implements PostService {
     
     @Override
     public PostResponse createPost(PostRequest postRequest, String username) {
-        System.out.println("开始创建帖子: 标题=" + postRequest.getTitle() + ", 用户名=" + username + ", 栏目=" + postRequest.getTab());
+        logger.info("➡️ [DEBUG] createPost service method started. User: {}, Tab: {}", username, postRequest.getTab());
         
         try {
             // 查找用户
             User author = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
+                    .orElseThrow(() -> {
+                        logger.error("❌ [DEBUG] User not found for username: {}", username);
+                        return new UsernameNotFoundException("用户不存在: " + username);
+                    });
             
-            System.out.println("找到用户: ID=" + author.getId() + ", 用户名=" + author.getUsername());
+            logger.info("  [DEBUG] Author found: {}", author.getUsername());
             
             // 创建帖子实体
             Post post = new Post();
@@ -85,7 +92,7 @@ public class PostServiceImpl implements PostService {
             
             if (postRequest.getTags() != null) {
                 post.setTags(postRequest.getTags());
-                System.out.println("设置标签: " + postRequest.getTags());
+                logger.info("  [DEBUG] Tags set: {}", postRequest.getTags());
             }
             
             post.setCreatedAt(LocalDateTime.now());
@@ -96,18 +103,17 @@ public class PostServiceImpl implements PostService {
             stats.setPost(post);
             post.setStats(stats);
             
-            System.out.println("准备保存帖子到数据库");
+            logger.info("  [DEBUG] Preparing to save post to database. Title: {}", post.getTitle());
             // 保存到数据库
             Post savedPost = postRepository.save(post);
-            System.out.println("帖子保存成功: ID=" + savedPost.getId());
+            logger.info("  [DEBUG] Post successfully saved with ID: {}", savedPost.getId());
             
             // 转换为响应DTO
             PostResponse response = convertToDto(savedPost, username);
-            System.out.println("帖子创建完成: ID=" + response.getId() + ", 标题=" + response.getTitle());
+            logger.info("⬅️ [DEBUG] createPost service method finished successfully. Post ID: {}", response.getId());
             return response;
         } catch (Exception e) {
-            System.err.println("创建帖子时出错: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("❌ [DEBUG] Error during post creation for user {}: {}", username, e.getMessage(), e);
             throw e; // 重新抛出异常以便于上层捕获
         }
     }
@@ -546,13 +552,46 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public Page<Post> searchPosts(String query, Pageable pageable) {
+    public Page<PostResponse> searchPosts(String query, Pageable pageable) {
         if (query == null || query.trim().isEmpty()) {
             return new PageImpl<>(new ArrayList<>());
         }
         
-        // 使用仓库方法执行搜索
-        return postRepository.searchByTitleOrContent(query.trim(), pageable);
+        String trimmedQuery = query.trim();
+        
+        // 检查是否为纯数字ID搜索
+        if (trimmedQuery.matches("\\d+")) {
+            try {
+                Long postId = Long.parseLong(trimmedQuery);
+                Post post = postRepository.findById(postId).orElse(null);
+                if (post != null) {
+                    List<PostResponse> result = List.of(convertToDto(post, null));
+                    return new PageImpl<>(result, pageable, 1);
+                }
+            } catch (NumberFormatException e) {
+                // Not a valid Long, proceed to text search
+            }
+        }
+        
+        // 否则，执行文本搜索
+        Page<Post> posts = postRepository.findByTitleContainingOrContentContaining(trimmedQuery, trimmedQuery, pageable);
+        return posts.map(post -> convertToDto(post, null));
+    }
+    
+    /**
+     * 检查字符串是否为纯数字
+     */
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        
+        for (char c : str.toCharArray()) {
+            if (!Character.isDigit(c)) {
+                return false;
+            }
+        }
+        return true;
     }
     
     @Override

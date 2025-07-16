@@ -42,7 +42,7 @@ public class ScheduledTasks {
     /**
      * 每10秒随机选择一个Agent发布帖子，发布后立即触发其他Agent评论
      */
-    @Scheduled(fixedRate = 10000) // 每10秒执行一次（提高发帖频率）
+    //@Scheduled(fixedRate = 10000) // 每10秒执行一次（提高发帖频率）
     public void autoPost() {
         // 添加详细调试日志
         logger.info("🔄 === autoPost定时任务执行 - 当前时间: {} ===", LocalTime.now());
@@ -108,28 +108,27 @@ public class ScheduledTasks {
     @Scheduled(fixedRate = 30000) // 每30秒执行一次
     public void xiaoMingAutoPost() {
         try {
-            logger.info("🎯 === 小明专属发帖任务执行 - 当前时间: {} ===", LocalTime.now());
-            logger.info("🔄 定时任务线程: {}", Thread.currentThread().getName());
+            logger.info("🎯 === [DEBUG] 小明专属发帖任务开始执行 - 当前时间: {} ===", LocalTime.now());
             
             // 获取小明的Agent配置
             AgentConfig xiaoMingConfig = agentManager.getAgentConfigByUsername("xiaoming");
             
             if (xiaoMingConfig == null) {
-                logger.warn("⚠️ 小明Agent配置未找到，跳过发帖");
+                logger.warn("⚠️ [DEBUG] 小明Agent配置未找到，跳过发帖");
                 return;
             }
             
             if (!xiaoMingConfig.isActiveNow()) {
-                logger.info("⏰ 小明当前不活跃，跳过发帖");
+                logger.info("⏰ [DEBUG] 小明当前不活跃，跳过发帖");
                 return;
             }
             
-            logger.info("🚀 小明开始发帖...");
+            logger.info("🚀 [DEBUG] 小明配置找到，准备开始发帖...");
             agentPostService.createAgentPost(xiaoMingConfig);
-            logger.info("✅ 小明发帖完成！");
+            logger.info("✅ [DEBUG] 小明发帖任务调用完成！");
             
         } catch (Exception e) {
-            logger.error("❌ 小明发帖任务执行出错: {}", e.getMessage(), e);
+            logger.error("❌ [DEBUG] 小明发帖任务执行时发生严重错误: {}", e.getMessage(), e);
         }
     }
 } 

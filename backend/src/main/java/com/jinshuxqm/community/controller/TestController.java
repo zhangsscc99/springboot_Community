@@ -2,6 +2,7 @@ package com.jinshuxqm.community.controller;
 
 import com.jinshuxqm.community.agent.service.AgentManager;
 import com.jinshuxqm.community.agent.model.AgentConfig;
+import com.jinshuxqm.community.agent.service.AgentInitializationService;
 import com.jinshuxqm.community.config.ScheduledTasks;
 import com.jinshuxqm.community.dto.CommentDTO;
 import com.jinshuxqm.community.model.Post;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/test")
@@ -32,6 +34,9 @@ public class TestController {
 
     @Autowired(required = false)
     private AgentManager agentManager;
+    
+    @Autowired(required = false)
+    private AgentInitializationService agentInitializationService;
     
     @Autowired(required = false)
     private ScheduledTasks scheduledTasks;
@@ -430,9 +435,14 @@ public class TestController {
             }
             
             // 手动调用Agent初始化方法
-            scheduledTasks.initAgents();
-            result.put("success", true);
-            result.put("message", "Agent重新初始化完成");
+            if (agentInitializationService != null) {
+                agentInitializationService.reinitAllAgents();
+                result.put("success", true);
+                result.put("message", "Agent重新初始化完成");
+            } else {
+                result.put("success", false);
+                result.put("message", "AgentInitializationService未可用");
+            }
             result.put("timestamp", LocalTime.now().toString());
             
         } catch (Exception e) {
@@ -704,6 +714,60 @@ public class TestController {
         } catch (Exception e) {
             result.put("error", "强制执行小明发帖时出错: " + e.getMessage());
             logger.error("强制执行小明发帖时出错", e);
+        }
+        
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 测试帖子ID搜索功能
+     */
+    @GetMapping("/test-id-search")
+    public ResponseEntity<Map<String, Object>> testIdSearch(
+            @RequestParam(defaultValue = "1") String testId) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            result.put("timestamp", LocalTime.now().toString());
+            result.put("testId", testId);
+            
+            // 1. 测试是否为数字
+            boolean isNumeric = testId.matches("\\d+");
+            result.put("isNumeric", isNumeric);
+            
+            if (isNumeric) {
+                try {
+                    Long postId = Long.parseLong(testId);
+                    result.put("parsedId", postId);
+                    
+                    // 2. 检查帖子是否存在
+                    Optional<Post> post = postRepository.findById(postId);
+                    if (post.isPresent()) {
+                        Post foundPost = post.get();
+                        result.put("postFound", true);
+                        result.put("post", Map.of(
+                            "id", foundPost.getId(),
+                            "title", foundPost.getTitle(),
+                            "author", foundPost.getAuthor().getUsername(),
+                            "createdAt", foundPost.getCreatedAt().toString()
+                        ));
+                    } else {
+                        result.put("postFound", false);
+                        result.put("message", "未找到ID为 " + postId + " 的帖子");
+                    }
+                } catch (NumberFormatException e) {
+                    result.put("error", "无法解析为有效的帖子ID: " + e.getMessage());
+                }
+            } else {
+                result.put("message", "输入不是纯数字，将执行关键词搜索");
+            }
+            
+            result.put("success", true);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", "测试ID搜索出错: " + e.getMessage());
+            logger.error("测试ID搜索出错", e);
         }
         
         return ResponseEntity.ok(result);

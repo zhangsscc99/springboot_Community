@@ -46,10 +46,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     int incrementViewCount(@Param("postId") Long postId);
 
     // 搜索帖子
-    @Query("SELECT p FROM Post p WHERE " +
-           "LOWER(p.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<Post> searchByTitleOrContent(@Param("query") String query, Pageable pageable);
+    Page<Post> findByTitleContainingOrContentContaining(String title, String content, Pageable pageable);
 
     /**
      * 更新帖子的点赞数量

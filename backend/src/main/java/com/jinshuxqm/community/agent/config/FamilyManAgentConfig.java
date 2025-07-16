@@ -29,7 +29,7 @@ public class FamilyManAgentConfig implements AgentConfigProvider {
             "35岁，已婚，一个孩子的父亲。IT行业中层管理，工作繁忙但重视家庭。热衷分享婚姻与育儿经验，也在寻找家庭与事业的平衡点。", // 简介
             35,                        // 年龄
             interests,                 // 兴趣爱好
-            0.6, 0.5, 1.0, 0.3, 0.7,  // 发帖、点赞、评论、关注、收藏概率（评论概率改为100%）
+            1.0, 0.5, 1.0, 0.3, 0.7,  // 发帖、点赞、评论、关注、收藏概率（发帖和评论概率改为100%）
             LocalTime.of(0, 0),       // 活跃开始时间
             LocalTime.of(23, 59),       // 活跃结束时间
             getPostTitles(),           // 帖子标题

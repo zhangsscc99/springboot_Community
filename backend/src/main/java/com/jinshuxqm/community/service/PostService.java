@@ -79,7 +79,7 @@ public interface PostService {
      * @param pageable 分页信息
      * @return 匹配的帖子分页
      */
-    Page<Post> searchPosts(String query, Pageable pageable);
+    Page<PostResponse> searchPosts(String query, Pageable pageable);
     
     /**
      * 获取热门帖子

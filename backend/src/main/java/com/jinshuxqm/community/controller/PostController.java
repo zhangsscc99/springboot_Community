@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import com.jinshuxqm.community.exception.ResourceNotFoundException;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -263,42 +264,28 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size) {
         
         try {
-            logger.info("执行搜索，关键词: {}, 页码: {}, 每页数量: {}", query, page, size);
+            // 检查是否为ID搜索
+            if (query != null && query.trim().matches("\\d+")) {
+                Long postId = Long.parseLong(query.trim());
+                logger.info("执行帖子ID搜索，ID: {}", postId);
+                
+                try {
+                    PostResponse postResponse = postService.getPostById(postId);
+                    // 即使是单个结果，也用列表包装以便前端统一处理
+                    return ResponseEntity.ok(List.of(postResponse));
+                } catch (ResourceNotFoundException e) {
+                    logger.info("ID搜索完成，未找到ID为 {} 的帖子", postId);
+                    return ResponseEntity.ok(List.of()); // 返回空列表
+                }
+            }
             
-            // 调用服务层执行搜索
-            Page<Post> postsPage = postService.searchPosts(query, PageRequest.of(page, size));
+            // 如果不是ID，则执行关键词搜索
+            logger.info("执行关键词搜索，关键词: {}, 页码: {}, 每页数量: {}", query, page, size);
+            Page<PostResponse> postsPage = postService.searchPosts(query, PageRequest.of(page, size));
             
-            // 返回简单的结果
-            List<Map<String, Object>> results = postsPage.getContent().stream()
-                    .map(post -> {
-                        Map<String, Object> result = new HashMap<>();
-                        result.put("id", post.getId());
-                        result.put("title", post.getTitle());
-                        result.put("content", post.getContent());
-                        result.put("created_at", post.getCreatedAt());
-                        
-                        // 作者信息
-                        if (post.getAuthor() != null) {
-                            Map<String, Object> author = new HashMap<>();
-                            author.put("id", post.getAuthor().getId());
-                            author.put("username", post.getAuthor().getUsername());
-                            author.put("avatar", post.getAuthor().getAvatar());
-                            result.put("author", author);
-                        } else {
-                            result.put("author", Map.of("id", 0, "username", "未知用户", "avatar", ""));
-                        }
-                        
-                        // 统计信息
-                        result.put("likes", post.getStats() != null ? post.getStats().getLikeCount() : 0);
-                        result.put("comments", post.getStats() != null ? post.getStats().getCommentCount() : 0);
-                        result.put("views", post.getStats() != null ? post.getStats().getViewCount() : 0);
-                        
-                        return result;
-                    })
-                    .collect(Collectors.toList());
+            logger.info("关键词搜索完成，找到 {} 条结果", postsPage.getTotalElements());
+            return ResponseEntity.ok(postsPage.getContent());
             
-            logger.info("搜索完成，找到 {} 条结果", results.size());
-            return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("搜索失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
