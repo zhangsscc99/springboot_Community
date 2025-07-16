@@ -1,5 +1,7 @@
 package com.jinshuxqm.community.controller;
 
+import com.jinshuxqm.community.agent.service.AgentManager;
+import com.jinshuxqm.community.agent.model.AgentConfig;
 import com.jinshuxqm.community.dto.PagedResponseDTO;
 import com.jinshuxqm.community.dto.PostDTO;
 import com.jinshuxqm.community.dto.UserDTO;
@@ -35,6 +37,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired(required = false)
+    private AgentManager agentManager;
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
@@ -49,6 +54,26 @@ public class UserController {
                     response.put("avatar", user.getAvatar());
                     response.put("bio", user.getBio());
                     response.put("createdAt", user.getCreatedAt());
+                    
+                    // 检查是否为agent并添加agent信息
+                    if (agentManager != null) {
+                        AgentConfig agentConfig = agentManager.getAgentConfigByUsername(user.getUsername());
+                        if (agentConfig != null) {
+                            response.put("isAgent", true);
+                            Map<String, Object> agentInfo = new HashMap<>();
+                            agentInfo.put("nickname", agentConfig.getNickname());
+                            agentInfo.put("age", agentConfig.getAge());
+                            agentInfo.put("interests", agentConfig.getInterests());
+                            agentInfo.put("activeStartTime", agentConfig.getActiveStartTime());
+                            agentInfo.put("activeEndTime", agentConfig.getActiveEndTime());
+                            agentInfo.put("isActiveNow", agentConfig.isActiveNow());
+                            response.put("agentInfo", agentInfo);
+                        } else {
+                            response.put("isAgent", false);
+                        }
+                    } else {
+                        response.put("isAgent", false);
+                    }
                     
                     return ResponseEntity.ok(response);
                 })

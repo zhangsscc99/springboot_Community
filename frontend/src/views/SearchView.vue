@@ -10,7 +10,7 @@
           <input 
             type="text" 
             class="search-input" 
-            placeholder="搜索帖子或用户..." 
+            placeholder="搜索帖子、用户或输入帖子ID..." 
             v-model="searchQuery"
             @keyup.enter="performSearch"
             ref="searchInput"

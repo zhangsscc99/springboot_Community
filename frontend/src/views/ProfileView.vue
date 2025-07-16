@@ -37,6 +37,35 @@
         
         <p class="profile-bio">{{ formattedProfileBio }}</p>
         
+        <!-- Agent信息卡片 -->
+        <div v-if="isAgent" class="agent-info-card">
+          <div class="agent-header">
+            <i class="fas fa-robot agent-icon"></i>
+            <span class="agent-label">AI角色</span>
+          </div>
+          <div class="agent-details">
+            <div class="agent-detail-item">
+              <span class="detail-label">年龄:</span>
+              <span class="detail-value">{{ agentInfo.age }}岁</span>
+            </div>
+            <div class="agent-detail-item">
+              <span class="detail-label">兴趣:</span>
+              <span class="detail-value">{{ agentInfo.interests ? agentInfo.interests.join('、') : '暂无' }}</span>
+            </div>
+            <div class="agent-detail-item">
+              <span class="detail-label">活跃时间:</span>
+              <span class="detail-value">{{ formatActiveTime(agentInfo.activeStartTime, agentInfo.activeEndTime) }}</span>
+            </div>
+            <div class="agent-detail-item">
+              <span class="detail-label">状态:</span>
+              <span class="detail-value" :class="{ 'active-status': agentInfo.isActiveNow, 'inactive-status': !agentInfo.isActiveNow }">
+                <i class="fas fa-circle status-dot"></i>
+                {{ agentInfo.isActiveNow ? '在线' : '离线' }}
+              </span>
+            </div>
+          </div>
+        </div>
+        
         <div class="profile-actions">
           <button 
             v-if="!isCurrentUser && isAuthenticated" 
@@ -274,6 +303,8 @@ export default {
       profileNickname: '',
       profileBio: '',
       profileAvatar: '',
+      isAgent: false,
+      agentInfo: null,
       activeTab: 'posts',
       userPosts: [],
       likedPosts: [],
@@ -357,6 +388,8 @@ export default {
       this.profileNickname = '';
       this.profileBio = '';
       this.profileAvatar = '';
+      this.isAgent = false;
+      this.agentInfo = null;
       this.activeTab = 'posts';
       this.userPosts = [];
       this.likedPosts = [];
@@ -376,9 +409,11 @@ export default {
         if (cachedProfile) {
           console.log('使用缓存的用户信息数据');
           this.profileName = cachedProfile.username;
-          this.profileNickname = cachedProfile.nickname || '';
-          this.profileBio = cachedProfile.bio || '';
-          this.profileAvatar = cachedProfile.avatar;
+                  this.profileNickname = cachedProfile.nickname || '';
+        this.profileBio = cachedProfile.bio || '';
+        this.profileAvatar = cachedProfile.avatar;
+        this.isAgent = cachedProfile.isAgent || false;
+        this.agentInfo = cachedProfile.agentInfo || null;
           
           // 临时使用缓存的关注数据
           this.followerCount = cachedProfile.followerCount || 0;
@@ -426,6 +461,8 @@ export default {
         this.profileNickname = userData.nickname || '';
         this.profileBio = userData.bio || '';
         this.profileAvatar = userData.avatar;
+        this.isAgent = userData.isAgent || false;
+        this.agentInfo = userData.agentInfo || null;
         
         await this.fetchFollowCounts();
         
@@ -438,6 +475,8 @@ export default {
           nickname: userData.nickname || '',
           bio: userData.bio || '',
           avatar: userData.avatar,
+          isAgent: this.isAgent,
+          agentInfo: this.agentInfo,
           followerCount: this.followerCount,
           followingCount: this.followingCount,
           likesCount: this.likesCount
@@ -522,6 +561,25 @@ export default {
       } catch (error) {
         console.error('日期格式化错误:', error);
         return '未知时间';
+      }
+    },
+    formatActiveTime(startTime, endTime) {
+      if (!startTime || !endTime) return '全天';
+      
+      try {
+        // 处理时间格式，去掉秒数
+        const start = startTime.substring(0, 5);
+        const end = endTime.substring(0, 5);
+        
+        // 如果是全天(00:00-23:59)，显示"全天"
+        if (start === '00:00' && end === '23:59') {
+          return '全天';
+        }
+        
+        return `${start} - ${end}`;
+      } catch (e) {
+        console.error('格式化活跃时间失败:', e);
+        return '全天';
       }
     },
     goToPostDetail(postId) {
@@ -828,6 +886,8 @@ export default {
           nickname: this.profileNickname,
           bio: this.profileBio,
           avatar: this.profileAvatar,
+          isAgent: this.isAgent,
+          agentInfo: this.agentInfo,
           followerCount: this.followerCount,
           followingCount: this.followingCount,
           likesCount: this.likesCount
@@ -957,6 +1017,8 @@ export default {
           nickname: this.profileNickname,
           bio: this.profileBio,
           avatar: this.profileAvatar,
+          isAgent: this.isAgent,
+          agentInfo: this.agentInfo,
           followerCount: this.followerCount,
           followingCount: this.followingCount,
           likesCount: this.likesCount
@@ -1777,5 +1839,86 @@ textarea.form-control {
 
 .stat-item:hover .stat-value {
   color: var(--primary-color);
+}
+
+/* Agent信息卡片样式 */
+.agent-info-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.agent-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.agent-icon {
+  font-size: 20px;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.agent-label {
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+.agent-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.detail-label {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.detail-value {
+  font-weight: 600;
+  text-align: right;
+  flex: 1;
+  margin-left: 10px;
+}
+
+.status-dot {
+  font-size: 8px;
+  margin-right: 5px;
+}
+
+.active-status {
+  color: #4CAF50;
+}
+
+.inactive-status {
+  color: #FF9800;
+}
+
+.active-status .status-dot {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
 }
 </style>
