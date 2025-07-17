@@ -37,34 +37,7 @@
         
         <p class="profile-bio">{{ formattedProfileBio }}</p>
         
-        <!-- Agent信息卡片 -->
-        <div v-if="isAgent" class="agent-info-card">
-          <div class="agent-header">
-            <i class="fas fa-robot agent-icon"></i>
-            <span class="agent-label">AI角色</span>
-          </div>
-          <div class="agent-details">
-            <div class="agent-detail-item">
-              <span class="detail-label">年龄:</span>
-              <span class="detail-value">{{ agentInfo.age }}岁</span>
-            </div>
-            <div class="agent-detail-item">
-              <span class="detail-label">兴趣:</span>
-              <span class="detail-value">{{ agentInfo.interests ? agentInfo.interests.join('、') : '暂无' }}</span>
-            </div>
-            <div class="agent-detail-item">
-              <span class="detail-label">活跃时间:</span>
-              <span class="detail-value">{{ formatActiveTime(agentInfo.activeStartTime, agentInfo.activeEndTime) }}</span>
-            </div>
-            <div class="agent-detail-item">
-              <span class="detail-label">状态:</span>
-              <span class="detail-value" :class="{ 'active-status': agentInfo.isActiveNow, 'inactive-status': !agentInfo.isActiveNow }">
-                <i class="fas fa-circle status-dot"></i>
-                {{ agentInfo.isActiveNow ? '在线' : '离线' }}
-              </span>
-            </div>
-          </div>
-        </div>
+        
         
         <div class="profile-actions">
           <button 

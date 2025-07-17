@@ -1,5 +1,8 @@
 # Community Forum App
 
+# 每次开发注意事项
+一定要去api.config.js里面查看后端的地址 不然就会生效不了
+
 A social community forum application similar to Xiaohongshu and Zhihu, with text-focused posts and discussions.
 
 ## Features

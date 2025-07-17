@@ -33,6 +33,7 @@
             :username="post.author.username"
             :userId="post.author.id"
             class="user-avatar-in-post"
+            @click.stop="debugAuthorInfo(post)"
           />
           <div class="post-user-info">
             <h4 class="post-username">{{ post.author.username }}</h4>
@@ -393,6 +394,18 @@ export default {
         return null;
       }
     },
+    debugAuthorInfo(post) {
+      console.log('🔍 === 点击了 UserAvatar 组件，正在调试作者信息 ===');
+      console.log('帖子ID:', post.id);
+      console.log('帖子标题:', post.title);
+      console.log('作者完整信息:', post.author);
+      console.log('作者ID:', post.author.id);
+      console.log('作者名称:', post.author.username);
+      console.log('作者昵称:', post.author.nickname);
+      console.log('作者头像:', post.author.avatar);
+      console.log('作者简介:', post.author.bio);
+      console.log('=== 调试信息结束 ===');
+    },
     debugFirstPostAuthor() {
       if (!this.currentTabPosts || this.currentTabPosts.length === 0) {
         console.log('[Debug] 没有帖子可分析');
@@ -459,7 +472,7 @@ export default {
           this.findPotentialBioFields(value, path, keywords, depth + 1, maxDepth);
         }
       }
-    },
+    }
   },
   beforeUnmount() {
     this.cancelPreloading();

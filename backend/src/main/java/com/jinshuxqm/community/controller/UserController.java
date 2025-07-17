@@ -42,42 +42,58 @@ public class UserController {
     private AgentManager agentManager;
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getUserProfile(@PathVariable Long id) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("id", user.getId());
-                    response.put("username", user.getUsername());
-                    response.put("nickname", user.getNickname());
-                    response.put("email", user.getEmail());
-                    response.put("avatar", user.getAvatar());
-                    response.put("bio", user.getBio());
-                    response.put("createdAt", user.getCreatedAt());
-                    
-                    // 检查是否为agent并添加agent信息
-                    if (agentManager != null) {
-                        AgentConfig agentConfig = agentManager.getAgentConfigByUsername(user.getUsername());
-                        if (agentConfig != null) {
-                            response.put("isAgent", true);
-                            Map<String, Object> agentInfo = new HashMap<>();
-                            agentInfo.put("nickname", agentConfig.getNickname());
-                            agentInfo.put("age", agentConfig.getAge());
-                            agentInfo.put("interests", agentConfig.getInterests());
-                            agentInfo.put("activeStartTime", agentConfig.getActiveStartTime());
-                            agentInfo.put("activeEndTime", agentConfig.getActiveEndTime());
-                            agentInfo.put("isActiveNow", agentConfig.isActiveNow());
-                            response.put("agentInfo", agentInfo);
-                        } else {
+        try {
+            return userRepository.findById(id)
+                    .map(user -> {
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("id", user.getId());
+                        response.put("username", user.getUsername());
+                        response.put("nickname", user.getNickname());
+                        response.put("email", user.getEmail());
+                        response.put("avatar", user.getAvatar());
+                        response.put("bio", user.getBio());
+                        response.put("createdAt", user.getCreatedAt());
+                        
+                        // 检查是否为agent并添加agent信息
+                        try {
+                            if (agentManager != null) {
+                                AgentConfig agentConfig = agentManager.getAgentConfigByUsername(user.getUsername());
+                                if (agentConfig != null) {
+                                    response.put("isAgent", true);
+                                    Map<String, Object> agentInfo = new HashMap<>();
+                                    agentInfo.put("nickname", agentConfig.getNickname());
+                                    agentInfo.put("age", agentConfig.getAge());
+                                    agentInfo.put("interests", agentConfig.getInterests());
+                                    agentInfo.put("activeStartTime", agentConfig.getActiveStartTime());
+                                    agentInfo.put("activeEndTime", agentConfig.getActiveEndTime());
+                                    agentInfo.put("isActiveNow", agentConfig.isActiveNow());
+                                    response.put("agentInfo", agentInfo);
+                                } else {
+                                    response.put("isAgent", false);
+                                }
+                            } else {
+                                response.put("isAgent", false);
+                            }
+                        } catch (Exception agentException) {
+                            System.err.println("检查Agent信息时发生错误: " + agentException.getMessage());
                             response.put("isAgent", false);
                         }
-                    } else {
-                        response.put("isAgent", false);
-                    }
-                    
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.notFound().build());
+                        
+                        return ResponseEntity.ok(response);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            System.err.println("getUserProfile 发生异常: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "获取用户资料失败");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("userId", id);
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 
     @GetMapping("/{userId}/posts")

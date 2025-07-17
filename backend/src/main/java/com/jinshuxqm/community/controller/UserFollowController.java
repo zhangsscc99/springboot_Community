@@ -35,23 +35,42 @@ public class UserFollowController {
     @PostMapping("/{userId}/follow")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> followUser(@PathVariable Long userId) {
-        // Get the current authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        Long currentUserId = userDetails.getId();
-        
-        // Follow the user
-        boolean success = userFollowService.followUser(currentUserId, userId);
-        
-        Map<String, Object> response = new HashMap<>();
-        if (success) {
-            response.put("success", true);
-            response.put("message", "User followed successfully");
-            return ResponseEntity.ok(response);
-        } else {
+        try {
+            // Get the current authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            Long currentUserId = null;
+            if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+                currentUserId = userDetails.getId();
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "无法获取当前用户信息");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // Follow the user
+            boolean success = userFollowService.followUser(currentUserId, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            if (success) {
+                response.put("success", true);
+                response.put("message", "User followed successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Could not follow user");
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            System.err.println("关注用户时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", "Could not follow user");
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", "关注用户失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
     
@@ -63,23 +82,42 @@ public class UserFollowController {
     @DeleteMapping("/{userId}/follow")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> unfollowUser(@PathVariable Long userId) {
-        // Get the current authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        Long currentUserId = userDetails.getId();
-        
-        // Unfollow the user
-        boolean success = userFollowService.unfollowUser(currentUserId, userId);
-        
-        Map<String, Object> response = new HashMap<>();
-        if (success) {
-            response.put("success", true);
-            response.put("message", "User unfollowed successfully");
-            return ResponseEntity.ok(response);
-        } else {
+        try {
+            // Get the current authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            Long currentUserId = null;
+            if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+                currentUserId = userDetails.getId();
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "无法获取当前用户信息");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            // Unfollow the user
+            boolean success = userFollowService.unfollowUser(currentUserId, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            if (success) {
+                response.put("success", true);
+                response.put("message", "User unfollowed successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Could not unfollow user");
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            System.err.println("取消关注用户时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", "Could not unfollow user");
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", "取消关注用户失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
     
@@ -91,17 +129,39 @@ public class UserFollowController {
     @GetMapping("/{userId}/follow/check")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> checkFollowing(@PathVariable Long userId) {
-        // Get the current authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        Long currentUserId = userDetails.getId();
-        
-        // Check if following
-        boolean isFollowing = userFollowService.isFollowing(currentUserId, userId);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("following", isFollowing);
-        return ResponseEntity.ok(response);
+        try {
+            // Get the current authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            // 安全地获取当前用户ID
+            Long currentUserId = null;
+            if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+                UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+                currentUserId = userDetails.getId();
+            } else {
+                // 如果无法获取用户信息，返回未关注状态
+                Map<String, Object> response = new HashMap<>();
+                response.put("following", false);
+                response.put("error", "无法获取当前用户信息");
+                return ResponseEntity.ok(response);
+            }
+            
+            // Check if following
+            boolean isFollowing = userFollowService.isFollowing(currentUserId, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("following", isFollowing);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // 发生异常时返回未关注状态
+            System.err.println("检查关注状态时发生错误: " + e.getMessage());
+            e.printStackTrace();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("following", false);
+            response.put("error", "检查关注状态失败");
+            return ResponseEntity.ok(response);
+        }
     }
     
     /**

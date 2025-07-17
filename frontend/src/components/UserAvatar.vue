@@ -61,12 +61,17 @@ export default {
       e.target.src = this.defaultAvatar;
     },
     navigateToProfile() {
+      console.log('🚀 === UserAvatar navigateToProfile 被调用 ===');
+      console.log('传入的 props.userId:', this.userId);
+      console.log('传入的 props.username:', this.username);
+      console.log('userId 类型:', typeof this.userId);
+      
       if (!this.userId) {
-        console.log('[Debug] 没有提供用户ID，无法导航到个人主页');
+        console.log('❌ [Debug] 没有提供用户ID，无法导航到个人主页');
         return;
       }
 
-      console.log('[Debug] 尝试导航到用户主页，用户ID:', this.userId);
+      console.log('✅ [Debug] 开始导航到用户主页，用户ID:', this.userId);
       
       // 获取当前用户ID (尝试从多个位置获取)
       let currentUserId = null;
@@ -119,7 +124,9 @@ export default {
       
       // 导航到个人主页
       const targetRoute = { name: 'profile', params: { id: this.userId } };
-      console.log('[Debug] 即将导航到路由:', targetRoute);
+      console.log('🎯 [Debug] 即将导航到路由:', targetRoute);
+      console.log('🎯 [Debug] 目标用户ID:', this.userId);
+      console.log('🎯 [Debug] 目标用户名:', this.username);
       
       // 如果当前路径是个人主页，且正在导航到自己的主页，强制刷新路由
       const isProfilePage = this.$route.name === 'profile';

@@ -1,5 +1,6 @@
-com\jinshuxqm\community\agent\service\AgentPostService.class
-com\jinshuxqm\community\agent\service\AgentAuthService.class
-com\jinshuxqm\community\agent\service\AgentInteractionService.class
 com\jinshuxqm\community\agent\config\XiaoMingAgentConfig.class
 com\jinshuxqm\community\agent\service\AgentInitializationService.class
+com\jinshuxqm\community\agent\service\AgentPostService.class
+com\jinshuxqm\community\agent\service\AgentAuthService.class
+com\jinshuxqm\community\config\DataFixService.class
+com\jinshuxqm\community\agent\service\AgentInteractionService.class
