@@ -61,6 +61,9 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private PostFavoriteRepository postFavoriteRepository;
     
+    @Autowired(required = false)
+    private com.jinshuxqm.community.agent.service.AgentManager agentManager;
+    
     private static final Logger logger = LoggerFactory.getLogger(PostServiceImpl.class);
     
     // 获取指定帖子和用户的操作锁
@@ -107,6 +110,9 @@ public class PostServiceImpl implements PostService {
             // 保存到数据库
             Post savedPost = postRepository.save(post);
             logger.info("  [DEBUG] Post successfully saved with ID: {}", savedPost.getId());
+            
+            // 🎉 新功能：所有Agent自动点赞新帖子
+            triggerAgentAutoLikes(savedPost);
             
             // 转换为响应DTO
             PostResponse response = convertToDto(savedPost, username);
@@ -672,6 +678,61 @@ public class PostServiceImpl implements PostService {
         
         public double getScore() {
             return score;
+        }
+    }
+    
+    /**
+     * 触发所有Agent对新帖子的自动点赞
+     * @param post 新创建的帖子
+     */
+    private void triggerAgentAutoLikes(Post post) {
+        if (agentManager == null) {
+            logger.debug("AgentManager 未可用，跳过自动点赞功能");
+            return;
+        }
+        
+        try {
+            // 获取所有Agent配置
+            var allAgents = agentManager.getAllAgentConfigs();
+            if (allAgents == null || allAgents.isEmpty()) {
+                logger.debug("没有找到Agent配置，跳过自动点赞");
+                return;
+            }
+            
+            logger.info("🤖 开始为帖子 [{}] 触发 {} 个Agent的自动点赞", post.getId(), allAgents.size());
+            
+            // 为每个Agent执行点赞操作
+            for (var agentConfig : allAgents) {
+                try {
+                    String agentUsername = agentConfig.getUsername();
+                    
+                    // 检查Agent是否当前活跃
+                    if (!agentConfig.isActiveNow()) {
+                        logger.debug("Agent {} 当前不活跃，跳过点赞", agentUsername);
+                        continue;
+                    }
+                    
+                    // 避免Agent给自己的帖子点赞
+                    if (post.getAuthor().getUsername().equals(agentUsername)) {
+                        logger.debug("Agent {} 跳过给自己帖子点赞", agentUsername);
+                        continue;
+                    }
+                    
+                    // 调用现有的点赞方法
+                    likePost(post.getId(), agentUsername);
+                    logger.debug("✅ Agent {} 成功点赞帖子 [{}]", agentUsername, post.getId());
+                    
+                } catch (Exception e) {
+                    // 记录错误但不影响其他Agent的点赞
+                    logger.warn("Agent {} 点赞帖子 [{}] 失败: {}", 
+                               agentConfig.getUsername(), post.getId(), e.getMessage());
+                }
+            }
+            
+            logger.info("🎉 Agent自动点赞完成！帖子 [{}] 已收到来自Agent的点赞", post.getId());
+            
+        } catch (Exception e) {
+            logger.error("Agent自动点赞功能执行失败: {}", e.getMessage(), e);
         }
     }
 } 
